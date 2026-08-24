@@ -24,7 +24,7 @@ for (const script of [
   "test",
   "build",
   "quality:fixtures",
-  "quality:calibration:check",
+  "quality:policy:check",
   "quality:benchmark:check",
   "community:check",
   "security:check",

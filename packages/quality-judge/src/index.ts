@@ -1,8 +1,8 @@
 export {
-  QUALITY_SCORE_ACTIVATION,
-  resolveQualityScoreActivation,
-  type QualityScoreActivationState,
-} from "./activation.js";
+  QUALITY_SCORE_POLICY,
+  resolveQualityScorePolicy,
+  type QualityScorePolicy,
+} from "./policy.js";
 export {
   DEFAULT_QUALITY_RESULT_TTL_MS,
   createFileQualityResultCache,

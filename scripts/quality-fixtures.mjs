@@ -4,8 +4,8 @@ import { dirname, extname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const fixtureRoot = resolve(root, "calibration", "synthetic");
-if (!existsSync(fixtureRoot)) throw new Error("Missing calibration/synthetic fixture root.");
+const fixtureRoot = resolve(root, "quality", "fixtures");
+if (!existsSync(fixtureRoot)) throw new Error("Missing quality/fixtures root.");
 
 const files = readdirSync(fixtureRoot, { recursive: true, withFileTypes: true })
   .filter((entry) => entry.isFile())
@@ -28,7 +28,6 @@ try {
 if (
   manifest.schemaVersion !== "1.0.0-synthetic-fixtures" ||
   manifest.license !== "MIT" ||
-  manifest.containsHumanJudgments !== false ||
   manifest.containsPublicSource !== false ||
   !Array.isArray(manifest.cases) ||
   manifest.cases.length < 3
@@ -50,6 +49,4 @@ for (const fixture of manifest.cases) {
   ids.add(fixture.id);
 }
 
-console.log(
-  `Quality fixture contract ready (${String(manifest.cases.length)} synthetic cases; no human judgments).`,
-);
+console.log(`Quality fixture contract ready (${String(manifest.cases.length)} synthetic cases).`);

@@ -15,8 +15,8 @@ persisted.
 
 The preview attaches only after the canonical battle is complete. It has `scoreInfluence: 0` and
 cannot alter the score, basis, coverage, rounds, winner, margin, verdict, evidence, battle key,
-existing JSON battle fields, or cache identity. Activation remains structurally disabled pending
-the preregistered blinded multi-human gate.
+existing JSON battle fields, or canonical cache identity. Its policy has one informational-only
+state and no enabled branch. See [QUALITY_VALIDATION.md](QUALITY_VALIDATION.md).
 
 ## Supported lanes and bounds
 
@@ -33,7 +33,8 @@ symbol, and token limits.
 Anonymous automatic analysis uses one fixed five-source-request tier per profile when capacity
 permits. Authenticated analysis uses the complete 21-source plus 12-attribution tier when capacity
 permits. Cache hits may save calls but never promote a profile to a larger tier, and opponent or
-repository ordering cannot change its tier.
+repository ordering cannot change its tier. Planned opportunity and current-invocation telemetry
+are reported separately; a whole-result cache hit reports zero current HTTP calls.
 
 The separate 29-point instrument normalizes only across available dimensions and reports the
 result as `previewScore` with coverage. It never enters the reserved canonical scorecard points.

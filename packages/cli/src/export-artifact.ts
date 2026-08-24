@@ -251,7 +251,7 @@ const renderHtml = (document: ExportDocument): string => `<!doctype html>
   </section>
   <section aria-labelledby="fight-heading"><h2 id="fight-heading">Three decisive comparisons</h2><ol>${document.comparisons.map((entry) => `<li>${escapeMarkup(entry)}</li>`).join("")}</ol></section>
   <section aria-labelledby="read-heading"><h2 id="read-heading">The read</h2><div class="reads"><p><strong>${escapeMarkup(document.leftHandle)}</strong><br>${escapeMarkup(document.leftRead)}</p><p><strong>${escapeMarkup(document.rightHandle)}</strong><br>${escapeMarkup(document.rightRead)}</p></div></section>
-  ${document.quality === null ? "" : `<section aria-labelledby="quality-heading"><h2 id="quality-heading">Code Quality · Preview</h2><div class="reads"><p><strong>${escapeMarkup(document.leftHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.leftMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.leftAttributed)}</p><p><strong>${escapeMarkup(document.rightHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.rightMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.rightAttributed)}</p></div><p class="muted">Not used in the winner pending human calibration.</p></section>`}
+  ${document.quality === null ? "" : `<section aria-labelledby="quality-heading"><h2 id="quality-heading">Code Quality · Preview</h2><div class="reads"><p><strong>${escapeMarkup(document.leftHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.leftMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.leftAttributed)}</p><p><strong>${escapeMarkup(document.rightHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.rightMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.rightAttributed)}</p></div><p class="muted">Separate from the battle score.</p></section>`}
   <section aria-labelledby="receipt-heading"><h2 id="receipt-heading">Public receipts</h2><ol>${document.receipts.map((entry) => `<li>${escapeMarkup(entry)}</li>`).join("")}</ol></section>
   <footer><p>${escapeMarkup(document.limitation)}</p><p>Git Mog ${escapeMarkup(document.version)} · Rematch: <code>${escapeMarkup(document.rematch)}</code></p></footer>
 </main>
@@ -307,7 +307,7 @@ const renderSvg = (document: ExportDocument): string => {
       : [
           `${document.leftHandle} maintained: ${document.quality.leftMaintained}; attributed: ${document.quality.leftAttributed}`,
           `${document.rightHandle} maintained: ${document.quality.rightMaintained}; attributed: ${document.quality.rightAttributed}`,
-          "Not used in the winner pending human calibration.",
+          "Separate from the battle score.",
         ];
   const height =
     620 +

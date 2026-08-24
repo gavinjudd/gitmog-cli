@@ -32,7 +32,7 @@ pnpm verify
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for focused tests, documentation-only changes,
 AI-assisted contribution rules, false-positive reports, and language proposals. Architecture,
-testing, release, security, and calibration contracts live under [docs/](docs/ARCHITECTURE.md).
+testing, release, security, and quality-validation contracts live under [docs/](docs/ARCHITECTURE.md).
 
 The released package remains zero-runtime-dependency, has no install lifecycle behavior, uses
 no native addon, and performs no runtime parser download.
@@ -48,8 +48,8 @@ evidence.
 TypeScript and JavaScript use the pinned TypeScript AST parser in a resource-limited worker.
 Python, Go, and other languages are unsupported in v0.3.0 and reduce preview coverage instead of
 quality. Target code is never cloned, installed, imported, built, tested, or executed; raw source
-is process-only and is never stored in receipts, caches, logs, exports, or calibration judgments.
+is process-only and is never stored in receipts, caches, logs, or exports.
 
 Quality Preview has `scoreInfluence: 0`. It does not change the canonical score, score coverage,
-rounds, winner, margin, verdict, battle key, or existing evidence. Human calibration is pending,
-and score activation remains structurally disabled.
+rounds, winner, margin, verdict, battle key, or existing evidence. Its policy is
+informational-only and has no enabled branch.

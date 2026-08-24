@@ -4,7 +4,7 @@
   "sourceSelection": "1.0.0-stratified-public-source",
   "attribution": "1.0.0-public-path-commits",
   "dimensionFormula": "1.0.0-preview-29-point",
-  "calibrationSchema": "1.0.0-blinded-pairwise",
+  "validationContract": "1.0.0-engineering-validation",
   "presentation": "1.0.0-six-line-preview",
   "cache": "1.0.0-derived-features-only",
   "parserImplementations": [

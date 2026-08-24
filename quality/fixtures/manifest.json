@@ -1,7 +1,6 @@
 {
   "schemaVersion": "1.0.0-synthetic-fixtures",
   "license": "MIT",
-  "containsHumanJudgments": false,
   "containsPublicSource": false,
   "cases": [
     {

@@ -57,14 +57,21 @@ function readLicenseReview() {
   return review;
 }
 
-function readActivationState() {
-  const path = resolve(root, "calibration/QUALITY_SCORE_ACTIVATION.json");
-  if (!existsSync(path)) throw new Error("Quality score activation state is absent.");
-  const activation = readJson(path);
-  if (activation.state !== "disabled" || activation.reason !== "human calibration pending") {
-    throw new Error("Release candidate requires fail-closed quality score activation.");
+function readQualityPolicy() {
+  const path = resolve(root, "quality/QUALITY_SCORE_POLICY.json");
+  if (!existsSync(path)) throw new Error("Quality score policy is absent.");
+  const policy = readJson(path);
+  if (
+    policy.state !== "informational-only" ||
+    policy.scoreInfluence !== 0 ||
+    policy.reason !== "Quality Judge is a separate product signal" ||
+    Object.keys(policy).length !== 3
+  ) {
+    throw new Error(
+      "Release candidate requires the fail-closed informational-only quality policy.",
+    );
   }
-  return activation;
+  return policy;
 }
 
 function readQualityVersions() {
@@ -165,7 +172,7 @@ export function releaseMetadata(input) {
     },
     parserAssets: input.parserAssets,
     quality: {
-      activation: input.activation,
+      policy: input.policy,
       versions: input.qualityVersions,
     },
     evidence: input.evidence,
@@ -272,7 +279,7 @@ export async function buildReleaseArtifact(argv = process.argv.slice(2)) {
     }
     const acceptance = acceptReleaseArtifact(artifact.tarball, environment, hashes.sha256);
     const assets = parserAssets(artifact.files);
-    const activation = readActivationState();
+    const policy = readQualityPolicy();
     const qualityVersions = readQualityVersions();
     const licenseReview = readLicenseReview();
     const licenses = {
@@ -301,7 +308,7 @@ export async function buildReleaseArtifact(argv = process.argv.slice(2)) {
       },
       developmentDependencies: licenseReview.dependencies,
       workspacePackages: RELEASE_WORKSPACE_PACKAGES,
-      quality: { activation, versions: qualityVersions },
+      quality: { policy, versions: qualityVersions },
     };
     const evidenceDocuments = {
       "LICENSES.json": `${JSON.stringify(licenses, null, 2)}\n`,
@@ -327,7 +334,7 @@ export async function buildReleaseArtifact(argv = process.argv.slice(2)) {
       members: artifact.members,
       manifest,
       parserAssets: assets,
-      activation,
+      policy,
       qualityVersions,
       evidence,
       ...hashes,

@@ -14,5 +14,5 @@ pnpm verify
 
 `pnpm verify` is the merge gate. Package acceptance builds the exact zero-dependency artifact
 outside the checkout, installs it into disposable storage with scripts disabled, and exercises
-both bins and supported surfaces. Quality fixtures and calibration schemas have independent
-commands so a test pass cannot masquerade as human calibration.
+both bins and supported surfaces. Quality fixtures and the informational-only policy have
+independent commands so parser behavior, policy, and package acceptance are checked separately.

@@ -11,6 +11,6 @@ pnpm verify
 ```
 
 Useful focused commands are `pnpm test`, `pnpm build`, `pnpm package:acceptance`,
-`pnpm quality:fixtures`, `pnpm quality:calibration:check`, and `pnpm community:check`.
+`pnpm quality:fixtures`, `pnpm quality:policy:check`, and `pnpm community:check`.
 The package-acceptance command packs outside the checkout, installs into disposable storage,
 and runs both bins against offline fixtures.

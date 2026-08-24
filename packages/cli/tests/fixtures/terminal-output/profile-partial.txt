@@ -9,7 +9,7 @@ CODE QUALITY · PREVIEW
 Maintained codebase 81 (100%)
 Attributed code 81 (100%)
 @partialtree — 0 high-complexity funcs · alpha/migrate.ts:1 [PQ1]
-Not used in the score pending human calibration.
+Separate from the battle score.
 RECEIPTS
 [1] @partialtree — Test files 25 per 100 source files; Project structure
 More: --details · --receipts

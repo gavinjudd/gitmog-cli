@@ -3,7 +3,7 @@ export const QUALITY_PARSER_CONTRACT_VERSION = "1.0.0-typescript-ast";
 export const QUALITY_SOURCE_SELECTION_VERSION = "1.0.0-stratified-public-source";
 export const QUALITY_ATTRIBUTION_VERSION = "1.0.0-public-path-commits";
 export const QUALITY_DIMENSION_FORMULA_VERSION = "1.0.0-preview-29-point";
-export const QUALITY_CALIBRATION_SCHEMA_VERSION = "1.0.0-blinded-pairwise";
+export const QUALITY_VALIDATION_CONTRACT_VERSION = "1.0.0-engineering-validation";
 export const QUALITY_PRESENTATION_VERSION = "1.0.0-six-line-preview";
 export const QUALITY_CACHE_VERSION = "1.0.0-derived-features-only";
 

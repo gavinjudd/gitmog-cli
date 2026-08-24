@@ -51,7 +51,7 @@ Attributed code @strongmaintainer 81 (67%) · @sidequester 89 (100%)
   Duplication / dead patterns · @strongmaintainer 96 · @sidequester 96
 ! @strongmaintainer The attribution request cap left some files as
   maintained-codebase evidence only.
-Not used in the winner pending human calibration.
+Separate from the battle score.
 
 SOURCE ANALYSIS · READY
   @strongmaintainer 3 files across 3 repositories · @sidequester 3 files across

@@ -152,7 +152,7 @@ jobs:
       - run: node scripts/bootstrap.mjs --ci
       - run: node scripts/turbo.mjs run test --filter=@gitmog/quality-judge
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:fixtures
-      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:calibration:check
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:policy:check
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:benchmark:check
 
   security:

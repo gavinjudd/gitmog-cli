@@ -251,7 +251,7 @@ const renderQualityPair = (
       }
     }
   }
-  lines.push(palette.wrap("dim", "Not used in the winner pending human calibration."));
+  lines.push(palette.wrap("dim", "Separate from the battle score."));
   return lines;
 };
 
@@ -282,7 +282,7 @@ const renderQualityProfile = (
       lines.push(...wrapStyledPrefix("! ", limitation.detail, width, palette, "yellow"));
     }
   }
-  lines.push(palette.wrap("dim", "Not used in the score pending human calibration."));
+  lines.push(palette.wrap("dim", "Separate from the battle score."));
   return lines;
 };
 

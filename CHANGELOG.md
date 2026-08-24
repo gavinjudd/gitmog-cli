@@ -15,8 +15,7 @@ All notable changes are documented here. Released artifacts remain tied to immut
   battle key, evidence, and cache identity.
 - Add bounded process-only parser isolation, source-free receipts, deterministic sampling, and
   cache-invariant request planning.
-- Preregister blinded multi-human calibration while leaving score activation disabled and
-  recording zero human judgments.
+- Add an informational-only quality policy and deterministic engineering-validation fixtures.
 - Add public governance, contributor workflows, six-architecture CI, Node 22/24/26 acceptance,
   security checks, and exact-artifact reproducibility.
 
