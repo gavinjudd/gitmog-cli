@@ -20,16 +20,66 @@ export interface SimplifiedSource {
 
 const HASH_COMMENT_LANGUAGES = new Set<SupportedFeatureLanguage>(["python", "ruby"]);
 
+const STRING_QUOTES = new Set(['"', "'", String.fromCharCode(96)]) as ReadonlySet<string>;
+
+const closingQuotePositions = (line: string): Readonly<Record<string, readonly number[]>> => {
+  const positions: Record<string, number[]> = { '"': [], "'": [], [String.fromCharCode(96)]: [] };
+  let backslashes = 0;
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index] ?? "";
+    if (STRING_QUOTES.has(character) && backslashes % 2 === 0) {
+      positions[character]?.push(index);
+    }
+    backslashes = character === "\\" ? backslashes + 1 : 0;
+  }
+  return positions;
+};
+
 const shortenLongStrings = (line: string): { readonly text: string; readonly count: number } => {
   let shortened = 0;
-  // Single-line strings only. Escaped delimiters are retained as part of the match, and
-  // short strings stay byte-for-byte intact because they often carry useful API names.
-  const text = line.replace(/(["'`])((?:\\.|(?!\1)[^\\\r\n])*)\1/g, (matched, quote, inner) => {
-    if (typeof inner !== "string" || inner.length <= LONG_STRING_CONTENT_LIMIT) return matched;
-    shortened += 1;
-    return `${String(quote)}«string:${String(inner.length)} chars»${String(quote)}`;
-  });
-  return { text, count: shortened };
+  const closers = closingQuotePositions(line);
+  const closerOffsets: Record<string, number> = {
+    '"': 0,
+    "'": 0,
+    [String.fromCharCode(96)]: 0,
+  };
+  const output: string[] = [];
+  let cursor = 0;
+
+  // Single-line strings only. Escaped delimiters are retained, short strings remain
+  // byte-identical, and malformed source cannot trigger regular-expression backtracking.
+  while (cursor < line.length) {
+    const quote = line[cursor] ?? "";
+    if (!STRING_QUOTES.has(quote)) {
+      output.push(quote);
+      cursor += 1;
+      continue;
+    }
+
+    const quoteClosers = closers[quote] ?? [];
+    let closerOffset = closerOffsets[quote] ?? 0;
+    while (closerOffset < quoteClosers.length && (quoteClosers[closerOffset] ?? -1) <= cursor) {
+      closerOffset += 1;
+    }
+    closerOffsets[quote] = closerOffset;
+    const closingIndex = quoteClosers[closerOffset];
+    if (closingIndex === undefined) {
+      output.push(quote);
+      cursor += 1;
+      continue;
+    }
+
+    const innerLength = closingIndex - cursor - 1;
+    if (innerLength <= LONG_STRING_CONTENT_LIMIT) {
+      output.push(line.slice(cursor, closingIndex + 1));
+    } else {
+      shortened += 1;
+      output.push(quote + "«string:" + String(innerLength) + " chars»" + quote);
+    }
+    cursor = closingIndex + 1;
+  }
+
+  return { text: output.join(""), count: shortened };
 };
 
 export function simplifySourceForFeatures(path: string, source: string): SimplifiedSource {

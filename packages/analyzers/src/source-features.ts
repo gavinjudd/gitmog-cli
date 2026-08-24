@@ -1,7 +1,7 @@
 /**
  * Deterministic source features.
  *
- * Every field here is a count or a ratio derived from text by regular expression. Nothing
+ * Every field here is a count or ratio derived through bounded lexical traversal. Nothing
  * is parsed into an AST, nothing is imported, nothing is evaluated, and nothing is
  * executed — repository code under analysis is untrusted input and stays quoted data
  * (`packages/analyzers/AGENTS.md`).
@@ -164,7 +164,7 @@ const PROTOCOL_MARKER =
   /\b(?:socket|TcpListener|TcpStream|net\.(?:Dial|Listen)|http\.(?:Server|Client|Handle)|grpc|protobuf|websocket|ByteBuffer|Uint8Array|readUInt|writeUInt|htonl|ntohs|\bmmap\b|epoll|kqueue|syscall|unsafe\b|Box<dyn|alloc\b|malloc\b|free\s*\()/gi;
 
 const DATA_MARKER =
-  /\b(?:numpy|np\.|pandas|pd\.|scipy|sklearn|torch|tensorflow|polars|pyarrow|matplotlib|plt\.|DataFrame|Series\b|ndarray|dataframe|duckdb|spark|dbt|\.groupby\(|\.agg\(|SELECT\s+.*\s+FROM)/gi;
+  /\b(?:numpy|np\.|pandas|pd\.|scipy|sklearn|torch|tensorflow|polars|pyarrow|matplotlib|plt\.|DataFrame|Series\b|ndarray|dataframe|duckdb|spark|dbt|\.groupby\(|\.agg\()/gi;
 
 const ALGORITHM_MARKER =
   /\b(?:memo(?:ize|ised|ized)?|dynamic_programming|dijkstra|bfs\b|dfs\b|binary_search|binarySearch|quicksort|mergesort|heapify|priority_?queue|PriorityQueue|adjacency|visited\b|backtrack|permutation|combinatio|fibonacci|modulo|gcd\b|lcm\b|O\(n)/gi;
@@ -224,6 +224,70 @@ function nestingDepth(lines: readonly string[], language: SupportedFeatureLangua
 const ratio = (part: number, whole: number): number =>
   whole <= 0 ? 0 : Math.round((part / whole) * 1000) / 1000;
 
+const isWordCharacter = (character: string): boolean =>
+  (character >= "a" && character <= "z") ||
+  (character >= "0" && character <= "9") ||
+  character === "_";
+
+const isWhitespace = (character: string): boolean =>
+  character.length > 0 && character.trim().length === 0;
+
+const isLineTerminator = (character: string): boolean =>
+  character === "\n" || character === "\r" || character === "\u2028" || character === "\u2029";
+
+const sqlMarkerEnd = (source: string, selectIndex: number): number | null => {
+  const afterSelect = selectIndex + "select".length;
+  if (!isWhitespace(source[afterSelect] ?? "")) return null;
+
+  let cursor = afterSelect;
+  while (isWhitespace(source[cursor] ?? "")) cursor += 1;
+
+  // The earlier expression could divide a run of two or more whitespace characters
+  // between its leading and trailing groups when SELECT was followed directly by FROM.
+  if (cursor - afterSelect >= 2 && source.startsWith("from", cursor)) {
+    return cursor + "from".length;
+  }
+
+  while (cursor < source.length) {
+    if (!isWhitespace(source[cursor] ?? "")) {
+      cursor += 1;
+      continue;
+    }
+
+    let crossedLineTerminator = false;
+    while (isWhitespace(source[cursor] ?? "")) {
+      if (isLineTerminator(source[cursor] ?? "")) crossedLineTerminator = true;
+      cursor += 1;
+    }
+    if (source.startsWith("from", cursor)) return cursor + "from".length;
+    if (crossedLineTerminator) return null;
+  }
+  return null;
+};
+
+/** Matches the prior case-insensitive SELECT whitespace content whitespace FROM
+ * lexical signal, including its bounded multiline form, without regex backtracking. */
+const countSqlSelectFromMarkers = (source: string): number => {
+  const lower = source.toLowerCase();
+  let total = 0;
+  let searchFrom = 0;
+  while (searchFrom < lower.length) {
+    const selectIndex = lower.indexOf("select", searchFrom);
+    if (selectIndex < 0) break;
+    const before = selectIndex === 0 ? "" : (lower[selectIndex - 1] ?? "");
+    if (selectIndex === 0 || !isWordCharacter(before)) {
+      const markerEnd = sqlMarkerEnd(lower, selectIndex);
+      if (markerEnd !== null) {
+        total += 1;
+        searchFrom = markerEnd;
+        continue;
+      }
+    }
+    searchFrom = selectIndex + "select".length;
+  }
+  return total;
+};
+
 export function extractSourceFeatures(path: string, source: string): SourceFeatures {
   const language = featureLanguageOf(path);
   const supported = language !== "unknown";
@@ -260,7 +324,7 @@ export function extractSourceFeatures(path: string, source: string): SourceFeatu
     genericMarkers: count(source, GENERIC_MARKER),
     factoryMarkers: count(source, FACTORY_MARKER),
     protocolMarkers: count(source, PROTOCOL_MARKER),
-    dataLibraryMarkers: count(source, DATA_MARKER),
+    dataLibraryMarkers: count(source, DATA_MARKER) + countSqlSelectFromMarkers(source),
     algorithmMarkers: count(source, ALGORITHM_MARKER),
     testMarkers: count(source, TEST_MARKER),
     configurationLines,

@@ -121,12 +121,16 @@ export interface ProfileSignals {
   readonly treeCoverage: number;
 }
 
-const normalizeMessage = (message: string): string =>
-  message
-    .split("\n")[0]
-    ?.trim()
-    .toLowerCase()
-    .replace(/[.!]+$/, "") ?? "";
+const normalizeMessage = (message: string): string => {
+  const firstLine = message.split("\n")[0]?.trim().toLowerCase() ?? "";
+  let end = firstLine.length;
+  while (end > 0) {
+    const character = firstLine[end - 1];
+    if (character !== "." && character !== "!") break;
+    end -= 1;
+  }
+  return firstLine.slice(0, end);
+};
 
 export const isMergeMessage = (message: string): boolean => {
   const normalized = normalizeMessage(message);
