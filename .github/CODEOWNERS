@@ -1,0 +1,15 @@
+# Default and protected contracts
+* @gavinjudd
+
+/packages/analyzers/ @gavinjudd
+/packages/github/ @gavinjudd
+/packages/scoring/ @gavinjudd
+/packages/distribution/ @gavinjudd
+/calibration/ @gavinjudd
+/docs/decisions/ @gavinjudd
+/docs/SECURITY_BOUNDARIES.md @gavinjudd
+/SECURITY.md @gavinjudd
+/.github/workflows/ @gavinjudd
+/package.json @gavinjudd
+/pnpm-workspace.yaml @gavinjudd
+/.node-version @gavinjudd

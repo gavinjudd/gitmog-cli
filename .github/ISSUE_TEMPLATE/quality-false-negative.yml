@@ -1,0 +1,49 @@
+name: Quality Judge false negative
+description: Report a supported applicable pattern that Quality Judge missed.
+title: "[Quality false negative]: "
+labels: ["type:false-negative", "area:quality-judge", "status:needs-reproduction"]
+body:
+  - type: markdown
+    attributes:
+      value: "First distinguish a missed supported metric from missing coverage or unsupported syntax. Never post credentials, private source, or raw target source."
+  - type: input
+    id: reference
+    attributes: { label: Public repository and exact commit }
+    validations: { required: true }
+  - type: input
+    id: path
+    attributes: { label: Safe path and existing receipt or limitation ID }
+    validations: { required: true }
+  - type: dropdown
+    id: parser
+    attributes:
+      {
+        label: Language and parser lane,
+        options: ["TypeScript", "JavaScript", "Python", "Go", "Unsupported"],
+      }
+    validations: { required: true }
+  - type: dropdown
+    id: classification
+    attributes:
+      {
+        label: Report type,
+        options:
+          [
+            "Supported metric missed",
+            "Coverage missing",
+            "Unsupported syntax",
+            "Attribution missing",
+          ],
+      }
+    validations: { required: true }
+  - type: textarea
+    id: reproduction
+    attributes: { label: Minimal synthetic reproduction and expected behavior }
+    validations: { required: true }
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I included no credential, private source, or raw target source.
+          required: true

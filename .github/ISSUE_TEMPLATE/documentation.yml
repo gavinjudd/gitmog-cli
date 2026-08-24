@@ -1,0 +1,39 @@
+name: Documentation improvement
+description: Report unclear, incorrect, or inaccessible documentation.
+title: "[Docs]: "
+labels: ["type:documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: "Documentation reports must not contain credentials, private source, or raw target source."
+  - type: input
+    id: page
+    attributes: { label: Page or public repository and exact commit }
+    validations: { required: true }
+  - type: textarea
+    id: problem
+    attributes:
+      {
+        label: What is unclear or incorrect?,
+        description: "Name the intended reader and the decision they cannot make.",
+      }
+    validations: { required: true }
+  - type: textarea
+    id: outcome
+    attributes: { label: Expected documentation outcome }
+    validations: { required: true }
+  - type: dropdown
+    id: parser
+    attributes:
+      {
+        label: Language or parser lane,
+        options: ["Not applicable", "TypeScript", "JavaScript", "Python", "Go", "Unsupported"],
+      }
+    validations: { required: true }
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I included no credential, private source, or raw target source.
+          required: true

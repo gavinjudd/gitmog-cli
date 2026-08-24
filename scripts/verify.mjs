@@ -17,7 +17,17 @@ try {
 }
 
 heading("Git Mog public verify");
-for (const script of ["format:check", "lint", "typecheck", "test", "build", "package:acceptance"]) {
+for (const script of [
+  "format:check",
+  "lint",
+  "typecheck",
+  "test",
+  "build",
+  "quality:fixtures",
+  "quality:calibration:check",
+  "community:check",
+  "package:acceptance",
+]) {
   step(`pnpm run ${script}`);
   const result = runNodeCliInherit("pnpm", pnpmCli, ["run", script]);
   if (result.code !== 0) {
