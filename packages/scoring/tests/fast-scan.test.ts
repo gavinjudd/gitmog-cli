@@ -9,6 +9,7 @@ import {
 } from "../src/fast-scan/catalog.js";
 import { FAST_SCAN_CONFIDENCE_CAP, MAXIMUM_FAST_SCAN_BASIS } from "../src/fast-scan/confidence.js";
 import { scoreProfileFastScan } from "../src/fast-scan/scorecard.js";
+import { isLowEffortMessage } from "../src/fast-scan/signals.js";
 import { PERSONAS, scorecardFor, snapshotFor } from "./helpers.js";
 
 describe("fast-scan catalog", () => {
@@ -64,6 +65,11 @@ describe("fast-scan catalog", () => {
 });
 
 describe("scoreProfileFastScan", () => {
+  it("normalizes bounded punctuation-only commit messages without backtracking", () => {
+    expect(isLowEffortMessage("!".repeat(20 * 1024))).toBe(true);
+    expect(isLowEffortMessage("meaningful change" + ".!".repeat(10_000))).toBe(false);
+  });
+
   it("is deterministic for a fixed snapshot", async () => {
     const snapshot = await snapshotFor(PERSONAS.strongMaintainer);
     const first = scoreProfileFastScan(snapshot);

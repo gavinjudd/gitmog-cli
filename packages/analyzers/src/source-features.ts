@@ -1,7 +1,7 @@
 /**
  * Deterministic source features.
  *
- * Every field here is a count or a ratio derived from text by regular expression. Nothing
+ * Every field here is a count or ratio derived through bounded lexical traversal. Nothing
  * is parsed into an AST, nothing is imported, nothing is evaluated, and nothing is
  * executed — repository code under analysis is untrusted input and stays quoted data
  * (`packages/analyzers/AGENTS.md`).
@@ -164,7 +164,7 @@ const PROTOCOL_MARKER =
   /\b(?:socket|TcpListener|TcpStream|net\.(?:Dial|Listen)|http\.(?:Server|Client|Handle)|grpc|protobuf|websocket|ByteBuffer|Uint8Array|readUInt|writeUInt|htonl|ntohs|\bmmap\b|epoll|kqueue|syscall|unsafe\b|Box<dyn|alloc\b|malloc\b|free\s*\()/gi;
 
 const DATA_MARKER =
-  /\b(?:numpy|np\.|pandas|pd\.|scipy|sklearn|torch|tensorflow|polars|pyarrow|matplotlib|plt\.|DataFrame|Series\b|ndarray|dataframe|duckdb|spark|dbt|\.groupby\(|\.agg\(|SELECT\s+.*\s+FROM)/gi;
+  /\b(?:numpy|np\.|pandas|pd\.|scipy|sklearn|torch|tensorflow|polars|pyarrow|matplotlib|plt\.|DataFrame|Series\b|ndarray|dataframe|duckdb|spark|dbt|\.groupby\(|\.agg\()/gi;
 
 const ALGORITHM_MARKER =
   /\b(?:memo(?:ize|ised|ized)?|dynamic_programming|dijkstra|bfs\b|dfs\b|binary_search|binarySearch|quicksort|mergesort|heapify|priority_?queue|PriorityQueue|adjacency|visited\b|backtrack|permutation|combinatio|fibonacci|modulo|gcd\b|lcm\b|O\(n)/gi;
@@ -224,6 +224,47 @@ function nestingDepth(lines: readonly string[], language: SupportedFeatureLangua
 const ratio = (part: number, whole: number): number =>
   whole <= 0 ? 0 : Math.round((part / whole) * 1000) / 1000;
 
+const isWordCharacter = (character: string): boolean =>
+  (character >= "a" && character <= "z") ||
+  (character >= "0" && character <= "9") ||
+  character === "_";
+
+const isWhitespace = (character: string): boolean =>
+  character === " " || character === "\t" || character === "\r" || character === "\n";
+
+/** Counts at most one SELECT ... FROM marker per line, matching the prior greedy
+ * lexical signal without a backtracking expression over untrusted source. */
+const countSqlSelectFromMarkers = (source: string): number => {
+  let total = 0;
+  for (const rawLine of source.split("\n")) {
+    const line = rawLine.toLowerCase();
+    let searchFrom = 0;
+    let found = false;
+    while (!found) {
+      const selectIndex = line.indexOf("select", searchFrom);
+      if (selectIndex < 0) break;
+      const before = selectIndex === 0 ? "" : (line[selectIndex - 1] ?? "");
+      let cursor = selectIndex + "select".length;
+      if ((selectIndex === 0 || !isWordCharacter(before)) && isWhitespace(line[cursor] ?? "")) {
+        while (isWhitespace(line[cursor] ?? "")) cursor += 1;
+        while (cursor < line.length) {
+          const fromIndex = line.indexOf("from", cursor);
+          if (fromIndex < 0) break;
+          const fromBefore = fromIndex === 0 ? "" : (line[fromIndex - 1] ?? "");
+          if (isWhitespace(fromBefore)) {
+            found = true;
+            break;
+          }
+          cursor = fromIndex + "from".length;
+        }
+      }
+      searchFrom = selectIndex + "select".length;
+    }
+    if (found) total += 1;
+  }
+  return total;
+};
+
 export function extractSourceFeatures(path: string, source: string): SourceFeatures {
   const language = featureLanguageOf(path);
   const supported = language !== "unknown";
@@ -260,7 +301,7 @@ export function extractSourceFeatures(path: string, source: string): SourceFeatu
     genericMarkers: count(source, GENERIC_MARKER),
     factoryMarkers: count(source, FACTORY_MARKER),
     protocolMarkers: count(source, PROTOCOL_MARKER),
-    dataLibraryMarkers: count(source, DATA_MARKER),
+    dataLibraryMarkers: count(source, DATA_MARKER) + countSqlSelectFromMarkers(source),
     algorithmMarkers: count(source, ALGORITHM_MARKER),
     testMarkers: count(source, TEST_MARKER),
     configurationLines,

@@ -93,6 +93,15 @@ def dijkstra(graph: dict[str, list[str]]) -> list[str]:
     expect(features.maximumNestingDepth).toBeGreaterThanOrEqual(1);
   });
 
+  it("counts SQL data markers without backtracking on bounded hostile whitespace", () => {
+    const hostile = "SELECT" + " ".repeat(20 * 1024 - 6);
+    expect(extractSourceFeatures("src/query.ts", hostile).dataLibraryMarkers).toBe(0);
+    expect(
+      extractSourceFeatures("src/query.ts", "const rows = SELECT value FROM table")
+        .dataLibraryMarkers,
+    ).toBe(1);
+  });
+
   it("counts Go protocol and guard markers", () => {
     const source = `
 package wire
@@ -189,5 +198,33 @@ describe("feature-facing source simplification", () => {
     const first = simplifySourceForFeatures("src/http.ts", source);
     expect(simplifySourceForFeatures("src/http.ts", source)).toEqual(first);
     expect(first.text).toBe(source);
+  });
+
+  it("shortens long matched strings across supported quote delimiters", () => {
+    const tick = String.fromCharCode(96);
+    const source =
+      'const double = "' +
+      "d".repeat(97) +
+      "\"; const single = '" +
+      "s".repeat(98) +
+      "'; const template = " +
+      tick +
+      "t".repeat(99) +
+      tick;
+    const simplified = simplifySourceForFeatures("src/strings.ts", source);
+    expect(simplified.stringsShortened).toBe(3);
+    expect(simplified.text).toBe(
+      "const double = \"«string:97 chars»\"; const single = '«string:98 chars»'; const template = " +
+        tick +
+        "«string:99 chars»" +
+        tick,
+    );
+  });
+
+  it("handles bounded hostile unterminated strings with a linear traversal", () => {
+    const hostile = 'const value = "' + String.fromCharCode(92, 34, 92, 97).repeat(5_000);
+    const simplified = simplifySourceForFeatures("src/hostile.ts", hostile);
+    expect(simplified.text).toBe(hostile);
+    expect(simplified.stringsShortened).toBe(0);
   });
 });
