@@ -48,8 +48,15 @@ const contextFor = (...personas: readonly PersonaSpec[]): CliContext => {
   };
 };
 const battleContext = () => contextFor(PERSONAS.strongMaintainer, PERSONAS.manyTinyRepos);
-const invoke = (context: CliContext, ...args: readonly string[]) =>
-  run(["node", "gitmog", ...args], context);
+let invocationLane = Promise.resolve();
+const invoke = (context: CliContext, ...args: readonly string[]) => {
+  const execution = invocationLane.then(() => run(["node", "gitmog", ...args], context));
+  invocationLane = execution.then(
+    () => undefined,
+    () => undefined,
+  );
+  return execution;
+};
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 const assertAnsiIsLineBounded = (output: string): void => {

@@ -44,8 +44,15 @@ const contextFor = (...personas: readonly PersonaSpec[]): CliContext => {
     skipBudgetPreflight: true,
   };
 };
-const invoke = (context: CliContext, ...args: readonly string[]) =>
-  run(["node", "gitmog", ...args], context);
+let invocationLane = Promise.resolve();
+const invoke = (context: CliContext, ...args: readonly string[]) => {
+  const execution = invocationLane.then(() => run(["node", "gitmog", ...args], context));
+  invocationLane = execution.then(
+    () => undefined,
+    () => undefined,
+  );
+  return execution;
+};
 
 describe("reviewed terminal output fixtures", () => {
   it("matches ready, limited, and insufficient battle captures", async () => {
