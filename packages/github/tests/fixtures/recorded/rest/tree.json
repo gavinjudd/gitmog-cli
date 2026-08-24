@@ -1,0 +1,31 @@
+{
+  "sha": "d0dd1f61b33d64e29d8bc1372a94ef6a2fee76a9",
+  "url": "https://api.github.com/repos/octocat/Spoon-Knife/git/trees/d0dd1f61b33d64e29d8bc1372a94ef6a2fee76a9",
+  "tree": [
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f4790267d0d362a90d6799759ece092616c40779",
+      "size": 780,
+      "url": "https://api.github.com/repos/octocat/Spoon-Knife/git/blobs/f4790267d0d362a90d6799759ece092616c40779"
+    },
+    {
+      "path": "index.html",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a83618bcf17b4e8e643de75d09adc0e892043020",
+      "size": 355,
+      "url": "https://api.github.com/repos/octocat/Spoon-Knife/git/blobs/a83618bcf17b4e8e643de75d09adc0e892043020"
+    },
+    {
+      "path": "styles.css",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b8528455cf79bca41ac100bcb531fcbf580985e",
+      "size": 256,
+      "url": "https://api.github.com/repos/octocat/Spoon-Knife/git/blobs/9b8528455cf79bca41ac100bcb531fcbf580985e"
+    }
+  ],
+  "truncated": false
+}

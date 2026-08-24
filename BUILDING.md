@@ -1,12 +1,16 @@
 # Build and verification
 
-Requirements: Node 24.19.0 and pnpm 11.21.0.
+Requirements are Node 24.19.0 and Git. The zero-dependency bootstrap installs pnpm 11.21.0
+inside `.gitmog/tooling/pnpm`, then installs the exact frozen dependency graph with lifecycle
+scripts disabled.
 
 ```sh
-corepack pnpm install --frozen-lockfile --ignore-scripts
-corepack pnpm test
+node scripts/bootstrap.mjs
+pnpm run doctor
+pnpm verify
 ```
 
-The acceptance command builds `packages/distribution`, packs it outside the checkout, requires exactly six package members, installs that tarball into a disposable project, and runs offline fixture acceptance. Compare package member bytes and the tarball hash against the release checksums supplied with the audited release candidate.
-
-Development dependencies are exactly pinned in `package.json` and `pnpm-lock.yaml`. The packed package has zero runtime dependencies and no lifecycle install behavior.
+Useful focused commands are `pnpm test`, `pnpm build`, `pnpm package:acceptance`,
+`pnpm quality:fixtures`, `pnpm quality:calibration:check`, and `pnpm community:check`.
+The package-acceptance command packs outside the checkout, installs into disposable storage,
+and runs both bins against offline fixtures.

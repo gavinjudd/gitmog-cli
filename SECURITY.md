@@ -109,5 +109,7 @@ CSI/OSC sequences, bells, backspaces, and terminal hyperlinks therefore cannot e
 bleed styling. JSON retains the original data contract and relies on JSON escaping; no
 ANSI is inserted into JSON and stable evidence IDs are not rewritten.
 
-Report security concerns privately to the repository owner. Do not include credentials,
-private source, cookies, or raw target blobs in an issue.
+Report vulnerabilities through this repository's GitHub private vulnerability reporting.
+For other sensitive contact, use the public private-contact channel on
+[@gavinjudd's profile](https://github.com/gavinjudd). Do not include credentials, private
+source, cookies, or raw target blobs in a public issue.

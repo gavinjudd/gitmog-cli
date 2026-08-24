@@ -8,7 +8,7 @@ The standalone package compares public GitHub work for entertainment. One userna
 a profile read; two start a battle. It has both `gitmog` and `git-mog` binary names, zero
 runtime dependencies, and needs no credential when the anonymous GitHub allowance fits.
 
-Releases come from [Incit-AI/Git-Mog](https://github.com/Incit-AI/Git-Mog). Temporary
+Releases come from [gavinjudd/gitmog-cli](https://github.com/gavinjudd/gitmog-cli). Temporary
 repository-scoped self-hosted Mac and Windows runners verify the exact candidate without
 publishing it. A maintainer stages that audited tarball through an authenticated npm
 session, downloads it for independent comparison, and approves it with two-factor

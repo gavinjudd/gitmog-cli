@@ -1,29 +1,46 @@
 {
-  "name": "gitmog-public-runtime-source",
+  "name": "@gitmog/public-upstream",
   "version": "0.2.2",
   "private": true,
   "type": "module",
+  "description": "Authoritative public source for Git Mog's deterministic CLI runtime.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gavinjudd/gitmog-cli.git"
+  },
   "packageManager": "pnpm@11.21.0",
   "engines": {
     "node": ">=24.19.0 <25",
     "pnpm": "11.21.0"
   },
   "scripts": {
-    "build": "pnpm exec tsc -p packages/analyzers/tsconfig.build.json && pnpm exec tsc -p packages/github/tsconfig.build.json && pnpm exec tsc -p packages/personality/tsconfig.build.json && pnpm exec tsc -p packages/scoring/tsconfig.build.json && pnpm exec tsc -p packages/source-analysis/tsconfig.build.json && pnpm exec tsc -p packages/battle/tsconfig.build.json && pnpm exec tsc -p packages/cli/tsconfig.build.json && node packages/distribution/build.mjs",
-    "test": "pnpm run build && node scripts/package-acceptance.mjs"
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "node scripts/turbo.mjs run lint && eslint scripts tests --max-warnings=0",
+    "typecheck": "node scripts/turbo.mjs run typecheck && tsc --noEmit -p tsconfig.json",
+    "test": "node scripts/turbo.mjs run test && vitest run && node --test tests/execution-portability.node.mjs",
+    "build": "node scripts/turbo.mjs run build",
+    "verify": "node scripts/verify.mjs",
+    "package:acceptance": "node scripts/package-acceptance.mjs",
+    "identity:calibrate": "node scripts/identity-calibrate.mjs",
+    "code-dna:calibrate": "node scripts/code-dna-calibrate.mjs",
+    "source-analysis:quality": "node scripts/source-analysis-quality.mjs",
+    "benchmark:check": "node scripts/benchmark-cli.mjs --check"
   },
   "devDependencies": {
+    "@gitmog/cli": "workspace:*",
     "@gitmog/config": "workspace:*",
-    "@gitmog/analyzers": "workspace:*",
-    "@gitmog/github": "workspace:*",
-    "@gitmog/personality": "workspace:*",
     "@gitmog/scoring": "workspace:*",
     "@gitmog/source-analysis": "workspace:*",
-    "@gitmog/battle": "workspace:*",
-    "@gitmog/cli": "workspace:*",
-    "@types/node": "24.13.3",
-    "rolldown": "1.2.4",
-    "typescript": "6.0.3"
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "prettier": "catalog:",
+    "rolldown": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

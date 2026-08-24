@@ -1,0 +1,11 @@
+{
+  "scoringVersion": "0.0.0-foundation",
+  "total": 57,
+  "categories": {
+    "craft": 24,
+    "activity": 15,
+    "collaboration": 10,
+    "projectHealth": 6,
+    "impact": 2
+  }
+}

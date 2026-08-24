@@ -1,0 +1,14 @@
+
+┌────────────────────────────────────────────────────────────────────────┐
+│ GIT MOG                                                                │
+│ ◆ @strongmaintainer WINS · PUBLIC REPO GAP                             │
+│ @strongmaintainer SCORE 92 · COVERAGE 59% · @sidequester SCORE 39 ·    │
+│ COVERAGE 54%                                                           │
+├────────────────────────────────────────────────────────────────────────┤
+│ » @strongmaintainer/@sidequester: Same coding style; @strongmaintainer │
+│ and @sidequester take different implementation routes. [1]             │
+│ [1] Source comparison — strongmaintainer (profile + cli, toolkit) ↔    │
+│ sidequester (profile + project-1, project-2)                           │
+└────────────────────────────────────────────────────────────────────────┘
+
+  npx -y gitmog strongmaintainer sidequester

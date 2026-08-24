@@ -1,0 +1,695 @@
+{
+  "scoringVersion": "0.1.0-fast-scan",
+  "presentationVersion": "1.0.0-mogsona+1.0.0-aura-leak+1.5.0-human-readability-copy",
+  "mogsonaVersion": "1.0.0-mogsona",
+  "auraLeakVersion": "1.0.0-aura-leak",
+  "memeEngineVersion": "1.5.0-human-readability-copy",
+  "battleKey": "7453c5d3fc5b399985a76022",
+  "winner": "left",
+  "margin": 53,
+  "verdictClass": "nuclear-repo-gap",
+  "headline": "STRONGMAINTAINER MOGS SIDEQUESTER",
+  "narrative": {
+    "version": "1.5.0-human-readability-copy",
+    "themeId": "testing",
+    "dominantAtomId": "tests_gap",
+    "supportingAtomIds": [
+      "verification_stack"
+    ],
+    "matchupLine": {
+      "text": "One side has releases. The other has lore.",
+      "templateId": "mat.ship.lore",
+      "atomId": "ship_to_yap_gap",
+      "evidenceIds": [
+        "ship.breadth.released:ratio",
+        "ship.breadth.released:top",
+        "craft.hygiene.documentation:readme"
+      ]
+    }
+  },
+  "identity": {
+    "left": {
+      "mogsonaLine": {
+        "text": "Ships first. Explains the sleep schedule later.",
+        "templateId": "mogsona.ship_goblin.spicy.strongmaintainer",
+        "atomId": "mogsona.ship_goblin.spicy.strongmaintainer",
+        "evidenceIds": [
+          "ship.frequency.recency:last-push",
+          "ship.breadth.released:ratio",
+          "ship.breadth.released:top",
+          "ship.substance.substantialProjects:count",
+          "ship.substance.substantialProjects:largest",
+          "ship.substance.sustainedWork:count",
+          "ship.substance.sustainedWork:longest"
+        ]
+      },
+      "auraLeakLine": null
+    },
+    "right": {
+      "mogsonaLine": {
+        "text": "A little of everything. No specialist lane owns the profile.",
+        "templateId": "mogsona.repo_generalist.spicy.sidequester",
+        "atomId": "mogsona.repo_generalist.spicy.sidequester",
+        "evidenceIds": [
+          "ship.frequency.recency:last-push",
+          "ship.breadth.continuity:ratio",
+          "ship.substance.substantialProjects:largest"
+        ]
+      },
+      "auraLeakLine": {
+        "text": "The commit log reads like a group chat at 3am.",
+        "templateId": "auraLeak.commit_chaos.spicy.sidequester",
+        "atomId": "auraLeak.commit_chaos.spicy.sidequester",
+        "evidenceIds": [
+          "ship.discipline.mergeHygiene:reverts",
+          "ship.discipline.messages:low-effort"
+        ]
+      }
+    }
+  },
+  "finishingMove": {
+    "text": "strongmaintainer tests 100% of the inspected work. sidequester tests 0% and hopes.",
+    "templateId": "fin.tests.coverage",
+    "atomId": "tests_gap",
+    "evidenceIds": [
+      "craft.testing.exists:ratio",
+      "craft.testing.exists:top",
+      "craft.testing.exists:ratio"
+    ]
+  },
+  "cardFinisher": "100% tested against 0%. Not close.",
+  "rounds": [
+    {
+      "categoryId": "craft.testing",
+      "leftScore": 97.5,
+      "rightScore": 0,
+      "winner": "left",
+      "line": "100% tested and 100% wired to CI.",
+      "templateId": "rnd.verification.stack"
+    },
+    {
+      "categoryId": "ship.frequency",
+      "leftScore": 87.9,
+      "rightScore": 55.3,
+      "winner": "left",
+      "line": "GRINDSET, strongmaintainer. Won the activity round by 32.6 points.",
+      "templateId": "rnd.frequency.clear"
+    },
+    {
+      "categoryId": "craft.tooling",
+      "leftScore": 100,
+      "rightScore": 0,
+      "winner": "left",
+      "line": "strongmaintainer owns SHIP DISCIPLINE. 100-point tooling gap.",
+      "templateId": "rnd.tooling.clear"
+    },
+    {
+      "categoryId": "craft.hygiene",
+      "leftScore": 90,
+      "rightScore": 70,
+      "winner": "left",
+      "line": "strongmaintainer owns REPO ETIQUETTE. 20-point hygiene gap.",
+      "templateId": "rnd.hygiene.clear"
+    },
+    {
+      "categoryId": "ship.breadth",
+      "leftScore": 85.3,
+      "rightScore": 25,
+      "winner": "left",
+      "line": "strongmaintainer owns OSS CLOUT by 60.3. Releases and external repositories.",
+      "templateId": "rnd.breadth.clear"
+    },
+    {
+      "categoryId": "ship.substance",
+      "leftScore": 95.7,
+      "rightScore": 67.1,
+      "winner": "left",
+      "line": "strongmaintainer owns SHIP AURA. 28.6-point substance gap.",
+      "templateId": "rnd.substance.clear"
+    },
+    {
+      "categoryId": "ship.discipline",
+      "leftScore": 93.6,
+      "rightScore": 9.3,
+      "winner": "left",
+      "line": "Main branch behaviour: 5% repairs, pushed 0 days ago.",
+      "templateId": "rnd.discipline.mainbranch"
+    },
+    {
+      "categoryId": "craft.maintainability",
+      "leftScore": 100,
+      "rightScore": 100,
+      "winner": "tie",
+      "line": "Dead level. Mutual aura in this round.",
+      "templateId": "rnd.generic.tie"
+    },
+    {
+      "categoryId": "craft.quality",
+      "leftScore": null,
+      "rightScore": null,
+      "winner": "unscored",
+      "line": "Excluded from this numeric score — source style has a separate versioned contract.",
+      "templateId": "system.unscored"
+    }
+  ],
+  "strengths": {
+    "left": {
+      "text": "15 releases published. Ships to users, not just to main.",
+      "templateId": "str.releases",
+      "atomId": "release_gap",
+      "evidenceIds": [
+        "ship.breadth.released:ratio",
+        "ship.breadth.released:top",
+        "ship.breadth.released:ratio"
+      ]
+    },
+    "right": {
+      "text": "All 3 selected repositories were readable end to end.",
+      "templateId": "str.coverage",
+      "atomId": "high_tree_coverage",
+      "evidenceIds": [
+        "craft.testing.exists:ratio"
+      ]
+    }
+  },
+  "weaknesses": {
+    "left": null,
+    "right": {
+      "text": "0% CI coverage. The pipeline is a person remembering to check.",
+      "templateId": "wk.ci",
+      "atomId": "ci_gap",
+      "evidenceIds": [
+        "craft.tooling.ci:ratio",
+        "craft.tooling.ci:ratio"
+      ]
+    }
+  },
+  "battleSummary": [
+    "Substance: 100% to 14%.",
+    "53 points. Not one bad round, the whole scorecard.",
+    "Open the receipts. Every number links to something public."
+  ],
+  "shareCaption": "strongmaintainer mogged sidequester 92–39 on GitHub.\nSCORE — strongmaintainer 92 · sidequester 39\nSCORE COVERAGE — strongmaintainer 59% · sidequester 54%\nSHIP GOBLIN vs REPO GENERALIST\n\nFinisher: strongmaintainer tests 100% of the inspected work. sidequester tests 0% and hopes.\n\nhttps://gitmog.test/battle/strongmaintainer-vs-sidequester\nnpx -y gitmog strongmaintainer sidequester",
+  "left": {
+    "username": "strongmaintainer",
+    "overallScore": 92,
+    "grade": "S",
+    "categoryScores": {
+      "craft.testing": 97.5,
+      "ship.frequency": 87.9,
+      "craft.tooling": 100,
+      "craft.hygiene": 90,
+      "ship.breadth": 85.3,
+      "ship.substance": 95.7,
+      "ship.discipline": 93.6,
+      "craft.maintainability": 100
+    },
+    "confidence": {
+      "grade": "good",
+      "score": 70,
+      "measuredWeight": 59,
+      "analyzedRepositories": 3,
+      "treeCoverage": 1
+    },
+    "mogsona": {
+      "version": "1.0.0-mogsona",
+      "id": "ship_goblin",
+      "name": "SHIP GOBLIN",
+      "auraClass": "mythic",
+      "signalScore": 100,
+      "confidence": 70,
+      "summary": "Turns public work into maintained, released software.",
+      "evidenceIds": [
+        "ship.frequency.recency:last-push",
+        "ship.breadth.released:ratio",
+        "ship.breadth.released:top",
+        "ship.substance.substantialProjects:count",
+        "ship.substance.substantialProjects:largest",
+        "ship.substance.sustainedWork:count",
+        "ship.substance.sustainedWork:longest"
+      ],
+      "qualifyingSignals": [
+        "15 published releases across 3 inspected projects",
+        "5 substantial original projects",
+        "last public push 0 days ago"
+      ]
+    },
+    "auraLeak": null,
+    "metrics": [
+      {
+        "id": "ship.frequency.commits",
+        "availability": "partial",
+        "earned": 7.83
+      },
+      {
+        "id": "ship.frequency.activeWeeks",
+        "availability": "partial",
+        "earned": 5
+      },
+      {
+        "id": "ship.frequency.recency",
+        "availability": "available",
+        "earned": 3
+      },
+      {
+        "id": "ship.substance.changeVolume",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "ship.substance.substantialProjects",
+        "availability": "available",
+        "earned": 3.7
+      },
+      {
+        "id": "ship.substance.sustainedWork",
+        "availability": "available",
+        "earned": 3
+      },
+      {
+        "id": "ship.discipline.sizing",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "ship.discipline.coherence",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "ship.discipline.messages",
+        "availability": "partial",
+        "earned": 1.95
+      },
+      {
+        "id": "ship.discipline.repairLoops",
+        "availability": "partial",
+        "earned": 1.728
+      },
+      {
+        "id": "ship.discipline.mergeHygiene",
+        "availability": "partial",
+        "earned": 1
+      },
+      {
+        "id": "ship.breadth.external",
+        "availability": "partial",
+        "earned": 2.823
+      },
+      {
+        "id": "ship.breadth.released",
+        "availability": "available",
+        "earned": 2
+      },
+      {
+        "id": "ship.breadth.continuity",
+        "availability": "available",
+        "earned": 2
+      },
+      {
+        "id": "craft.quality.judge",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.testing.exists",
+        "availability": "available",
+        "earned": 4
+      },
+      {
+        "id": "craft.testing.breadth",
+        "availability": "available",
+        "earned": 1.8
+      },
+      {
+        "id": "craft.testing.quality",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.testing.workflow",
+        "availability": "available",
+        "earned": 2
+      },
+      {
+        "id": "craft.maintainability.complexity",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.maintainability.duplication",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.maintainability.fileSize",
+        "availability": "available",
+        "earned": 1
+      },
+      {
+        "id": "craft.maintainability.deadCode",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.maintainability.coupling",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.tooling.ci",
+        "availability": "available",
+        "earned": 2
+      },
+      {
+        "id": "craft.tooling.lint",
+        "availability": "available",
+        "earned": 1
+      },
+      {
+        "id": "craft.tooling.typing",
+        "availability": "available",
+        "earned": 1
+      },
+      {
+        "id": "craft.tooling.build",
+        "availability": "available",
+        "earned": 1
+      },
+      {
+        "id": "craft.tooling.automation",
+        "availability": "available",
+        "earned": 1
+      },
+      {
+        "id": "craft.hygiene.organization",
+        "availability": "available",
+        "earned": 1.4
+      },
+      {
+        "id": "craft.hygiene.documentation",
+        "availability": "available",
+        "earned": 1
+      },
+      {
+        "id": "craft.hygiene.dependencies",
+        "availability": "available",
+        "earned": 1
+      },
+      {
+        "id": "craft.hygiene.releases",
+        "availability": "available",
+        "earned": 1
+      },
+      {
+        "id": "craft.hygiene.abandonment",
+        "availability": "available",
+        "earned": 1
+      }
+    ],
+    "evidenceIds": [
+      "craft.testing.breadth:ratio",
+      "craft.testing.exists:ratio",
+      "craft.testing.exists:top",
+      "craft.testing.workflow:ratio",
+      "ship.frequency.activeWeeks:weeks",
+      "ship.frequency.commits:annualized",
+      "ship.frequency.recency:last-push",
+      "craft.tooling.automation:ratio",
+      "craft.tooling.build:build",
+      "craft.tooling.ci:ratio",
+      "craft.tooling.lint:lint",
+      "craft.tooling.typing:typing",
+      "craft.hygiene.abandonment:archived",
+      "craft.hygiene.abandonment:count",
+      "craft.hygiene.dependencies:dependencies",
+      "craft.hygiene.documentation:readme",
+      "craft.hygiene.organization:committed-artifacts",
+      "craft.hygiene.organization:layout",
+      "craft.hygiene.releases:releases",
+      "ship.breadth.continuity:ratio",
+      "ship.breadth.external:repositories",
+      "ship.breadth.released:ratio",
+      "ship.breadth.released:top",
+      "ship.substance.substantialProjects:count",
+      "ship.substance.substantialProjects:largest",
+      "ship.substance.sustainedWork:count",
+      "ship.substance.sustainedWork:longest",
+      "ship.discipline.mergeHygiene:reverts",
+      "ship.discipline.messages:low-effort",
+      "ship.discipline.repairLoops:rate",
+      "craft.maintainability.fileSize:largest"
+    ]
+  },
+  "right": {
+    "username": "sidequester",
+    "overallScore": 39,
+    "grade": "F",
+    "categoryScores": {
+      "craft.testing": 0,
+      "ship.frequency": 55.3,
+      "craft.tooling": 0,
+      "craft.hygiene": 70,
+      "ship.breadth": 25,
+      "ship.substance": 67.1,
+      "ship.discipline": 9.3,
+      "craft.maintainability": 100
+    },
+    "confidence": {
+      "grade": "good",
+      "score": 70,
+      "measuredWeight": 54,
+      "analyzedRepositories": 3,
+      "treeCoverage": 1
+    },
+    "mogsona": {
+      "version": "1.0.0-mogsona",
+      "id": "repo_generalist",
+      "name": "REPO GENERALIST",
+      "auraClass": "unrated",
+      "signalScore": 21,
+      "confidence": 70,
+      "summary": "Measured evidence spans categories without a qualifying specialist.",
+      "evidenceIds": [
+        "ship.frequency.recency:last-push",
+        "ship.breadth.continuity:ratio",
+        "ship.substance.substantialProjects:largest"
+      ],
+      "qualifyingSignals": [
+        "measured categories average 41 out of 100",
+        "3 repositories inspected end to end"
+      ]
+    },
+    "auraLeak": {
+      "version": "1.0.0-aura-leak",
+      "id": "commit_chaos",
+      "name": "COMMIT CHAOS",
+      "severity": "notable",
+      "evidenceIds": [
+        "ship.discipline.mergeHygiene:reverts",
+        "ship.discipline.messages:low-effort"
+      ],
+      "qualifyingSignals": [
+        "64% of sampled commit messages are one word or shorter",
+        "median commit subject is measured across 22 commits"
+      ]
+    },
+    "metrics": [
+      {
+        "id": "ship.frequency.commits",
+        "availability": "partial",
+        "earned": 3.911
+      },
+      {
+        "id": "ship.frequency.activeWeeks",
+        "availability": "partial",
+        "earned": 3.05
+      },
+      {
+        "id": "ship.frequency.recency",
+        "availability": "available",
+        "earned": 3
+      },
+      {
+        "id": "ship.substance.changeVolume",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "ship.substance.substantialProjects",
+        "availability": "available",
+        "earned": 2.5
+      },
+      {
+        "id": "ship.substance.sustainedWork",
+        "availability": "available",
+        "earned": 2.2
+      },
+      {
+        "id": "ship.discipline.sizing",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "ship.discipline.coherence",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "ship.discipline.messages",
+        "availability": "partial",
+        "earned": 0.066
+      },
+      {
+        "id": "ship.discipline.repairLoops",
+        "availability": "partial",
+        "earned": 0
+      },
+      {
+        "id": "ship.discipline.mergeHygiene",
+        "availability": "partial",
+        "earned": 0.4
+      },
+      {
+        "id": "ship.breadth.external",
+        "availability": "partial",
+        "earned": 0
+      },
+      {
+        "id": "ship.breadth.released",
+        "availability": "available",
+        "earned": 0
+      },
+      {
+        "id": "ship.breadth.continuity",
+        "availability": "available",
+        "earned": 2
+      },
+      {
+        "id": "craft.quality.judge",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.testing.exists",
+        "availability": "available",
+        "earned": 0
+      },
+      {
+        "id": "craft.testing.breadth",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.testing.quality",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.testing.workflow",
+        "availability": "available",
+        "earned": 0
+      },
+      {
+        "id": "craft.maintainability.complexity",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.maintainability.duplication",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.maintainability.fileSize",
+        "availability": "available",
+        "earned": 1
+      },
+      {
+        "id": "craft.maintainability.deadCode",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.maintainability.coupling",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.tooling.ci",
+        "availability": "available",
+        "earned": 0
+      },
+      {
+        "id": "craft.tooling.lint",
+        "availability": "available",
+        "earned": 0
+      },
+      {
+        "id": "craft.tooling.typing",
+        "availability": "available",
+        "earned": 0
+      },
+      {
+        "id": "craft.tooling.build",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.tooling.automation",
+        "availability": "available",
+        "earned": 0
+      },
+      {
+        "id": "craft.hygiene.organization",
+        "availability": "available",
+        "earned": 1.2
+      },
+      {
+        "id": "craft.hygiene.documentation",
+        "availability": "available",
+        "earned": 0.6
+      },
+      {
+        "id": "craft.hygiene.dependencies",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.hygiene.releases",
+        "availability": "unavailable",
+        "earned": 0
+      },
+      {
+        "id": "craft.hygiene.abandonment",
+        "availability": "available",
+        "earned": 1
+      }
+    ],
+    "evidenceIds": [
+      "craft.testing.exists:ratio",
+      "craft.testing.workflow:ratio",
+      "ship.frequency.activeWeeks:weeks",
+      "ship.frequency.commits:annualized",
+      "ship.frequency.recency:last-push",
+      "craft.tooling.automation:ratio",
+      "craft.tooling.ci:ratio",
+      "craft.tooling.lint:lint",
+      "craft.tooling.typing:typing",
+      "craft.hygiene.abandonment:count",
+      "craft.hygiene.documentation:readme",
+      "craft.hygiene.organization:layout",
+      "ship.breadth.continuity:ratio",
+      "ship.breadth.external:repositories",
+      "ship.breadth.released:ratio",
+      "ship.substance.substantialProjects:count",
+      "ship.substance.substantialProjects:largest",
+      "ship.substance.sustainedWork:count",
+      "ship.substance.sustainedWork:longest",
+      "ship.discipline.mergeHygiene:reverts",
+      "ship.discipline.messages:low-effort",
+      "ship.discipline.repairLoops:rate",
+      "craft.maintainability.fileSize:largest"
+    ]
+  }
+}

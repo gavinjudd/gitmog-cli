@@ -1,0 +1,1 @@
+<ESC>[?25l<CR><ESC>[2K<ESC>[36m⠋<ESC>[0m Fetching profiles<CR><ESC>[2K<ESC>[36m⠋<ESC>[0m Ranking repositories<CR><ESC>[2K<ESC>[36m⠋<ESC>[0m Scoring matchup<CR><ESC>[2K<ESC>[36m⠋<ESC>[0m Reading code samples<CR><ESC>[2K<ESC>[36m⠋<ESC>[0m Building verdict<CR><ESC>[2K<ESC>[?25h

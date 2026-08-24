@@ -1,0 +1,27 @@
+GIT MOG
+◆ @assertionpilled WINS 73–66 · CLEAR PUBLIC EDGE
+Coverage: @tagmachine 59% · @assertionpilled 59%
+
+» A verification stack entered the fight: 100% tested, 100% automated. [1]
+
+THE FIGHT
+ACTIVITY       24–78  @assertionpilled · Active weeks: 0/12–12/12 [2]
+TOOLING        100–50  @tagmachine · Project automation: 3/3–0/3 [3]
+COLLABORATION  50–25  @tagmachine · Versioned releases: 63–0 [4]
+
+THE READ
+@tagmachine — Tests: 25 per 100 source files in inspected trees. [5]
+@assertionpilled — Tests: 63 per 100 source files in inspected trees.
+  3 established projects, zero version tags. [6]
+
+RECEIPTS
+[1] Automated tests — 3/3 vs 3/3
+[2] Active weeks — 0/12 vs 12/12
+[3] Project automation — 3/3 vs 0/3
+[4] Versioned releases — 63 vs 0
+[5] @tagmachine — Test files 25 per 100 source files
+[6] @assertionpilled — Test files 63 per 100 source files; Versioned releases —
+    3 established projects, 0 tags
+More: --details · --receipts · --share x
+Rematch: gitmog assertionpilled tagmachine
+Next: gitmog assertionpilled <handle>

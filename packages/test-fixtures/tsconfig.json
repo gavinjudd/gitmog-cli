@@ -1,0 +1,7 @@
+{
+  "extends": "@gitmog/config/typescript/node-lib.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}
