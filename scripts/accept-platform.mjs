@@ -1332,6 +1332,9 @@ async function main() {
     const firstResult = npx("gitmog", args);
     const first = parseJson(firstResult, "direct-battle");
     report.canonicalJsonSha256 = createHash("sha256").update(firstResult.stdout).digest("hex");
+    report.canonicalBattleSha256 = createHash("sha256")
+      .update(JSON.stringify(first.battle))
+      .digest("hex");
     if (!first.battle || !first.presentationVerdict || !first.sourceAnalysis || !first.story) {
       fail("Battle JSON does not contain the complete contract.");
     }

@@ -53,6 +53,14 @@ describe("Quality Judge preview", () => {
       ),
     ).toBe(29);
     expect(result.receipts.length).toBeGreaterThan(0);
+    const receiptIds = new Set(result.receipts.map((receipt) => receipt.id));
+    for (const finding of [
+      ...result.attributedCode.strengths,
+      ...result.attributedCode.weaknesses,
+    ]) {
+      expect(finding.receiptIds.every((id) => id.startsWith("A"))).toBe(true);
+      expect(finding.receiptIds.every((id) => receiptIds.has(id))).toBe(true);
+    }
     const lineCounts = new Map([
       ["src/value.ts", implementation.split("\n").length],
       ["tests/value.test.ts", tests.split("\n").length],
@@ -145,6 +153,7 @@ describe("Quality Judge preview", () => {
     expect(cycle.maintainedCodebase.dimensions.architecture.previewScore).toBeLessThan(
       baseline.maintainedCodebase.dimensions.architecture.previewScore as number,
     );
+    expect(cycle.receipts.find((receipt) => receipt.metric === "import-cycles")?.observed).toBe(1);
     for (const id of [
       "correctnessDiscipline",
       "testQuality",

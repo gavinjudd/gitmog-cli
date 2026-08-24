@@ -102,6 +102,10 @@ const cycleCount = (files: readonly ParsedFile[]): number => {
     edges.set(file.input.path, [...targets].sort());
   }
   const cycles = new Set<string>();
+  const canonicalCycle = (nodes: readonly string[]): string =>
+    nodes
+      .map((_, index) => [...nodes.slice(index), ...nodes.slice(0, index)].join("|"))
+      .toSorted()[0] ?? "";
   for (const start of [...edges.keys()].sort()) {
     const stack: Array<{ node: string; route: readonly string[] }> = [
       { node: start, route: [start] },
@@ -112,7 +116,7 @@ const cycleCount = (files: readonly ParsedFile[]): number => {
       for (const next of edges.get(current.node) ?? []) {
         const index = current.route.indexOf(next);
         if (index >= 0) {
-          cycles.add([...current.route.slice(index), next].toSorted().join("|"));
+          cycles.add(canonicalCycle(current.route.slice(index)));
         } else {
           stack.push({ node: next, route: [...current.route, next] });
         }
@@ -470,6 +474,18 @@ export function analyzeQualityParseResults(
   const maintained = readingFor(parsed, Math.max(1, inputBytes));
   const attributedFiles = parsed.filter((file) => file.input.attribution.status === "attributed");
   const attributed = readingFor(attributedFiles, Math.max(1, inputBytes));
+  const attributedReceiptIds = new Map(
+    attributed.receipts.map((receipt, index) => [receipt.id, `A${String(index + 1)}`]),
+  );
+  const remapAttributedFinding = (finding: QualityFinding): QualityFinding => ({
+    ...finding,
+    receiptIds: finding.receiptIds.map((id) => attributedReceiptIds.get(id) ?? id),
+  });
+  const attributedReadingBase: QualityReading = {
+    ...attributed.reading,
+    strengths: attributed.reading.strengths.map(remapAttributedFinding),
+    weaknesses: attributed.reading.weaknesses.map(remapAttributedFinding),
+  };
   const checked = parsed.filter((file) => file.input.attribution.status !== "not-checked").length;
   const attributionCoverage =
     parsed.length === 0 ? 0 : clamp((attributedFiles.length / parsed.length) * 100);
@@ -482,14 +498,14 @@ export function analyzeQualityParseResults(
           ? "ready"
           : "partial";
   const attributedReading: AttributedQualityReading = {
-    ...attributed.reading,
+    ...attributedReadingBase,
     status:
       attributionStatus === "ready"
-        ? attributed.reading.status
+        ? attributedReadingBase.status
         : attributionStatus === "partial"
           ? "partial"
           : "insufficient",
-    previewScore: attributionStatus === "ready" ? attributed.reading.previewScore : null,
+    previewScore: attributionStatus === "ready" ? attributedReadingBase.previewScore : null,
     attributionStatus,
     attributionCoverage,
     attributionMethodVersion: QUALITY_ATTRIBUTION_VERSION,

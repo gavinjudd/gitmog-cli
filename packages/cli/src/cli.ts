@@ -138,7 +138,7 @@ export function advancedUsage(invokedAs = "gitmog"): string {
     "  --roast clean|spicy|unhinged",
     "  --color auto|always|never",
     "  --no-motion                  Static progress updates",
-    "  --quality                    Require the maximum supported preview when possible",
+    "  --quality                    Require a complete preview; sign in once if needed",
     "  --no-quality                 Disable Code Quality Preview",
     "",
     "GitHub and cache:",
@@ -575,6 +575,13 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       values.json === true,
     );
   }
+  if (values.quality === true && values.anonymous === true) {
+    return invalid(
+      "--quality cannot be combined with --anonymous because a complete preview may require sign-in.",
+      context.invokedAs,
+      values.json === true,
+    );
+  }
   let qualityEnabledForRun = values["no-quality"] !== true;
   if (values["sign-in"] === true && values.json === true) {
     return invalid(
@@ -811,9 +818,12 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       context.prompt !== undefined
     ) {
       const limited = requestPlan.quality.disposition === "limited";
-      const choices = limited
-        ? "[s] sign in once, [l] run the bounded preview, [w] continue without quality"
-        : "[s] sign in once, [w] continue without quality";
+      const qualityRequired = values.quality === true;
+      const choices = qualityRequired
+        ? "[s] sign in once, [c] cancel"
+        : limited
+          ? "[s] sign in once, [l] run the bounded preview, [w] continue without quality"
+          : "[s] sign in once, [w] continue without quality";
       const answer = (
         await context.prompt(
           `Code Quality Preview needs more public GitHub requests for complete coverage.\n${choices}: `,
@@ -833,11 +843,26 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         } else {
           qualityEnabledForRun = false;
         }
-      } else if ((answer === "l" || answer === "limited") && limited) {
+      } else if (!qualityRequired && (answer === "l" || answer === "limited") && limited) {
         // The bounded preview remains enabled with explicit coverage limits.
       } else {
         qualityEnabledForRun = false;
       }
+    }
+    if (
+      values.quality === true &&
+      (!qualityEnabledForRun || requestPlan.quality.disposition !== "complete")
+    ) {
+      return budgetFailure(
+        requestPlan,
+        context.invokedAs,
+        values.json === true,
+        requestPlan.quality.disposition === "blocked"
+          ? "github_limit_reached"
+          : "github_budget_limited",
+        "A complete Code Quality Preview is not available within GitHub's current public request allowance. No collection began.",
+        context.timeZone,
+      );
     }
   }
   const fetchOptions = {

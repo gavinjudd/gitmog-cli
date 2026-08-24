@@ -21,13 +21,20 @@ export function comparePackedRuntimeReports(paths) {
     if (!/^[0-9a-f]{64}$/u.test(report.canonicalJsonSha256 ?? "")) {
       throw new Error(`Packed report ${String(index + 1)} has no canonical JSON hash.`);
     }
+    if (!/^[0-9a-f]{64}$/u.test(report.canonicalBattleSha256 ?? "")) {
+      throw new Error(`Packed report ${String(index + 1)} has no canonical battle hash.`);
+    }
   }
   const hashes = new Set(reports.map((report) => report.canonicalJsonSha256));
   if (hashes.size !== 1) throw new Error("Canonical packed JSON differs across Node runtimes.");
+  const battleHashes = new Set(reports.map((report) => report.canonicalBattleSha256));
+  if (battleHashes.size !== 1)
+    throw new Error("Canonical battle bytes differ across Node runtimes.");
   return reports.map((report) => ({
     node: report.node,
     checks: report.checks.length,
     canonicalJsonSha256: report.canonicalJsonSha256,
+    canonicalBattleSha256: report.canonicalBattleSha256,
   }));
 }
 

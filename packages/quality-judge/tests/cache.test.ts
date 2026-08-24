@@ -20,7 +20,8 @@ const result = analyzeQualitySourceFiles([
     blobSha: "2".repeat(40),
     path: "src/example.ts",
     sourceUrl: `https://github.com/example/project/blob/${"1".repeat(40)}/src/example.ts`,
-    source: `export function validate(value: unknown): boolean { return value === ${JSON.stringify(rawMarker)}; }`,
+    source:
+      'export function validate(value: unknown): boolean { return value === "process-only-quality-cache-marker"; }',
     byteLength: 104,
     isTest: false,
     attribution: { status: "attributed", commitSha: "3".repeat(40) },

@@ -9,7 +9,11 @@ export const QUALITY_PARSER_PROFILE_WALL_TIME_MS = 2_000;
 export const QUALITY_PARSER_MAX_OLD_GENERATION_MB = 96;
 export const QUALITY_PARSER_MAX_YOUNG_GENERATION_MB = 16;
 export const QUALITY_PARSER_MAX_STACK_MB = 4;
-const WORKER_STARTUP_TIME_MS = 1_000;
+// TypeScript is loaded inside the isolated worker before it reports ready. Standard hosted
+// runners can need just over one second for that cold import, so keep a bounded startup lane
+// separate from the stricter per-file parse timer while remaining inside the two-second profile
+// deadline.
+const WORKER_STARTUP_TIME_MS = 1_500;
 
 export interface IsolatedParserOptions {
   readonly signal?: AbortSignal | undefined;

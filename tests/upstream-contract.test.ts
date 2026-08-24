@@ -1,9 +1,11 @@
-import { readFileSync, readdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import { releaseMetadata } from "../scripts/build-release-artifact.mjs";
+import { comparePackedRuntimeReports } from "../scripts/compare-packed-runtime-reports.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -158,5 +160,36 @@ describe("public upstream contract", () => {
       workerOldGenerationMb: 96,
     });
     expect(assets.assets).toEqual(["dist/parsers/quality-worker.mjs"]);
+  });
+
+  it("compares additive JSON and canonical battle bytes separately across Node lanes", () => {
+    const directory = mkdtempSync(join(tmpdir(), "gitmog-node-reports-"));
+    const paths = ["22.23.2", "24.19.0", "26.7.0"].map((version, index) => {
+      const path = join(directory, `${String(index)}.json`);
+      writeFileSync(
+        path,
+        `${JSON.stringify({
+          node: `v${version}`,
+          checks: [{ name: "synthetic", detail: "passed" }],
+          canonicalJsonSha256: "a".repeat(64),
+          canonicalBattleSha256: "b".repeat(64),
+        })}\n`,
+      );
+      return path;
+    });
+    try {
+      expect(comparePackedRuntimeReports(paths)).toHaveLength(3);
+      const changed = JSON.parse(readFileSync(paths[2] as string, "utf8")) as Record<
+        string,
+        unknown
+      >;
+      changed.canonicalBattleSha256 = "c".repeat(64);
+      writeFileSync(paths[2] as string, `${JSON.stringify(changed)}\n`);
+      expect(() => {
+        comparePackedRuntimeReports(paths);
+      }).toThrow("Canonical battle bytes differ");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
