@@ -7,6 +7,7 @@ export {
   DEFAULT_QUALITY_RESULT_TTL_MS,
   createFileQualityResultCache,
   isQualityCacheSafe,
+  isStableQualityJudgeResult,
   isQualityJudgeResult,
   qualityResultValidationCode,
   qualityResultCacheKey,

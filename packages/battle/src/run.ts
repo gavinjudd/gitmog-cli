@@ -215,10 +215,14 @@ const qualityLimitations = (
 const insufficientQuality = async (detail: string): Promise<QualityJudgeResult> =>
   await analyzeQualitySourceFilesIsolated([], {
     collectionLimitations: [{ code: "source-unavailable", detail, files: 0 }],
-    requestBudget: {
+    requestPlan: {
       sourcePlanned: 0,
-      sourceRequests: 0,
       attributionPlanned: 0,
+      sourceRequestCap: 0,
+      attributionRequestCap: 0,
+    },
+    requestTelemetry: {
+      sourceRequests: 0,
       attributionRequests: 0,
     },
   });
@@ -264,10 +268,14 @@ async function runQualityPreview(
     });
     const result = await analyzeQualitySourceFilesIsolated(collected.files, {
       collectionLimitations: qualityLimitations(collected.limitations),
-      requestBudget: {
+      requestPlan: {
         sourcePlanned: caps.source,
-        sourceRequests: collected.sourceRequests,
         attributionPlanned: caps.attribution,
+        sourceRequestCap: caps.source,
+        attributionRequestCap: caps.attribution,
+      },
+      requestTelemetry: {
+        sourceRequests: collected.sourceRequests,
         attributionRequests: collected.attributionRequests,
       },
     });
@@ -487,8 +495,8 @@ export async function runProfile(request: ProfileRequest): Promise<ProfileServic
     status: qualityPreview.status,
     files: qualityPreview.maintainedCodebase.files,
     repositories: qualityPreview.maintainedCodebase.repositories,
-    sourceRequests: qualityPreview.requestBudget.sourceRequests,
-    attributionRequests: qualityPreview.requestBudget.attributionRequests,
+    sourceRequests: qualityPreview.requestTelemetry.sourceRequests,
+    attributionRequests: qualityPreview.requestTelemetry.attributionRequests,
   });
   return {
     ok: true,
@@ -679,10 +687,10 @@ export async function runBattle(request: BattleRequest): Promise<BattleServiceRe
     repositories:
       leftQuality.maintainedCodebase.repositories + rightQuality.maintainedCodebase.repositories,
     sourceRequests:
-      leftQuality.requestBudget.sourceRequests + rightQuality.requestBudget.sourceRequests,
+      leftQuality.requestTelemetry.sourceRequests + rightQuality.requestTelemetry.sourceRequests,
     attributionRequests:
-      leftQuality.requestBudget.attributionRequests +
-      rightQuality.requestBudget.attributionRequests,
+      leftQuality.requestTelemetry.attributionRequests +
+      rightQuality.requestTelemetry.attributionRequests,
   });
   return {
     ok: true,

@@ -100,13 +100,13 @@ const withEventCount = (snapshot: ProfileSnapshot, count: number): ProfileSnapsh
   });
 };
 
-const withoutRequestBudgets = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(withoutRequestBudgets);
+const withoutOperationalRequestTelemetry = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(withoutOperationalRequestTelemetry);
   if (typeof value !== "object" || value === null) return value;
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>)
-      .filter(([key]) => key !== "requestBudget")
-      .map(([key, nested]) => [key, withoutRequestBudgets(nested)]),
+      .filter(([key]) => key !== "requestBudget" && key !== "requestTelemetry")
+      .map(([key, nested]) => [key, withoutOperationalRequestTelemetry(nested)]),
   );
 };
 
@@ -670,7 +670,9 @@ describe("battle caching end to end", () => {
       story: unknown;
     };
     const warmPayload = JSON.parse(warm.stdout) as typeof firstPayload;
-    expect(withoutRequestBudgets(warmPayload)).toEqual(withoutRequestBudgets(firstPayload));
+    expect(withoutOperationalRequestTelemetry(warmPayload)).toEqual(
+      withoutOperationalRequestTelemetry(firstPayload),
+    );
     expect(warmPayload.battle.left.overallScore).toBe(firstPayload.battle.left.overallScore);
     expect(warmPayload.sourceAnalysis.left.codeDna).toEqual(
       firstPayload.sourceAnalysis.left.codeDna,
@@ -704,7 +706,9 @@ describe("battle caching end to end", () => {
         };
       };
     };
-    expect(withoutRequestBudgets(secondPayload)).toEqual(withoutRequestBudgets(firstPayload));
+    expect(withoutOperationalRequestTelemetry(secondPayload)).toEqual(
+      withoutOperationalRequestTelemetry(firstPayload),
+    );
     expect(secondPayload.sourceAnalysis.requestBudget).toMatchObject({
       left: { metadata: 0, source: 0, total: 0 },
       right: { metadata: 0, source: 0, total: 0 },
@@ -726,8 +730,8 @@ describe("battle caching end to end", () => {
     const afterRefresh = calls.length;
     const next = await invoke(directory, fetchImpl, "--json");
     expect(calls.length).toBe(afterRefresh);
-    expect(withoutRequestBudgets(JSON.parse(next.stdout))).toEqual(
-      withoutRequestBudgets(JSON.parse(refreshed.stdout)),
+    expect(withoutOperationalRequestTelemetry(JSON.parse(next.stdout))).toEqual(
+      withoutOperationalRequestTelemetry(JSON.parse(refreshed.stdout)),
     );
   });
 

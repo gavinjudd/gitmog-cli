@@ -9,6 +9,8 @@ import {
   QUALITY_DIMENSION_IDS,
   QUALITY_JUDGE_RESULT_VERSION,
   QUALITY_PARSER_CONTRACT_VERSION,
+  QUALITY_REQUEST_PLAN_VERSION,
+  QUALITY_REQUEST_TELEMETRY_VERSION,
   QUALITY_SOURCE_SELECTION_VERSION,
   type AttributedQualityReading,
   type ParsedQualityFeatures,
@@ -22,6 +24,8 @@ import {
   type QualityReading,
   type QualityReceipt,
   type QualityRequestBudget,
+  type QualityRequestPlan,
+  type QualityRequestTelemetry,
   type QualitySourceInput,
 } from "./types.js";
 
@@ -51,7 +55,8 @@ interface ParsedFile {
 }
 
 export interface AnalyzeOptions {
-  readonly requestBudget?: Partial<QualityRequestBudget> | undefined;
+  readonly requestPlan?: Partial<QualityRequestPlan> | undefined;
+  readonly requestTelemetry?: Partial<QualityRequestTelemetry> | undefined;
   readonly collectionLimitations?: readonly QualityLimitation[] | undefined;
 }
 
@@ -425,18 +430,29 @@ export function analyzeQualityParseResults(
   parseResults: readonly (ParseQualityResult | null)[],
   options: AnalyzeOptions = {},
 ): QualityJudgeResult {
-  const bounded = inputs.slice(0, QUALITY_MAX_FILES_PER_PROFILE);
+  const bounded = inputs
+    .map((input, index) => ({ input, parseResult: parseResults[index] }))
+    .toSorted(
+      (left, right) =>
+        (left.input.selectionOrder ?? Number.MAX_SAFE_INTEGER) -
+          (right.input.selectionOrder ?? Number.MAX_SAFE_INTEGER) ||
+        left.input.repository.localeCompare(right.input.repository) ||
+        left.input.path.localeCompare(right.input.path) ||
+        left.input.commitSha.localeCompare(right.input.commitSha) ||
+        left.input.blobSha.localeCompare(right.input.blobSha),
+    )
+    .slice(0, QUALITY_MAX_FILES_PER_PROFILE);
   const parsed: ParsedFile[] = [];
   const limitations: QualityLimitation[] = [...(options.collectionLimitations ?? [])];
   const failures = new Map<QualityLimitation["code"], number>();
   let inputBytes = 0;
-  for (const [index, input] of bounded.entries()) {
+  for (const { input, parseResult } of bounded) {
     inputBytes += input.byteLength;
     if (inputBytes > QUALITY_MAX_SOURCE_BYTES_PER_PROFILE) {
       failures.set("source-budget", (failures.get("source-budget") ?? 0) + 1);
       continue;
     }
-    const result = parseResults[index] ?? { ok: false, reason: "isolation-failure" };
+    const result = parseResult ?? { ok: false, reason: "isolation-failure" };
     if (!result.ok) {
       const code: QualityLimitation["code"] =
         result.reason === "unsupported-language"
@@ -518,15 +534,33 @@ export function analyzeQualityParseResults(
       files: parsed.length - attributedFiles.length,
     });
   }
-  const requestBudget: QualityRequestBudget = {
-    sourcePlanned: options.requestBudget?.sourcePlanned ?? bounded.length,
-    sourceRequests: options.requestBudget?.sourceRequests ?? bounded.length,
-    sourceCacheHits: options.requestBudget?.sourceCacheHits ?? 0,
-    attributionPlanned: options.requestBudget?.attributionPlanned ?? checked,
-    attributionRequests: options.requestBudget?.attributionRequests ?? checked,
-    attributionCacheHits: options.requestBudget?.attributionCacheHits ?? 0,
+  const requestPlan: QualityRequestPlan = {
+    version: QUALITY_REQUEST_PLAN_VERSION,
+    sourcePlanned: options.requestPlan?.sourcePlanned ?? bounded.length,
+    attributionPlanned: options.requestPlan?.attributionPlanned ?? checked,
     completeOpportunity: QUALITY_COMPLETE_REQUEST_OPPORTUNITY,
     minimumUsefulOpportunity: QUALITY_MINIMUM_USEFUL_REQUEST_OPPORTUNITY,
+    sourceRequestCap: options.requestPlan?.sourceRequestCap ?? bounded.length,
+    attributionRequestCap: options.requestPlan?.attributionRequestCap ?? checked,
+  };
+  const requestTelemetry: QualityRequestTelemetry = {
+    version: QUALITY_REQUEST_TELEMETRY_VERSION,
+    sourceRequests: options.requestTelemetry?.sourceRequests ?? bounded.length,
+    attributionRequests: options.requestTelemetry?.attributionRequests ?? checked,
+    sourceCacheHits: options.requestTelemetry?.sourceCacheHits ?? 0,
+    attributionCacheHits: options.requestTelemetry?.attributionCacheHits ?? 0,
+    wholeResultCacheHit: options.requestTelemetry?.wholeResultCacheHit ?? false,
+  };
+  const requestBudget: QualityRequestBudget = {
+    sourcePlanned: requestPlan.sourcePlanned,
+    sourceRequests: requestTelemetry.sourceRequests,
+    sourceCacheHits: requestTelemetry.sourceCacheHits,
+    attributionPlanned: requestPlan.attributionPlanned,
+    attributionRequests: requestTelemetry.attributionRequests,
+    attributionCacheHits: requestTelemetry.attributionCacheHits,
+    completeOpportunity: requestPlan.completeOpportunity,
+    minimumUsefulOpportunity: requestPlan.minimumUsefulOpportunity,
+    wholeResultCacheHit: requestTelemetry.wholeResultCacheHit,
   };
   const receipts = [
     ...maintained.receipts,
@@ -541,6 +575,12 @@ export function analyzeQualityParseResults(
     dimensions: dimensionsFor([file]),
     attribution: file.input.attribution.status,
   }));
+  const orderedLimitations = limitations.toSorted(
+    (left, right) =>
+      left.code.localeCompare(right.code) ||
+      left.detail.localeCompare(right.detail) ||
+      left.files - right.files,
+  );
   return {
     version: QUALITY_JUDGE_RESULT_VERSION,
     status: maintained.reading.status,
@@ -548,14 +588,16 @@ export function analyzeQualityParseResults(
     scoreInfluence: 0,
     maintainedCodebase: maintained.reading,
     attributedCode: attributedReading,
+    requestPlan,
+    requestTelemetry,
     requestBudget,
-    limitations,
+    limitations: orderedLimitations,
     receipts,
     resultKey: digest({
       version: QUALITY_JUDGE_RESULT_VERSION,
       features: safeFeatureIdentity,
-      limitations,
-      requestBudget,
+      limitations: orderedLimitations,
+      requestPlan,
     }),
   };
 }

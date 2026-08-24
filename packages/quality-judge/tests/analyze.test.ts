@@ -268,4 +268,70 @@ describe("Quality Judge preview", () => {
     expect(json).not.toContain("parseValue(value");
     expect(json).not.toContain("throw new TypeError");
   });
+
+  it("keeps findings and result identity invariant across current-invocation telemetry", () => {
+    const inputs = [
+      sourceInput("src/value.ts", implementation),
+      sourceInput("tests/value.test.ts", tests, { isTest: true }),
+    ];
+    const cold = analyzeQualitySourceFiles(inputs, {
+      requestPlan: {
+        sourcePlanned: 21,
+        attributionPlanned: 12,
+        sourceRequestCap: 21,
+        attributionRequestCap: 12,
+      },
+      requestTelemetry: {
+        sourceRequests: 4,
+        attributionRequests: 2,
+        sourceCacheHits: 0,
+        attributionCacheHits: 0,
+        wholeResultCacheHit: false,
+      },
+    });
+    const warm = analyzeQualitySourceFiles(inputs, {
+      requestPlan: {
+        sourcePlanned: 21,
+        attributionPlanned: 12,
+        sourceRequestCap: 21,
+        attributionRequestCap: 12,
+      },
+      requestTelemetry: {
+        sourceRequests: 0,
+        attributionRequests: 0,
+        sourceCacheHits: 2,
+        attributionCacheHits: 2,
+        wholeResultCacheHit: true,
+      },
+    });
+    expect(warm.resultKey).toBe(cold.resultKey);
+    expect(warm.maintainedCodebase).toEqual(cold.maintainedCodebase);
+    expect(warm.attributedCode).toEqual(cold.attributedCode);
+    expect(warm.limitations).toEqual(cold.limitations);
+    expect(warm.receipts).toEqual(cold.receipts);
+    expect(warm.requestPlan).toEqual(cold.requestPlan);
+    expect(warm.requestTelemetry).not.toEqual(cold.requestTelemetry);
+  });
+
+  it("keeps complete findings byte-identical across repository and file ordering", () => {
+    const inputs = [
+      sourceInput("src/value.ts", implementation),
+      sourceInput("tests/value.test.ts", tests, { isTest: true }),
+      sourceInput("src/other.ts", "export function other(){ return 1; }", {
+        repository: "example/second",
+        blobSha: "d".repeat(40),
+      }),
+    ];
+    const forward = analyzeQualitySourceFiles(inputs);
+    const reversed = analyzeQualitySourceFiles([...inputs].reverse());
+    const stableReading = (result: typeof forward) => ({
+      status: result.status,
+      maintainedCodebase: result.maintainedCodebase,
+      attributedCode: result.attributedCode,
+      limitations: result.limitations,
+      receipts: result.receipts,
+      resultKey: result.resultKey,
+    });
+    expect(JSON.stringify(stableReading(reversed))).toBe(JSON.stringify(stableReading(forward)));
+  });
 });

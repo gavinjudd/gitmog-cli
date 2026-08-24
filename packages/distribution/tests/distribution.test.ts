@@ -7,6 +7,9 @@ import { describe, expect, it } from "vitest";
 
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryDirectory = resolve(packageDirectory, "../..");
+const qualityVersions = JSON.parse(
+  readFileSync(resolve(repositoryDirectory, "config/quality-versions.json"), "utf8"),
+) as { readonly result: string; readonly parserContract: string };
 const manifest = JSON.parse(readFileSync(resolve(packageDirectory, "package.json"), "utf8")) as {
   readonly name: string;
   readonly version: string;
@@ -70,10 +73,10 @@ describe("standalone npm distribution", () => {
     expect(bundle).toContain("1.2.0-cache-invariant-support");
     expect(bundle).toContain("2.0.0-default-full-profile-snapshot");
     expect(bundle).toContain("default-full-snapshot:2");
-    expect(bundle).toContain("0.3.0-preview.1");
-    expect(bundle).toContain("1.0.0-typescript-ast");
+    expect(bundle).toContain(qualityVersions.result);
+    expect(bundle).toContain(qualityVersions.parserContract);
     expect(bundle).toContain("parsers/quality-worker.mjs");
-    expect(parserBundle).toContain("1.0.0-typescript-ast");
+    expect(parserBundle).toContain(qualityVersions.parserContract);
     expect(parserBundle).not.toContain("sourceMappingURL=");
     expect(parserBundle).not.toContain("node:child_process");
     expect(bundle).not.toContain("5.0.0-raw-path-blob-receipts");

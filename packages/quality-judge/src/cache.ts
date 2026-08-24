@@ -20,8 +20,13 @@ import {
   QUALITY_DIMENSION_IDS,
   QUALITY_JUDGE_RESULT_VERSION,
   QUALITY_PARSER_CONTRACT_VERSION,
+  QUALITY_REQUEST_PLAN_VERSION,
+  QUALITY_REQUEST_TELEMETRY_VERSION,
   QUALITY_SOURCE_SELECTION_VERSION,
   type QualityJudgeResult,
+  type QualityRequestBudget,
+  type QualityRequestPlan,
+  type QualityRequestTelemetry,
 } from "./types.js";
 
 export const DEFAULT_QUALITY_RESULT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -69,10 +74,12 @@ export interface QualityResultCacheKeyInput {
   readonly attributionRequestCap: number;
 }
 
+type StableQualityJudgeResult = Omit<QualityJudgeResult, "requestBudget" | "requestTelemetry">;
+
 interface StoredQualityResult {
   readonly expiresAt: number;
   readonly checksum: string;
-  readonly value: QualityJudgeResult;
+  readonly value: StableQualityJudgeResult;
 }
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
@@ -204,7 +211,44 @@ const isRequestBudget = (value: unknown): boolean =>
     "attributionCacheHits",
     "completeOpportunity",
     "minimumUsefulOpportunity",
-  ]) && Object.values(value).every((entry) => integer(entry, 0, 100));
+    "wholeResultCacheHit",
+  ]) &&
+  Object.entries(value).every(([key, entry]) =>
+    key === "wholeResultCacheHit" ? typeof entry === "boolean" : integer(entry, 0, 100),
+  );
+
+const isRequestPlan = (value: unknown): boolean =>
+  exactRecord(value, [
+    "version",
+    "sourcePlanned",
+    "attributionPlanned",
+    "completeOpportunity",
+    "minimumUsefulOpportunity",
+    "sourceRequestCap",
+    "attributionRequestCap",
+  ]) &&
+  value.version === QUALITY_REQUEST_PLAN_VERSION &&
+  Object.entries(value).every(([key, entry]) =>
+    key === "version" ? typeof entry === "string" : integer(entry, 0, 100),
+  );
+
+const isRequestTelemetry = (value: unknown): boolean =>
+  exactRecord(value, [
+    "version",
+    "sourceRequests",
+    "attributionRequests",
+    "sourceCacheHits",
+    "attributionCacheHits",
+    "wholeResultCacheHit",
+  ]) &&
+  value.version === QUALITY_REQUEST_TELEMETRY_VERSION &&
+  Object.entries(value).every(([key, entry]) =>
+    key === "version"
+      ? typeof entry === "string"
+      : key === "wholeResultCacheHit"
+        ? typeof entry === "boolean"
+        : integer(entry, 0, 100),
+  );
 
 const isReceipt = (value: unknown): boolean =>
   exactRecord(value, [
@@ -256,7 +300,7 @@ const isLimitation = (value: unknown): boolean =>
   boundedString(value.detail) &&
   integer(value.files, 0, 18);
 
-export function qualityResultValidationCode(value: unknown): string | null {
+const stableQualityResultValidationCode = (value: unknown): string | null => {
   if (!isQualityCacheSafe(value)) return "unsafe-shape";
   if (
     !exactRecord(value, [
@@ -266,7 +310,7 @@ export function qualityResultValidationCode(value: unknown): string | null {
       "scoreInfluence",
       "maintainedCodebase",
       "attributedCode",
-      "requestBudget",
+      "requestPlan",
       "limitations",
       "receipts",
       "resultKey",
@@ -278,7 +322,7 @@ export function qualityResultValidationCode(value: unknown): string | null {
   if (value.activation !== "preview-only" || value.scoreInfluence !== 0) return "activation";
   if (!isReading(value.maintainedCodebase, false)) return "maintained-reading";
   if (!isReading(value.attributedCode, true)) return "attributed-reading";
-  if (!isRequestBudget(value.requestBudget)) return "request-budget";
+  if (!isRequestPlan(value.requestPlan)) return "request-plan";
   if (
     !Array.isArray(value.limitations) ||
     value.limitations.length > 100 ||
@@ -298,6 +342,97 @@ export function qualityResultValidationCode(value: unknown): string | null {
     return "result-key";
   if (Buffer.byteLength(JSON.stringify(value), "utf8") > MAX_CACHE_RESULT_BYTES)
     return "result-size";
+  return null;
+};
+
+export const isStableQualityJudgeResult = (value: unknown): boolean =>
+  stableQualityResultValidationCode(value) === null;
+
+const stableResultFor = (value: QualityJudgeResult): StableQualityJudgeResult => ({
+  version: value.version,
+  status: value.status,
+  activation: value.activation,
+  scoreInfluence: value.scoreInfluence,
+  maintainedCodebase: value.maintainedCodebase,
+  attributedCode: value.attributedCode,
+  requestPlan: value.requestPlan,
+  limitations: value.limitations,
+  receipts: value.receipts,
+  resultKey: value.resultKey,
+});
+
+const withRequestTelemetry = (
+  value: StableQualityJudgeResult,
+  telemetry: QualityRequestTelemetry,
+): QualityJudgeResult => ({
+  version: value.version,
+  status: value.status,
+  activation: value.activation,
+  scoreInfluence: value.scoreInfluence,
+  maintainedCodebase: value.maintainedCodebase,
+  attributedCode: value.attributedCode,
+  requestPlan: value.requestPlan,
+  requestTelemetry: telemetry,
+  requestBudget: {
+    sourcePlanned: value.requestPlan.sourcePlanned,
+    sourceRequests: telemetry.sourceRequests,
+    sourceCacheHits: telemetry.sourceCacheHits,
+    attributionPlanned: value.requestPlan.attributionPlanned,
+    attributionRequests: telemetry.attributionRequests,
+    attributionCacheHits: telemetry.attributionCacheHits,
+    completeOpportunity: value.requestPlan.completeOpportunity,
+    minimumUsefulOpportunity: value.requestPlan.minimumUsefulOpportunity,
+    wholeResultCacheHit: telemetry.wholeResultCacheHit,
+  },
+  limitations: value.limitations,
+  receipts: value.receipts,
+  resultKey: value.resultKey,
+});
+
+export function qualityResultValidationCode(value: unknown): string | null {
+  if (!isQualityCacheSafe(value)) return "unsafe-shape";
+  if (
+    !exactRecord(value, [
+      "version",
+      "status",
+      "activation",
+      "scoreInfluence",
+      "maintainedCodebase",
+      "attributedCode",
+      "requestPlan",
+      "requestTelemetry",
+      "requestBudget",
+      "limitations",
+      "receipts",
+      "resultKey",
+    ])
+  ) {
+    return "result-shape";
+  }
+  const { requestTelemetry, requestBudget, ...stable } = value;
+  const stableCode = stableQualityResultValidationCode(stable);
+  if (stableCode !== null) return stableCode;
+  if (!isRequestTelemetry(requestTelemetry)) return "request-telemetry";
+  if (!isRequestBudget(requestBudget)) return "request-budget";
+  const plan = stable.requestPlan as QualityRequestPlan;
+  const telemetry = requestTelemetry as QualityRequestTelemetry;
+  const budget = requestBudget as QualityRequestBudget;
+  if (
+    budget.sourcePlanned !== plan.sourcePlanned ||
+    budget.attributionPlanned !== plan.attributionPlanned ||
+    budget.completeOpportunity !== plan.completeOpportunity ||
+    budget.minimumUsefulOpportunity !== plan.minimumUsefulOpportunity ||
+    budget.sourceRequests !== telemetry.sourceRequests ||
+    budget.sourceCacheHits !== telemetry.sourceCacheHits ||
+    budget.attributionRequests !== telemetry.attributionRequests ||
+    budget.attributionCacheHits !== telemetry.attributionCacheHits ||
+    budget.wholeResultCacheHit !== telemetry.wholeResultCacheHit
+  ) {
+    return "request-accounting";
+  }
+  if (Buffer.byteLength(JSON.stringify(value), "utf8") > MAX_CACHE_RESULT_BYTES) {
+    return "result-size";
+  }
   return null;
 }
 
@@ -350,7 +485,7 @@ export function createFileQualityResultCache(
         typeof stored.checksum !== "string" ||
         !/^[0-9a-f]{64}$/u.test(stored.checksum) ||
         stored.checksum !== checksum(stored.value) ||
-        !isQualityJudgeResult(stored.value)
+        stableQualityResultValidationCode(stored.value) !== null
       ) {
         rmSync(path, { force: true });
         return undefined;
@@ -361,7 +496,14 @@ export function createFileQualityResultCache(
       } catch {
         // Recency is operational only and never changes the cached result.
       }
-      return stored.value;
+      return withRequestTelemetry(stored.value as StableQualityJudgeResult, {
+        version: QUALITY_REQUEST_TELEMETRY_VERSION,
+        sourceRequests: 0,
+        attributionRequests: 0,
+        sourceCacheHits: 0,
+        attributionCacheHits: 0,
+        wholeResultCacheHit: true,
+      });
     } catch {
       rmSync(path, { force: true });
       return undefined;
@@ -369,14 +511,15 @@ export function createFileQualityResultCache(
   };
   const set = (key: string, value: QualityJudgeResult): void => {
     if (!isQualityJudgeResult(value)) return;
+    const stableValue = stableResultFor(value);
     const path = pathFor(key);
     const temporary = `${path}.tmp`;
     try {
       mkdirSync(options.directory, { recursive: true });
       const stored: StoredQualityResult = {
         expiresAt: now() + (options.ttlMs ?? DEFAULT_QUALITY_RESULT_TTL_MS),
-        checksum: checksum(value),
-        value,
+        checksum: checksum(stableValue),
+        value: stableValue,
       };
       writeFileSync(temporary, JSON.stringify(stored), "utf8");
       renameSync(temporary, path);
