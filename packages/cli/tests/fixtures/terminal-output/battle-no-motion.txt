@@ -15,7 +15,7 @@ Maintained codebase @strongmaintainer 81 (100%) · @sidequester 89 (100%)
 Attributed code @strongmaintainer 81 (67%) · @sidequester 89 (100%)
 @strongmaintainer — 0 high-complexity funcs · orchestrator/migrate.ts:1 [LQ1]
 @sidequester — 0 high-complexity funcs · project-0/index.js:1 [RQ1]
-Not used in the winner pending human calibration.
+Separate from the battle score.
 RECEIPTS
 [1] Versioned releases — 15 vs 0
 [2] Project automation — 3/3 vs 0/3

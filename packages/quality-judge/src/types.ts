@@ -1,11 +1,13 @@
-export const QUALITY_JUDGE_RESULT_VERSION = "0.3.0-preview.1";
+export const QUALITY_JUDGE_RESULT_VERSION = "0.3.1-preview.2";
 export const QUALITY_PARSER_CONTRACT_VERSION = "1.0.0-typescript-ast";
 export const QUALITY_SOURCE_SELECTION_VERSION = "1.0.0-stratified-public-source";
 export const QUALITY_ATTRIBUTION_VERSION = "1.0.0-public-path-commits";
 export const QUALITY_DIMENSION_FORMULA_VERSION = "1.0.0-preview-29-point";
-export const QUALITY_CALIBRATION_SCHEMA_VERSION = "1.0.0-blinded-pairwise";
+export const QUALITY_VALIDATION_CONTRACT_VERSION = "1.0.0-engineering-validation";
 export const QUALITY_PRESENTATION_VERSION = "1.0.0-six-line-preview";
-export const QUALITY_CACHE_VERSION = "1.0.0-derived-features-only";
+export const QUALITY_CACHE_VERSION = "1.1.0-stable-result-core";
+export const QUALITY_REQUEST_PLAN_VERSION = "1.0.0-bounded-opportunity";
+export const QUALITY_REQUEST_TELEMETRY_VERSION = "1.0.0-current-invocation";
 
 export const QUALITY_DIMENSION_IDS = Object.freeze([
   "correctnessDiscipline",
@@ -79,6 +81,26 @@ export interface QualityRequestBudget {
   readonly attributionCacheHits: number;
   readonly completeOpportunity: number;
   readonly minimumUsefulOpportunity: number;
+  readonly wholeResultCacheHit: boolean;
+}
+
+export interface QualityRequestPlan {
+  readonly version: string;
+  readonly sourcePlanned: number;
+  readonly attributionPlanned: number;
+  readonly completeOpportunity: number;
+  readonly minimumUsefulOpportunity: number;
+  readonly sourceRequestCap: number;
+  readonly attributionRequestCap: number;
+}
+
+export interface QualityRequestTelemetry {
+  readonly version: string;
+  readonly sourceRequests: number;
+  readonly attributionRequests: number;
+  readonly sourceCacheHits: number;
+  readonly attributionCacheHits: number;
+  readonly wholeResultCacheHit: boolean;
 }
 
 export interface QualityReading {
@@ -108,6 +130,9 @@ export interface QualityJudgeResult {
   readonly scoreInfluence: 0;
   readonly maintainedCodebase: QualityReading;
   readonly attributedCode: AttributedQualityReading;
+  readonly requestPlan: QualityRequestPlan;
+  readonly requestTelemetry: QualityRequestTelemetry;
+  /** Compatibility view. Prefer requestPlan and requestTelemetry for new consumers. */
   readonly requestBudget: QualityRequestBudget;
   readonly limitations: readonly QualityLimitation[];
   readonly receipts: readonly QualityReceipt[];
@@ -121,6 +146,8 @@ export interface QualityJudgePair {
 
 /** Process-only parser input. Callers must never serialize, cache, log, or persist `source`. */
 export interface QualitySourceInput {
+  /** Stable collector opportunity order. Synthetic callers may omit it and use immutable identity order. */
+  readonly selectionOrder?: number | undefined;
   readonly repository: string;
   readonly commitSha: string;
   readonly blobSha: string;

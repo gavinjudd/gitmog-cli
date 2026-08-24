@@ -12,7 +12,7 @@ Link the package, document, ADR, issue, or versioned contract that owns the chan
 - [ ] `pnpm verify` passes, or an exact unavailable check is explained.
 - [ ] Behavioral changes include tests.
 - [ ] Deterministic-version impact is stated.
-- [ ] Quality-calibration impact is stated; no generated judgment is human calibration.
+- [ ] Quality-validation and informational-policy impact is stated.
 - [ ] Package, platform, and security impacts are stated.
 - [ ] Target repositories are never cloned, installed, imported, built, tested, or executed.
 - [ ] No raw target source, private source, or credential is persisted or included here.

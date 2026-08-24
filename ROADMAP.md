@@ -4,11 +4,11 @@
 
 - parser-backed, bounded quality readings separate from canonical scoring;
 - maintained-codebase and publicly attributed readings kept distinct;
-- blinded human-calibration infrastructure with activation disabled;
+- informational-only quality policy and deterministic engineering validation;
 - complete public contributor, platform, security, and package gates.
 
-## Later — human calibration and possible activation
+## Later — quality hardening
 
-Collect the preregistered multi-human corpus without model-generated judgments, publish the
-aggregate report, pass holdout and bias thresholds, define a new scoring version, and obtain the
-separate activation approval. The preview does not imply that activation will occur.
+Expand safe parser coverage, reduce false positives and false negatives through synthetic
+fixtures, and keep request accounting and result identity cache-invariant. Canonical scoring
+remains a separately versioned product decision.

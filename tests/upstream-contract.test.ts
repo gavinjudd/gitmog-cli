@@ -22,7 +22,9 @@ interface ReleaseEvidenceContract {
     readonly unpackedBytes: number;
     readonly members: readonly { readonly path: string; readonly bytes: number }[];
   };
-  readonly quality: { readonly activation: { readonly state: string } };
+  readonly quality: {
+    readonly policy: { readonly state: string; readonly scoreInfluence: number };
+  };
   readonly evidence: Readonly<Record<string, unknown>>;
 }
 
@@ -106,7 +108,11 @@ describe("public upstream contract", () => {
         scripts: { prepack: "node build.mjs" },
       },
       parserAssets: [],
-      activation: { state: "disabled", reason: "human calibration pending" },
+      policy: {
+        state: "informational-only",
+        scoreInfluence: 0,
+        reason: "Quality Judge is a separate product signal",
+      },
       qualityVersions: null,
       evidence: {
         "platform-acceptance.json": { bytes: 1, sha256: "d".repeat(64) },
@@ -116,7 +122,11 @@ describe("public upstream contract", () => {
     expect(metadata.package.unpackedBytes).toBe(2);
     expect(metadata.package.members).toHaveLength(2);
     expect(metadata.package.installScripts).toEqual({});
-    expect(metadata.quality.activation.state).toBe("disabled");
+    expect(metadata.quality.policy).toEqual({
+      state: "informational-only",
+      scoreInfluence: 0,
+      reason: "Quality Judge is a separate product signal",
+    });
     expect(metadata.evidence).toHaveProperty("platform-acceptance.json");
   });
 

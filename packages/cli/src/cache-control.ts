@@ -31,7 +31,7 @@ import {
 import {
   DEFAULT_QUALITY_RESULT_TTL_MS,
   isQualityCacheSafe,
-  isQualityJudgeResult,
+  isStableQualityJudgeResult,
 } from "@gitmog/quality-judge";
 
 import { isProfileSnapshot } from "./snapshot-store.js";
@@ -519,7 +519,7 @@ function analysisEntry(
       ? !isCodeDnaCacheEntry(value.value)
       : kind === "feature"
         ? !isDerivedFeatureEntry(value.value)
-        : !isQualityJudgeResult(value.value))
+        : !isStableQualityJudgeResult(value.value))
   ) {
     return null;
   }

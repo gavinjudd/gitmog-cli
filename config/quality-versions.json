@@ -1,12 +1,14 @@
 {
-  "result": "0.3.0-preview.1",
+  "result": "0.3.1-preview.2",
   "parserContract": "1.0.0-typescript-ast",
   "sourceSelection": "1.0.0-stratified-public-source",
   "attribution": "1.0.0-public-path-commits",
   "dimensionFormula": "1.0.0-preview-29-point",
-  "calibrationSchema": "1.0.0-blinded-pairwise",
+  "validationContract": "1.0.0-engineering-validation",
   "presentation": "1.0.0-six-line-preview",
-  "cache": "1.0.0-derived-features-only",
+  "cache": "1.1.0-stable-result-core",
+  "requestPlan": "1.0.0-bounded-opportunity",
+  "requestTelemetry": "1.0.0-current-invocation",
   "parserImplementations": [
     {
       "languages": ["typescript", "javascript"],

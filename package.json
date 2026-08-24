@@ -26,14 +26,14 @@
     "verify": "node scripts/verify.mjs",
     "package:acceptance": "node scripts/package-acceptance.mjs",
     "quality:fixtures": "node scripts/quality-fixtures.mjs",
-    "quality:calibration:check": "node scripts/calibration-check.mjs",
+    "quality:policy:check": "node scripts/quality-policy-check.mjs",
     "quality:benchmark:check": "node scripts/benchmark-quality.mjs",
     "community:check": "node scripts/community-check.mjs",
     "security:check": "node scripts/security-check.mjs",
     "identity:calibrate": "node scripts/identity-calibrate.mjs",
     "code-dna:calibrate": "node scripts/code-dna-calibrate.mjs",
     "source-analysis:quality": "node scripts/source-analysis-quality.mjs",
-    "benchmark:check": "node scripts/benchmark-cli.mjs --check"
+    "benchmark:check": "node scripts/turbo.mjs run build && node scripts/benchmark-cli.mjs --check"
   },
   "devDependencies": {
     "@gitmog/cli": "workspace:*",

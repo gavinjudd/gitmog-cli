@@ -10,5 +10,6 @@ unsupported syntax. The parser must meet byte, time, memory, node-count, depth, 
 token, cancellation, deterministic traversal, error-redaction, package, and all-platform gates.
 License and checksums belong in the SBOM.
 
-Shipping parser code does not activate quality scoring. The language also needs calibration corpus
-coverage and must meet its preregistered human holdout threshold before any later score activation.
+Shipping parser code does not change canonical scoring. A supported lane also needs deterministic
+selection, metamorphic, adversarial, false-positive, false-negative, source-safety, performance,
+package, and cross-platform validation.

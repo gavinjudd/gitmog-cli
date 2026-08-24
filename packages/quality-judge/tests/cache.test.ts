@@ -9,6 +9,7 @@ import {
   createFileQualityResultCache,
   isQualityCacheSafe,
   isQualityJudgeResult,
+  qualityResultValidationCode,
   qualityResultCacheKey,
 } from "../src/cache.js";
 
@@ -58,13 +59,33 @@ describe("Quality Preview cache", () => {
       expect(isQualityJudgeResult(result)).toBe(true);
       cache.set(key, result);
       expect(cache.size).toBe(1);
-      expect(cache.get(key)).toEqual(result);
+      const cached = cache.get(key);
+      expect(cached).toBeDefined();
+      expect(cached?.resultKey).toBe(result.resultKey);
+      expect(cached?.maintainedCodebase).toEqual(result.maintainedCodebase);
+      expect(cached?.attributedCode).toEqual(result.attributedCode);
+      expect(cached?.limitations).toEqual(result.limitations);
+      expect(cached?.receipts).toEqual(result.receipts);
+      expect(cached?.requestPlan).toEqual(result.requestPlan);
+      expect(cached?.requestTelemetry).toEqual({
+        version: "1.0.0-current-invocation",
+        sourceRequests: 0,
+        attributionRequests: 0,
+        sourceCacheHits: 0,
+        attributionCacheHits: 0,
+        wholeResultCacheHit: true,
+      });
       const files = readdirSync(directory);
       expect(files).toHaveLength(1);
       const stored = readFileSync(join(directory, files[0] as string), "utf8");
       expect(stored).not.toContain(rawMarker);
       expect(stored).not.toContain('"source"');
       expect(stored).not.toContain('"content"');
+      expect(stored).not.toContain('"requestTelemetry"');
+      expect(stored).not.toContain('"requestBudget"');
+      expect(stored).not.toContain('"sourceRequests"');
+      expect(stored).not.toContain('"attributionRequests"');
+      expect(stored).not.toContain('"wholeResultCacheHit"');
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -90,5 +111,19 @@ describe("Quality Preview cache", () => {
         attributionRequestCap: 0,
       }),
     ).not.toBe(key);
+  });
+
+  it("fails closed for the prior result and cache schema", () => {
+    const {
+      requestPlan: _requestPlan,
+      requestTelemetry: _requestTelemetry,
+      ...priorShape
+    } = result;
+    expect(
+      qualityResultValidationCode({
+        ...priorShape,
+        version: "0.3.0-preview.1",
+      }),
+    ).not.toBeNull();
   });
 });

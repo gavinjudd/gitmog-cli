@@ -17,34 +17,34 @@ pnpm test
 Before opening a pull request, run `pnpm verify`. Run one package test while iterating, for
 example `node scripts/turbo.mjs run test --filter=@gitmog/cli`. The Turbo wrapper builds the
 focused package's workspace dependencies first, including in a fresh clone. The complete gate
-formats, lints, typechecks, tests, builds, validates community/calibration fixtures, and accepts
+formats, lints, typechecks, tests, builds, validates community and quality fixtures, and accepts
 the packed package.
 
 ## Make a useful change
 
 Explain the observed defect, the owning contract, and the expected behavior. Behavioral
-changes require tests. Quality-metric changes require a synthetic fixture and a calibration-
-impact note. New language lanes follow `docs/ADDING_A_LANGUAGE.md` and cannot be claimed until
-parser, safety, portability, fixture, package, and calibration coverage gates pass.
+changes require tests. Quality-metric changes require a synthetic fixture and a validation-impact
+note. New language lanes follow `docs/ADDING_A_LANGUAGE.md` and cannot be claimed until parser,
+safety, portability, fixture, package, and engineering-validation gates pass.
 
 Documentation contributors do not need to modify code. Use the documentation issue form and
 include the exact page, confusing text, intended reader, and proposed outcome.
 
 ## AI-assisted contributions
 
-AI-assisted work is allowed, but the human contributor owns every line, claim, license,
-security consequence, and test result. Bulk automated pull requests are prohibited. Model-
-generated calibration judgments are prohibited and never count as human review. Do not paste
-private source, raw target source, credentials, prompts containing secrets, or personal data
-into issues, tools, or pull requests.
+AI-assisted work is allowed, but the contributor owns every line, claim, license, security
+consequence, and test result. Bulk automated pull requests are prohibited. Do not paste private
+source, raw target source, credentials, prompts containing secrets, or personal data into issues,
+tools, or pull requests.
 
 ## Quality reports
 
 A false positive means a supported metric fired incorrectly. Missing coverage means the
 language, syntax, sample, or attribution evidence was unavailable; it is not automatically a
-false negative. Use the dedicated issue form, cite a public repository and immutable commit,
-identify the parser lane and safe path, and provide the smallest reproduction that does not
-copy source into the issue.
+false negative. Follow [the Quality Judge feedback guide](docs/QUALITY_FEEDBACK.md) and use the
+dedicated issue form. Provide a reduced synthetic fixture with invented identifiers. Public
+repository, immutable commit, safe-path, receipt, and limitation references are optional context;
+never copy target source into the issue.
 
 ## Pull requests and licensing
 

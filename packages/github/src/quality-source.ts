@@ -28,6 +28,7 @@ const QUALITY_BLOB_RESPONSE_BYTES =
 
 /** Process-only file. `source` must never be serialized, cached, logged, or persisted. */
 export interface CollectedQualitySourceFile {
+  readonly selectionOrder: number;
   readonly repository: string;
   readonly commitSha: string;
   readonly blobSha: string;
@@ -357,6 +358,7 @@ export async function collectQualitySource(
     if (revision === undefined) continue;
     totalBytes += byteLength;
     files.push({
+      selectionOrder: files.length,
       repository: entry.repository.fullName,
       commitSha: revision.commitSha,
       blobSha: entry.candidate.blob.sha,
@@ -401,6 +403,7 @@ export async function collectQualitySource(
     });
   const selectedPaths = attributed.map(
     ({
+      selectionOrder: _selectionOrder,
       source: _source,
       sourceUrl: _sourceUrl,
       byteLength: _byteLength,

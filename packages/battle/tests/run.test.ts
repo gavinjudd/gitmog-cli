@@ -7,6 +7,7 @@ import {
   createFileQualityResultCache,
   isQualityJudgeResult,
   qualityResultValidationCode,
+  type QualityJudgeResult,
 } from "@gitmog/quality-judge";
 import { createFileCodeDnaCache, createFileDerivedFeatureCache } from "@gitmog/source-analysis";
 import {
@@ -33,9 +34,11 @@ const serve = (...personas: readonly PersonaSpec[]) => {
     fetchImpl: createFixtureFetch(persona),
   }));
   const calls: string[] = [];
+  const requests: Array<{ readonly url: string; readonly userAgent: string | null }> = [];
   const fetchImpl: typeof fetch = (input, init) => {
     const href = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     calls.push(href);
+    requests.push({ url: href, userAgent: new Request(input, init).headers.get("user-agent") });
     const found = handlers.find((handler) =>
       href.toLowerCase().includes(handler.login.toLowerCase()),
     );
@@ -44,9 +47,13 @@ const serve = (...personas: readonly PersonaSpec[]) => {
       Promise.resolve(new Response('{"message":"Not Found"}', { status: 404 }))
     );
   };
-  return { fetchImpl, calls };
+  return { fetchImpl, calls, requests };
 };
 const base = { now: () => FIXTURE_NOW_MS, cache: null } as const;
+const stableQuality = (result: QualityJudgeResult) => {
+  const { requestTelemetry: _requestTelemetry, requestBudget: _requestBudget, ...stable } = result;
+  return stable;
+};
 
 describe("input contracts", () => {
   it("normalizes handles and rejects invalid or identical inputs", () => {
@@ -322,6 +329,109 @@ describe("one complete orchestration path", () => {
     expect(JSON.stringify({ ...ready, qualityPreview: arbitraryPreview }.battle)).toBe(canonical);
   });
 
+  it("reports cold, warm, refresh, and no-cache quality requests for the current invocation", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "gitmog-quality-telemetry-"));
+    const cache = createSnapshotCache<ProfileSnapshot>();
+    const qualityCache = createFileQualityResultCache({ directory: join(directory, "quality") });
+    const sourceAnalysis = {
+      cache: createFileCodeDnaCache({ directory: join(directory, "analysis") }),
+      derivedCache: createFileDerivedFeatureCache({ directory: join(directory, "features") }),
+    };
+    const transport = serve(PERSONAS.strongMaintainer, PERSONAS.manyTinyRepos);
+    const invoke = (cachePolicy: { readonly read: boolean; readonly write: boolean }) =>
+      runBattle({
+        left: "strongmaintainer",
+        right: "sidequester",
+        fetchImpl: transport.fetchImpl,
+        cache,
+        cachePolicy,
+        sourceAnalysis: { ...sourceAnalysis, cachePolicy },
+        quality: {
+          enabled: true,
+          cache: qualityCache,
+          cachePolicy,
+        },
+        now: () => FIXTURE_NOW_MS,
+      });
+    const qualityCalls = (from: number) => {
+      const current = transport.requests.slice(from);
+      return {
+        source: current.filter((request) => request.userAgent === "gitmog-quality-source").length,
+        attribution: current.filter((request) => request.userAgent === "gitmog-quality-attribution")
+          .length,
+      };
+    };
+    try {
+      const coldStart = transport.requests.length;
+      const cold = await invoke({ read: true, write: true });
+      expect(cold.ok).toBe(true);
+      if (!cold.ok) return;
+      const coldCalls = qualityCalls(coldStart);
+      expect(
+        cold.qualityPreview.left.requestTelemetry.sourceRequests +
+          cold.qualityPreview.right.requestTelemetry.sourceRequests,
+      ).toBe(coldCalls.source);
+      expect(
+        cold.qualityPreview.left.requestTelemetry.attributionRequests +
+          cold.qualityPreview.right.requestTelemetry.attributionRequests,
+      ).toBe(coldCalls.attribution);
+      expect(transport.requests.length - coldStart).toBe(
+        cold.sourceAnalysis.requestBudget.total + coldCalls.source + coldCalls.attribution,
+      );
+      expect(qualityCache.size).toBe(2);
+
+      const warmStart = transport.requests.length;
+      const warm = await invoke({ read: true, write: true });
+      expect(warm.ok).toBe(true);
+      if (!warm.ok) return;
+      expect(transport.requests).toHaveLength(warmStart);
+      for (const [warmReading, coldReading] of [
+        [warm.qualityPreview.left, cold.qualityPreview.left],
+        [warm.qualityPreview.right, cold.qualityPreview.right],
+      ] as const) {
+        expect(stableQuality(warmReading)).toEqual(stableQuality(coldReading));
+        expect(warmReading.requestTelemetry).toMatchObject({
+          sourceRequests: 0,
+          attributionRequests: 0,
+          sourceCacheHits: 0,
+          attributionCacheHits: 0,
+          wholeResultCacheHit: true,
+        });
+      }
+
+      const refreshStart = transport.requests.length;
+      const refresh = await invoke({ read: false, write: true });
+      expect(refresh.ok).toBe(true);
+      if (!refresh.ok) return;
+      const refreshCalls = qualityCalls(refreshStart);
+      expect(refreshCalls.source).toBeGreaterThan(0);
+      expect(stableQuality(refresh.qualityPreview.left)).toEqual(
+        stableQuality(cold.qualityPreview.left),
+      );
+      expect(stableQuality(refresh.qualityPreview.right)).toEqual(
+        stableQuality(cold.qualityPreview.right),
+      );
+      expect(qualityCache.size).toBe(2);
+
+      const noCacheStart = transport.requests.length;
+      const noCache = await invoke({ read: false, write: false });
+      expect(noCache.ok).toBe(true);
+      if (!noCache.ok) return;
+      const noCacheCalls = qualityCalls(noCacheStart);
+      expect(noCacheCalls.source).toBeGreaterThan(0);
+      expect(stableQuality(noCache.qualityPreview.left)).toEqual(
+        stableQuality(cold.qualityPreview.left),
+      );
+      expect(stableQuality(noCache.qualityPreview.right)).toEqual(
+        stableQuality(cold.qualityPreview.right),
+      );
+      expect(qualityCache.size).toBe(2);
+      expect(JSON.stringify(noCache.battle)).toBe(JSON.stringify(cold.battle));
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it("reuses both profile snapshots in a reversed battle", async () => {
     const directory = mkdtempSync(join(tmpdir(), "gitmog-reversed-analysis-"));
     const cache = createSnapshotCache<ProfileSnapshot>();
@@ -370,8 +480,19 @@ describe("one complete orchestration path", () => {
       if (!forward.ok || !reversed.ok) return;
       expect(reversed.sourceAnalysis.left.codeDna).toEqual(forward.sourceAnalysis.right.codeDna);
       expect(reversed.sourceAnalysis.right.codeDna).toEqual(forward.sourceAnalysis.left.codeDna);
-      expect(reversed.qualityPreview.left).toEqual(forward.qualityPreview.right);
-      expect(reversed.qualityPreview.right).toEqual(forward.qualityPreview.left);
+      expect(stableQuality(reversed.qualityPreview.left)).toEqual(
+        stableQuality(forward.qualityPreview.right),
+      );
+      expect(stableQuality(reversed.qualityPreview.right)).toEqual(
+        stableQuality(forward.qualityPreview.left),
+      );
+      for (const reading of [reversed.qualityPreview.left, reversed.qualityPreview.right]) {
+        expect(reading.requestTelemetry).toMatchObject({
+          sourceRequests: 0,
+          attributionRequests: 0,
+          wholeResultCacheHit: true,
+        });
+      }
       expect(reversed.battle.margin).toBe(forward.battle.margin);
       expect(reversed.story.finisher.text).not.toBe(forward.story.finisher.text);
     } finally {

@@ -26,7 +26,7 @@ const required = [
   ".github/workflows/ci.yml",
   ".github/workflows/codeql.yml",
   ".github/workflows/release.yml",
-  ".github/workflows/calibration.yml",
+  ".github/workflows/quality-policy.yml",
   ".github/workflows/community.yml",
 ];
 

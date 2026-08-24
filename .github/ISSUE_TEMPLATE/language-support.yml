@@ -1,7 +1,7 @@
 name: Language support proposal
 description: Propose a real parser-backed language lane.
 title: "[Language]: "
-labels: ["area:language-support", "status:needs-calibration"]
+labels: ["area:language-support"]
 body:
   - type: markdown
     attributes:
@@ -27,7 +27,7 @@ body:
       }
   - type: textarea
     id: gates
-    attributes: { label: Fixtures, portability, package, and calibration plan }
+    attributes: { label: Fixtures, portability, package, and validation plan }
     validations: { required: true }
   - type: checkboxes
     id: safety

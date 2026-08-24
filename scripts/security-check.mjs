@@ -76,13 +76,14 @@ const parserAssets = readJson("config", "parser-assets.json");
 if (JSON.stringify(parserAssets.assets) !== JSON.stringify(["dist/parsers/quality-worker.mjs"])) {
   failures.push("parser asset allowlist changed without review");
 }
-const activation = readJson("calibration", "QUALITY_SCORE_ACTIVATION.json");
+const policy = readJson("quality", "QUALITY_SCORE_POLICY.json");
 if (
-  activation.state !== "disabled" ||
-  activation.reason !== "human calibration pending" ||
-  Object.keys(activation).length !== 2
+  policy.state !== "informational-only" ||
+  policy.scoreInfluence !== 0 ||
+  policy.reason !== "Quality Judge is a separate product signal" ||
+  Object.keys(policy).length !== 3
 ) {
-  failures.push("quality score activation is not fail-closed");
+  failures.push("quality score policy is not fail-closed");
 }
 
 const archivedPrefix = `${resolve(root, "docs", "releases", "v0.2.2")}/`;
@@ -109,5 +110,5 @@ if (failures.length > 0) {
 }
 
 process.stdout.write(
-  "Security contract complete (SHA-pinned Actions, no privileged PR workflow, no target-execution capability, exact parser assets, activation disabled, public-path scan clean).\n",
+  "Security contract complete (SHA-pinned Actions, no privileged PR workflow, no target-execution capability, exact parser assets, informational-only quality policy, public-path scan clean).\n",
 );

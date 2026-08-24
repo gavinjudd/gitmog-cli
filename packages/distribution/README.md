@@ -64,7 +64,7 @@ numeric score. There is no LLM and no higher-quality mode.
 `CODE QUALITY · PREVIEW` separately reports maintained-codebase evidence and publicly attributed
 code when attribution is sufficient. The TypeScript and JavaScript lanes use a pinned real AST
 parser; unsupported languages lower preview coverage. Quality Preview has no influence on the
-canonical score or winner. Human calibration is pending and quality-score activation is disabled.
+canonical score or winner. Its policy is informational-only and has no enabled branch.
 
 Default human output leads with the result, scores, public-score coverage, three plain-language
 fight rows, concise factual player reads, and four to six claim-specific receipts. Internal

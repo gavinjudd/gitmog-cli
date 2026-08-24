@@ -1,9 +1,0 @@
-{
-  "$schema": "./schema/training-manifest.schema.json",
-  "schemaVersion": "1.0.0-blinded-pairwise",
-  "state": "not-collected",
-  "reason": "human calibration corpus selection pending",
-  "repositories": [],
-  "pairs": [],
-  "judgmentsCollected": 0
-}

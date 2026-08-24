@@ -4,7 +4,12 @@ All notable changes are documented here. Released artifacts remain tied to immut
 
 ## Unreleased
 
-- Publication of the audited v0.3.0 candidate remains pending explicit release approval.
+- Retire the never-run external reviewer proposal and replace it with an informational-only
+  Quality Judge policy plus deterministic engineering validation.
+- Make Quality Preview request telemetry current-invocation truthful and result identity
+  cache-invariant.
+- Repair the CLI benchmark to reconcile canonical, quality-source, quality-attribution, allowance,
+  and cache lanes separately.
 
 ## 0.3.0 - Quality Judge Preview
 
@@ -15,8 +20,7 @@ All notable changes are documented here. Released artifacts remain tied to immut
   battle key, evidence, and cache identity.
 - Add bounded process-only parser isolation, source-free receipts, deterministic sampling, and
   cache-invariant request planning.
-- Preregister blinded multi-human calibration while leaving score activation disabled and
-  recording zero human judgments.
+- Document the then-disabled external reviewer proposal, subsequently retired for v0.3.1.
 - Add public governance, contributor workflows, six-architecture CI, Node 22/24/26 acceptance,
   security checks, and exact-artifact reproducibility.
 
