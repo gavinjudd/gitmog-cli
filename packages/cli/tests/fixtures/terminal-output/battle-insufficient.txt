@@ -9,6 +9,15 @@ UPKEEP   60–60  tie · Project structure: 60%–60% [2]
 TESTS    0–0  tie · Automated tests: 0%–0% [3]
 TOOLING  0–0  tie · Project automation: 0/1–0/1 [4]
 
+CODE QUALITY · PREVIEW
+Maintained codebase @ghostmode — not enough supported source · @lowpublictwo —
+not enough supported source
+Attributed code @ghostmode — not enough supported source · @lowpublictwo — not
+enough supported source
+@ghostmode — limited parser-supported evidence.
+@lowpublictwo — limited parser-supported evidence.
+Not used in the winner pending human calibration.
+
 RECEIPTS
 [1] Automated tests — 0/1 vs 0/1
 [2] Project structure — 60% vs 60%

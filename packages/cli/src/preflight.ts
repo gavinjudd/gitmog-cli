@@ -14,6 +14,11 @@ import {
   type SnapshotCache,
 } from "@gitmog/github";
 import { codeDnaCacheKey, type CodeDnaOutcome } from "@gitmog/personality";
+import {
+  qualityResultCacheKey,
+  type QualityJudgeResult,
+  type QualityResultCache,
+} from "@gitmog/quality-judge";
 
 export type ExplicitTokenResult =
   | { readonly ok: true; readonly token: string | undefined }
@@ -35,6 +40,7 @@ export function resolveExplicitGithubToken(
 export interface RequestPlanCaches {
   readonly snapshots: SnapshotCache<ProfileSnapshot> | null;
   readonly analyses: Pick<SnapshotCache<CodeDnaOutcome>, "get"> | null;
+  readonly quality: Pick<QualityResultCache, "get"> | null;
   readonly read: boolean;
 }
 
@@ -45,6 +51,7 @@ export interface PlanInvocationOptions {
   readonly caches: RequestPlanCaches;
   readonly fetchImpl?: typeof globalThis.fetch | undefined;
   readonly signal?: AbortSignal | undefined;
+  readonly qualityEnabled?: boolean | undefined;
   readonly readAllowance?:
     | ((options: {
         readonly token?: string | undefined;
@@ -77,6 +84,7 @@ const cacheStateFor = (handle: string, caches: RequestPlanCaches): RequestPlanCa
     return {
       snapshotHit: false,
       analysisHit: false,
+      qualityHit: false,
       maximumSourceRequests: MAXIMUM_SOURCE_REQUESTS_PER_PROFILE,
     };
   }
@@ -90,14 +98,26 @@ const cacheStateFor = (handle: string, caches: RequestPlanCaches): RequestPlanCa
     return {
       snapshotHit: false,
       analysisHit: false,
+      qualityHit: false,
       maximumSourceRequests: MAXIMUM_SOURCE_REQUESTS_PER_PROFILE,
     };
   }
   const opportunity = resolveSourceOpportunityScope(snapshot);
   const analysis = caches.analyses?.get(codeDnaCacheKey(snapshot.snapshotKey, opportunity));
+  const qualityKey = qualityResultCacheKey({
+    snapshotKey: snapshot.snapshotKey,
+    login: snapshot.profile.login,
+    immutableRepositories: snapshot.inspections
+      .map((inspection) => ({ repository: inspection.fullName, treeSha: inspection.treeSha }))
+      .toSorted((left, right) => left.repository.localeCompare(right.repository)),
+    sourceRequestCap: 21,
+    attributionRequestCap: 12,
+  });
+  const quality: QualityJudgeResult | undefined = caches.quality?.get(qualityKey);
   return {
     snapshotHit: true,
     analysisHit: analysis !== undefined,
+    qualityHit: quality !== undefined,
     maximumSourceRequests: opportunity.sourceRequestAllowance,
   };
 };
@@ -116,8 +136,12 @@ export async function planGithubInvocation(
       ...UNKNOWN_ALLOWANCE,
       authenticated: options.authenticationState !== "anonymous",
     },
+    qualityEnabled: options.qualityEnabled,
   });
-  if (provisional.expectedCurrentRequests === 0) {
+  if (
+    provisional.expectedCurrentRequests === 0 &&
+    provisional.quality.expectedCurrentRequests === 0
+  ) {
     return { ok: true, plan: provisional };
   }
 
@@ -134,6 +158,7 @@ export async function planGithubInvocation(
       authenticationState: options.authenticationState,
       profiles,
       allowance: allowance.allowance,
+      qualityEnabled: options.qualityEnabled,
     }),
   };
 }

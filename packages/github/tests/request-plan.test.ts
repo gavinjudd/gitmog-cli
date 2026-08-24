@@ -20,11 +20,13 @@ const allowance = (remaining: number | null): GithubCoreAllowance => ({
 const miss: RequestPlanCacheState = {
   snapshotHit: false,
   analysisHit: false,
+  qualityHit: false,
   maximumSourceRequests: 4,
 };
 const warm: RequestPlanCacheState = {
   snapshotHit: true,
   analysisHit: true,
+  qualityHit: true,
   maximumSourceRequests: 1,
 };
 
@@ -56,6 +58,61 @@ describe("buildGithubRequestPlan", () => {
     expect(plan.disposition).toBe("complete");
     expect(plan.expectedCurrentRequests).toBe(0);
     expect(plan.perProfileRequestCaps).toEqual([1, 1]);
+    expect(plan.quality).toMatchObject({
+      cacheHits: 2,
+      disposition: "complete",
+      expectedCurrentRequests: 0,
+      perProfileSourceRequestCaps: [21, 21],
+      perProfileAttributionRequestCaps: [12, 12],
+    });
+    expect(plan.totalExpectedCurrentRequests).toBe(0);
+  });
+
+  it("allocates quality source and attribution after the canonical plan", () => {
+    const limited = buildGithubRequestPlan({
+      authenticationState: "anonymous",
+      profiles: [miss, miss],
+      allowance: allowance(60),
+    });
+    expect(limited.quality).toMatchObject({
+      cacheHits: 0,
+      disposition: "limited",
+      expectedCurrentRequests: 66,
+      minimumUsefulRequests: 10,
+      completeSupportedRequests: 66,
+      perProfileSourceRequestCaps: [14, 14],
+      perProfileAttributionRequestCaps: [0, 0],
+    });
+    expect(limited.totalExpectedCurrentRequests).toBe(60);
+
+    const complete = buildGithubRequestPlan({
+      authenticationState: "explicit",
+      profiles: [miss, miss],
+      allowance: { ...allowance(98), authenticated: true, limit: 5_000 },
+    });
+    expect(complete.quality).toMatchObject({
+      disposition: "complete",
+      perProfileSourceRequestCaps: [21, 21],
+      perProfileAttributionRequestCaps: [12, 12],
+    });
+    expect(complete.totalExpectedCurrentRequests).toBe(98);
+  });
+
+  it("keeps cached profile quality opponent-independent", () => {
+    const cachedQuality = { ...miss, qualityHit: true };
+    const plan = buildGithubRequestPlan({
+      authenticationState: "explicit",
+      profiles: [cachedQuality, miss],
+      allowance: { ...allowance(65), authenticated: true, limit: 5_000 },
+    });
+    expect(plan.quality).toMatchObject({
+      cacheHits: 1,
+      disposition: "complete",
+      expectedCurrentRequests: 33,
+      completeSupportedRequests: 66,
+      perProfileSourceRequestCaps: [21, 21],
+      perProfileAttributionRequestCaps: [12, 12],
+    });
   });
 });
 

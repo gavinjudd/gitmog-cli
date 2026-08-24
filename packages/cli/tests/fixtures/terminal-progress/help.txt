@@ -21,8 +21,10 @@ Common options:
   --details    Full score breakdown
   --receipts   Every supporting receipt
   --export     Self-contained .html or .svg battle
+  --no-quality Disable the automatic code-quality preview
 
 Coverage is the share of the public scorecard Git Mog could measure.
 If GitHub's anonymous limit is low, Git Mog may offer one-time sign-in.
+Code Quality Preview is parser-backed and never affects the winner.
 Entertainment based on public evidence—not a hiring score.
 More options: gitmog --help-all

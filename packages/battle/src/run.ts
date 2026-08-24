@@ -1,5 +1,6 @@
 import {
   collectProfileSnapshot,
+  collectQualitySource,
   normalizeGithubLogin,
   type CollectProfileOptions,
   type GithubError,
@@ -21,6 +22,14 @@ import {
   type ProfileScorecard,
   type RoastMode,
 } from "@gitmog/scoring";
+import {
+  analyzeQualitySourceFiles,
+  qualityResultCacheKey,
+  type QualityJudgePair,
+  type QualityJudgeResult,
+  type QualityLimitation,
+  type QualityResultCache,
+} from "@gitmog/quality-judge";
 
 import type { BattleError } from "./errors.js";
 
@@ -30,6 +39,7 @@ export type BattleServiceResult =
       readonly battle: BattleResult;
       readonly sourceAnalysis: SourceAnalysisResult;
       readonly story: StoryResult;
+      readonly qualityPreview: QualityJudgePair;
     }
   | { readonly ok: false; readonly error: BattleError };
 
@@ -63,6 +73,7 @@ export type ProfileServiceResult =
         readonly total: number;
         readonly cap: number;
       };
+      readonly qualityPreview: QualityJudgeResult;
     }
   | { readonly ok: false; readonly error: BattleError };
 
@@ -108,7 +119,16 @@ export type AnalysisProgressEvent =
       readonly rateLimited: boolean;
     }
   | { readonly type: "story-start" }
-  | { readonly type: "story-complete" };
+  | { readonly type: "story-complete" }
+  | { readonly type: "quality-analysis-start" }
+  | {
+      readonly type: "quality-analysis-complete";
+      readonly status: "ready" | "partial" | "insufficient";
+      readonly files: number;
+      readonly repositories: number;
+      readonly sourceRequests: number;
+      readonly attributionRequests: number;
+    };
 
 export type AnalysisProgressReporter = (event: AnalysisProgressEvent) => void;
 
@@ -140,6 +160,16 @@ export interface BattleRequest {
   readonly sourceAnalysis?:
     Pick<CodeDnaOptions, "cache" | "cachePolicy" | "derivedCache"> | undefined;
   readonly onProgress?: AnalysisProgressReporter | undefined;
+  readonly quality?:
+    | {
+        readonly enabled: boolean;
+        readonly sourceRequestCaps?: { readonly left: number; readonly right: number } | undefined;
+        readonly attributionRequestCaps?:
+          { readonly left: number; readonly right: number } | undefined;
+        readonly cache?: QualityResultCache | null | undefined;
+        readonly cachePolicy?: PersistentCachePolicy | undefined;
+      }
+    | undefined;
 }
 
 export interface ProfileRequest {
@@ -153,6 +183,103 @@ export interface ProfileRequest {
   readonly sourceAnalysis?:
     Pick<CodeDnaOptions, "cache" | "cachePolicy" | "derivedCache"> | undefined;
   readonly onProgress?: AnalysisProgressReporter | undefined;
+  readonly quality?:
+    | {
+        readonly enabled: boolean;
+        readonly sourceRequestCap?: number | undefined;
+        readonly attributionRequestCap?: number | undefined;
+        readonly cache?: QualityResultCache | null | undefined;
+        readonly cachePolicy?: PersistentCachePolicy | undefined;
+      }
+    | undefined;
+}
+
+const qualityLimitations = (
+  limitations: readonly {
+    readonly code: string;
+    readonly detail: string;
+    readonly files: number;
+  }[],
+): readonly QualityLimitation[] =>
+  limitations.map((limitation) => ({
+    code:
+      limitation.code === "source-budget"
+        ? "source-budget"
+        : limitation.code === "attribution-budget"
+          ? "attribution-budget"
+          : "source-unavailable",
+    detail: limitation.detail,
+    files: limitation.files,
+  }));
+
+const insufficientQuality = (detail: string): QualityJudgeResult =>
+  analyzeQualitySourceFiles([], {
+    collectionLimitations: [{ code: "source-unavailable", detail, files: 0 }],
+    requestBudget: {
+      sourcePlanned: 0,
+      sourceRequests: 0,
+      attributionPlanned: 0,
+      attributionRequests: 0,
+    },
+  });
+
+async function runQualityPreview(
+  snapshot: ProfileSnapshot,
+  request: Pick<BattleRequest, "token" | "fetchImpl"> & {
+    readonly quality?:
+      | {
+          readonly cache?: QualityResultCache | null | undefined;
+          readonly cachePolicy?: PersistentCachePolicy | undefined;
+        }
+      | undefined;
+  },
+  caps: { readonly source: number; readonly attribution: number },
+): Promise<QualityJudgeResult> {
+  if (caps.source <= 0)
+    return insufficientQuality(
+      "Quality Preview was disabled or the bounded request plan allowed no source collection.",
+    );
+  const cacheKey = qualityResultCacheKey({
+    snapshotKey: snapshot.snapshotKey,
+    login: snapshot.profile.login,
+    immutableRepositories: snapshot.inspections
+      .map((inspection) => ({
+        repository: inspection.fullName,
+        treeSha: inspection.treeSha,
+      }))
+      .toSorted((left, right) => left.repository.localeCompare(right.repository)),
+    sourceRequestCap: caps.source,
+    attributionRequestCap: caps.attribution,
+  });
+  if (request.quality?.cachePolicy?.read !== false) {
+    const cached = request.quality?.cache?.get(cacheKey);
+    if (cached !== undefined) return cached;
+  }
+  try {
+    const collected = await collectQualitySource(snapshot, {
+      ...(request.token === undefined || request.token === "" ? {} : { token: request.token }),
+      ...(request.fetchImpl === undefined ? {} : { fetchImpl: request.fetchImpl }),
+      sourceRequestCap: caps.source,
+      attributionRequestCap: caps.attribution,
+    });
+    const result = analyzeQualitySourceFiles(collected.files, {
+      collectionLimitations: qualityLimitations(collected.limitations),
+      requestBudget: {
+        sourcePlanned: caps.source,
+        sourceRequests: collected.sourceRequests,
+        attributionPlanned: caps.attribution,
+        attributionRequests: collected.attributionRequests,
+      },
+    });
+    if (request.quality?.cachePolicy?.write !== false) {
+      request.quality?.cache?.set(cacheKey, result);
+    }
+    return result;
+  } catch {
+    return insufficientQuality(
+      "Quality Preview stopped safely without affecting the canonical result.",
+    );
+  }
 }
 
 const reportProgress = (
@@ -344,11 +471,31 @@ export async function runProfile(request: ProfileRequest): Promise<ProfileServic
     requests: sourceRequests,
     rateLimited: readingWasRateLimited(sourceAnalysis),
   });
+  reportProgress(request.onProgress, { type: "quality-analysis-start" });
+  const qualityPreview = await runQualityPreview(
+    prepared.snapshot,
+    request,
+    request.quality?.enabled === false
+      ? { source: 0, attribution: 0 }
+      : {
+          source: request.quality?.sourceRequestCap ?? 21,
+          attribution: request.quality?.attributionRequestCap ?? 12,
+        },
+  );
+  reportProgress(request.onProgress, {
+    type: "quality-analysis-complete",
+    status: qualityPreview.status,
+    files: qualityPreview.maintainedCodebase.files,
+    repositories: qualityPreview.maintainedCodebase.repositories,
+    sourceRequests: qualityPreview.requestBudget.sourceRequests,
+    attributionRequests: qualityPreview.requestBudget.attributionRequests,
+  });
   return {
     ok: true,
     profile: prepared.profile,
     snapshot: prepared.snapshot,
     sourceAnalysis,
+    qualityPreview,
     requestBudget: {
       metadata: prepared.metadataRequestsUsed,
       source: sourceRequests,
@@ -498,10 +645,50 @@ export async function runBattle(request: BattleRequest): Promise<BattleServiceRe
       reportProgress(request.onProgress, { type: "story-complete" });
     },
   });
+  reportProgress(request.onProgress, { type: "quality-analysis-start" });
+  const qualityCaps =
+    request.quality?.enabled === false
+      ? { sourceRequestCaps: { left: 0, right: 0 }, attributionRequestCaps: { left: 0, right: 0 } }
+      : {
+          sourceRequestCaps: request.quality?.sourceRequestCaps ?? { left: 21, right: 21 },
+          attributionRequestCaps: request.quality?.attributionRequestCaps ?? {
+            left: 12,
+            right: 12,
+          },
+        };
+  const [leftQuality, rightQuality] = await Promise.all([
+    runQualityPreview(snapshots.left, request, {
+      source: qualityCaps.sourceRequestCaps.left,
+      attribution: qualityCaps.attributionRequestCaps.left,
+    }),
+    runQualityPreview(snapshots.right, request, {
+      source: qualityCaps.sourceRequestCaps.right,
+      attribution: qualityCaps.attributionRequestCaps.right,
+    }),
+  ]);
+  const qualityPreview: QualityJudgePair = { left: leftQuality, right: rightQuality };
+  reportProgress(request.onProgress, {
+    type: "quality-analysis-complete",
+    status:
+      leftQuality.status === "ready" && rightQuality.status === "ready"
+        ? "ready"
+        : leftQuality.status === "insufficient" && rightQuality.status === "insufficient"
+          ? "insufficient"
+          : "partial",
+    files: leftQuality.maintainedCodebase.files + rightQuality.maintainedCodebase.files,
+    repositories:
+      leftQuality.maintainedCodebase.repositories + rightQuality.maintainedCodebase.repositories,
+    sourceRequests:
+      leftQuality.requestBudget.sourceRequests + rightQuality.requestBudget.sourceRequests,
+    attributionRequests:
+      leftQuality.requestBudget.attributionRequests +
+      rightQuality.requestBudget.attributionRequests,
+  });
   return {
     ok: true,
     battle,
     ...analysis,
+    qualityPreview,
   };
 }
 

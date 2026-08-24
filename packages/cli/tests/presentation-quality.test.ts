@@ -228,12 +228,12 @@ describe("human-readable presentation contract", () => {
     expect(readyLines[1]).toContain("◆ @strongmaintainer WINS");
     expect(readyLines[2]).toBe("Coverage: @strongmaintainer 59% · @sidequester 54%");
     expect(readyLines.length).toBeGreaterThanOrEqual(24);
-    expect(readyLines.length).toBeLessThanOrEqual(30);
+    expect(readyLines.length).toBeLessThanOrEqual(36);
     expect(limited.stdout.trim().split("\n").length).toBeGreaterThanOrEqual(24);
-    expect(limited.stdout.trim().split("\n").length).toBeLessThanOrEqual(30);
+    expect(limited.stdout.trim().split("\n").length).toBeLessThanOrEqual(36);
     expect(profile.stdout.trim().split("\n").length).toBeGreaterThanOrEqual(12);
-    expect(profile.stdout.trim().split("\n").length).toBeLessThanOrEqual(16);
-    expect(narrow.stdout.trim().split("\n").length).toBeLessThanOrEqual(38);
+    expect(profile.stdout.trim().split("\n").length).toBeLessThanOrEqual(24);
+    expect(narrow.stdout.trim().split("\n").length).toBeLessThanOrEqual(48);
 
     const fight = readyLines.slice(
       readyLines.indexOf("THE FIGHT") + 1,
@@ -242,7 +242,7 @@ describe("human-readable presentation contract", () => {
     expect(fight).toHaveLength(3);
     const read = readyLines.slice(
       readyLines.indexOf("THE READ") + 1,
-      readyLines.indexOf("RECEIPTS") - 1,
+      readyLines.indexOf("CODE QUALITY · PREVIEW") - 1,
     );
     expect(read.length).toBeLessThanOrEqual(4);
   });
@@ -262,7 +262,9 @@ describe("human-readable presentation contract", () => {
   it("renders one compact read per profile and a factual classifier-selected weakness", async () => {
     const result = await invoke(battleContext(), "strongmaintainer", "sidequester");
     const lines = result.stdout.trim().split("\n");
-    const read = lines.slice(lines.indexOf("THE READ") + 1, lines.indexOf("RECEIPTS")).join("\n");
+    const read = lines
+      .slice(lines.indexOf("THE READ") + 1, lines.indexOf("CODE QUALITY · PREVIEW"))
+      .join("\n");
     expect(read.match(/^@strongmaintainer\b/gmu)).toHaveLength(1);
     expect(read.match(/^@sidequester\b/gmu)).toHaveLength(1);
     expect(read).toContain("64% of sampled commit messages are one word or shorter.");

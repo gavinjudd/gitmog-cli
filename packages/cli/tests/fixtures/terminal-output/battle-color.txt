@@ -14,6 +14,13 @@
 [36m@sidequester —[0m [32mUpdated publicly today.[0m
   [31m64% of sampled commit messages are one word or shorter.[0m [2m[6][0m
 
+[36mCODE QUALITY · PREVIEW[0m
+Maintained codebase [36m@strongmaintainer[0m 81 [2m(100%)[0m · [36m@sidequester[0m 89 [2m(100%)[0m
+Attributed code [36m@strongmaintainer[0m 81 [2m(67%)[0m · [36m@sidequester[0m 89 [2m(100%)[0m
+[36m@strongmaintainer[0m — [32m0 high-complexity funcs[0m · orchestrator/migrate.ts:1 [2m[LQ1][0m
+[36m@sidequester[0m — [32m0 high-complexity funcs[0m · project-0/index.js:1 [2m[RQ1][0m
+[2mNot used in the winner pending human calibration.[0m
+
 [36mRECEIPTS[0m
 [2m[1] [0mVersioned releases — 15 vs 0
 [2m[2] [0mProject automation — 3/3 vs 0/3

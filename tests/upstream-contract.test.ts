@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -29,6 +29,12 @@ function readManifest(...segments: readonly string[]): PackageManifest {
   }
   return parsed;
 }
+
+const sourceTextBelow = (directory: string): string =>
+  readdirSync(directory, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && /\.[cm]?[jt]sx?$/u.test(entry.name))
+    .map((entry) => readFileSync(resolve(entry.parentPath, entry.name), "utf8"))
+    .join("\n");
 
 describe("public upstream contract", () => {
   it("owns the package repository metadata", () => {
@@ -96,5 +102,16 @@ describe("public upstream contract", () => {
     expect(metadata.package.installScripts).toEqual({});
     expect(metadata.quality.activation.state).toBe("disabled");
     expect(metadata.evidence).toHaveProperty("platform-acceptance.json");
+  });
+
+  it("keeps canonical scoring and Quality Judge dependency directions separate", () => {
+    const scoringManifest = readManifest("packages", "scoring", "package.json");
+    const qualityManifest = readManifest("packages", "quality-judge", "package.json");
+    const scoringSource = sourceTextBelow(resolve(root, "packages", "scoring", "src"));
+    const qualitySource = sourceTextBelow(resolve(root, "packages", "quality-judge", "src"));
+    expect(scoringManifest.dependencies ?? {}).not.toHaveProperty("@gitmog/quality-judge");
+    expect(qualityManifest.dependencies ?? {}).not.toHaveProperty("@gitmog/scoring");
+    expect(scoringSource).not.toMatch(/quality-judge|qualityPreview/u);
+    expect(qualitySource).not.toMatch(/@gitmog\/scoring/u);
   });
 });

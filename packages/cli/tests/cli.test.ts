@@ -496,6 +496,7 @@ describe("complete result", () => {
     expect(Object.keys(payload).sort()).toEqual([
       "battle",
       "presentationVerdict",
+      "qualityPreview",
       "sourceAnalysis",
       "story",
     ]);
@@ -548,7 +549,7 @@ describe("complete result", () => {
     expect(result.stdout).not.toContain("Deterministic public-GitHub analysis");
     expect(result.stdout).not.toContain("NOT SCORED");
     expect(result.stdout.trim().split("\n").length).toBeGreaterThanOrEqual(24);
-    expect(result.stdout.trim().split("\n").length).toBeLessThanOrEqual(30);
+    expect(result.stdout.trim().split("\n").length).toBeLessThanOrEqual(36);
   });
 
   it("keeps required support outside the optional receipt presentation", async () => {

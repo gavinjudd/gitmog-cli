@@ -14,6 +14,13 @@ THE READ
 @assertionpilled — Tests: 63 per 100 source files in inspected trees.
   3 established projects, zero version tags. [6]
 
+CODE QUALITY · PREVIEW
+Maintained codebase @tagmachine 81 (100%) · @assertionpilled 81 (100%)
+Attributed code @tagmachine 81 (67%) · @assertionpilled 81 (68%)
+@tagmachine — 0 high-complexity funcs · packager/migrate.ts:1 [LQ1]
+@assertionpilled — 0 high-complexity funcs · validator/cli.ts:1 [RQ1]
+Not used in the winner pending human calibration.
+
 RECEIPTS
 [1] Automated tests — 3/3 vs 3/3
 [2] Active weeks — 0/12 vs 12/12

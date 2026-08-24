@@ -28,6 +28,11 @@ import {
   isDerivedCacheSafe,
   isDerivedFeatureEntry,
 } from "@gitmog/source-analysis";
+import {
+  DEFAULT_QUALITY_RESULT_TTL_MS,
+  isQualityCacheSafe,
+  isQualityJudgeResult,
+} from "@gitmog/quality-judge";
 
 import { isProfileSnapshot } from "./snapshot-store.js";
 
@@ -35,9 +40,9 @@ export const MAX_CACHE_BYTES = 25 * 1024 * 1024;
 export const CACHE_MARKER_NAME = ".gitmog-cache-v1";
 const CACHE_MARKER_CONTENT = "gitmog-cache-v1\n";
 const FUTURE_CLOCK_SKEW_MS = 5 * 60 * 1000;
-const EXPECTED_DIRECTORIES = new Set(["snapshots", "analysis", "features"]);
+const EXPECTED_DIRECTORIES = new Set(["snapshots", "analysis", "features", "quality"]);
 
-type CacheKind = "snapshot" | "analysis" | "feature";
+type CacheKind = "snapshot" | "analysis" | "feature" | "quality";
 
 interface CacheEntry {
   readonly path: string;
@@ -58,6 +63,7 @@ export interface CacheInspection {
   readonly snapshotEntries: number;
   readonly analysisEntries: number;
   readonly derivedFeatureEntries: number;
+  readonly qualityEntries: number;
   readonly rawSourceStored: false;
   readonly npmCacheControlled: false;
 }
@@ -483,7 +489,7 @@ function snapshotEntry(value: unknown, now: number): { createdAt: number } | nul
 
 function analysisEntry(
   value: unknown,
-  kind: "analysis" | "feature",
+  kind: "analysis" | "feature" | "quality",
   now: number,
 ): { createdAt: number } | null {
   if (
@@ -493,18 +499,27 @@ function analysisEntry(
     typeof value.checksum !== "string" ||
     !/^[0-9a-f]{64}$/u.test(value.checksum) ||
     value.checksum !== sha256(value.value) ||
-    !isDerivedCacheSafe(value.value)
+    !(kind === "quality" ? isQualityCacheSafe(value.value) : isDerivedCacheSafe(value.value))
   ) {
     return null;
   }
-  const ttl = kind === "analysis" ? DEFAULT_CODE_DNA_TTL_MS : DEFAULT_DERIVED_FEATURE_TTL_MS;
+  const ttl =
+    kind === "analysis"
+      ? DEFAULT_CODE_DNA_TTL_MS
+      : kind === "feature"
+        ? DEFAULT_DERIVED_FEATURE_TTL_MS
+        : DEFAULT_QUALITY_RESULT_TTL_MS;
   const createdAt = value.expiresAt - ttl;
   if (
     value.expiresAt <= now ||
     value.expiresAt > now + ttl + FUTURE_CLOCK_SKEW_MS ||
     createdAt < 0 ||
     createdAt > now + FUTURE_CLOCK_SKEW_MS ||
-    (kind === "analysis" ? !isCodeDnaCacheEntry(value.value) : !isDerivedFeatureEntry(value.value))
+    (kind === "analysis"
+      ? !isCodeDnaCacheEntry(value.value)
+      : kind === "feature"
+        ? !isDerivedFeatureEntry(value.value)
+        : !isQualityJudgeResult(value.value))
   ) {
     return null;
   }
@@ -518,6 +533,9 @@ function kindFor(directoryName: string, fileName: string): CacheKind | null {
   }
   if (directoryName === "features" && /^[0-9a-f]{64}\.features\.json$/u.test(fileName)) {
     return "feature";
+  }
+  if (directoryName === "quality" && /^[0-9a-f]{64}\.quality\.json$/u.test(fileName)) {
+    return "quality";
   }
   return null;
 }
@@ -641,6 +659,7 @@ function summarize(
     snapshotEntries: entries.filter((entry) => entry.kind === "snapshot").length,
     analysisEntries: entries.filter((entry) => entry.kind === "analysis").length,
     derivedFeatureEntries: entries.filter((entry) => entry.kind === "feature").length,
+    qualityEntries: entries.filter((entry) => entry.kind === "quality").length,
     rawSourceStored: false,
     npmCacheControlled: false,
   };
