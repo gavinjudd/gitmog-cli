@@ -1,0 +1,15 @@
+{
+  "name": "@gitmog/analyzers",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure, non-executing repository structure, language coverage, source-feature and secret-shaped-value analysis.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
+}

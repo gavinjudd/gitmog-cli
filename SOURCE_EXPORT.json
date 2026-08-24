@@ -1,0 +1,8 @@
+{
+  "schema": "1.0.0-public-runtime-source-allowlist",
+  "canonicalRepository": "Incit-AI/Git-Mog",
+  "sourceCommit": "251cbd6977d37bf2fa29f2bd72883802c800c649",
+  "package": "gitmog@0.2.2",
+  "allowlist": "config/public-runtime-source-allowlist.json",
+  "historyIncluded": false
+}

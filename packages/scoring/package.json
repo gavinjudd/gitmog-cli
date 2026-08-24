@@ -1,0 +1,18 @@
+{
+  "name": "@gitmog/scoring",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Versioned deterministic scoring, the fast-scan scorecard, pairwise battles and the evidence-triggered meme engine.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@gitmog/analyzers": "workspace:*"
+  }
+}

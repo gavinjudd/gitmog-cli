@@ -1,0 +1,26 @@
+{
+  "name": "@gitmog/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Git Mog CLI: one command for full bounded deterministic public-GitHub analysis.",
+  "bin": {
+    "gitmog": "./bin/gitmog.mjs",
+    "git-mog": "./bin/gitmog.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@gitmog/battle": "workspace:*",
+    "@gitmog/github": "workspace:*",
+    "@gitmog/personality": "workspace:*",
+    "@gitmog/scoring": "workspace:*",
+    "@gitmog/source-analysis": "workspace:*"
+  }
+}

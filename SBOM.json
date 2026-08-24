@@ -1,0 +1,24 @@
+{
+  "schema": "gitmog-public-runtime-sbom-v1",
+  "package": {
+    "name": "gitmog",
+    "version": "0.2.2",
+    "runtimeDependencies": []
+  },
+  "developmentDependencies": {
+    "@types/node": "24.13.3",
+    "rolldown": "1.2.4",
+    "typescript": "6.0.3"
+  },
+  "workspacePackages": [
+    "packages/config",
+    "packages/analyzers",
+    "packages/github",
+    "packages/personality",
+    "packages/scoring",
+    "packages/source-analysis",
+    "packages/battle",
+    "packages/cli",
+    "packages/distribution"
+  ]
+}

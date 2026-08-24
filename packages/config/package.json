@@ -1,0 +1,11 @@
+{
+  "name": "@gitmog/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared TypeScript, ESLint and Vitest presets. The single home for repository configuration.",
+  "exports": {
+    "./typescript/base.json": "./typescript/base.json",
+    "./typescript/node-lib.json": "./typescript/node-lib.json"
+  }
+}

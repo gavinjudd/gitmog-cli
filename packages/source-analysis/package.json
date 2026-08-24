@@ -1,0 +1,21 @@
+{
+  "name": "@gitmog/source-analysis",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bounded deterministic Code DNA, authored story selection, and safe derived-feature caching.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@gitmog/analyzers": "workspace:*",
+    "@gitmog/github": "workspace:*",
+    "@gitmog/personality": "workspace:*",
+    "@gitmog/scoring": "workspace:*"
+  }
+}

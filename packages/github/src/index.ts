@@ -1,0 +1,120 @@
+export {
+  createSnapshotCache,
+  snapshotCacheKey,
+  DEFAULT_SNAPSHOT_TTL_MS,
+  SNAPSHOT_CACHE_KEY_VERSION,
+  type SnapshotCache,
+} from "./cache.js";
+export {
+  collectProfileSnapshot,
+  defaultSnapshotCache,
+  REQUEST_BUDGETS,
+  type CollectProfileOptions,
+} from "./collect.js";
+export { digest, stableStringify } from "./digest.js";
+export { GITHUB_GRAPHQL_URL, GITHUB_REST_BASE_URL } from "./endpoints.js";
+export {
+  DEVICE_FLOW_VERSION,
+  GITMOG_OAUTH_CLIENT_ID,
+  authorizeGithubDevice,
+  type DeviceAuthorizationError,
+  type DeviceAuthorizationOptions,
+  type DeviceAuthorizationPrompt,
+  type DeviceAuthorizationResult,
+} from "./device-flow.js";
+export {
+  GithubHttpClient,
+  DEFAULT_REQUEST_TIMEOUT_MS,
+  DEFAULT_USER_AGENT,
+  type GithubFetchResult,
+  type GithubHttpOptions,
+} from "./http.js";
+export {
+  isBotName,
+  MAX_COMMIT_SAMPLE,
+  MAX_TREE_ENTRIES,
+  normalizeCommits,
+  normalizeEvent,
+  normalizeLanguages,
+  normalizeProfile,
+  normalizeReleases,
+  normalizeRepository,
+  normalizeTree,
+} from "./normalize.js";
+export { isEligibleRepository, selectionScore, selectRepositoriesForInspection } from "./select.js";
+export {
+  CODE_DNA_SAMPLE_VERSION,
+  MAX_SAMPLE_BYTES_PER_FILE,
+  MAX_SAMPLE_BYTES_TOTAL,
+  SOURCE_SAMPLE_VERSION,
+  SOURCE_ANALYZER_VERSION,
+  collectSourceSamples,
+  isEligibleSourcePath,
+  isTestSamplePath,
+  rankSourceFiles,
+  resolveSourceOpportunityScope,
+  selectSampleRepositories,
+  sourceFileScore,
+  type CollectSourceSampleOptions,
+  type SelectedSourceFile,
+  type SourceTreeBlob,
+} from "./source-sample.js";
+export type {
+  CodeSample,
+  CodeSampleReceipt,
+  DerivedFeatureCache,
+  DerivedFeatureCacheEntry,
+  DerivedFeatureCacheKey,
+  CollectionBudget,
+  CollectionResult,
+  CommitSample,
+  EventWindow,
+  GithubError,
+  GithubErrorCode,
+  GithubProfile,
+  PersistentCachePolicy,
+  ProfileSnapshot,
+  PublicEvent,
+  RateLimitStatus,
+  RepositoryCommit,
+  RepositoryInspection,
+  RepositorySummary,
+  RepositoryTreeEntry,
+  SourceSampleFailure,
+  SourceSampleFailureReason,
+  SourceSampleSet,
+  SourceOpportunityScope,
+} from "./types.js";
+export {
+  COMPLETE_PROFILE_REQUESTS,
+  MAXIMUM_SOURCE_REQUESTS_PER_PROFILE,
+  MINIMUM_USEFUL_PROFILE_REQUESTS,
+  REQUEST_PLAN_VERSION,
+  allowanceFromKnownHeaders,
+  buildGithubRequestPlan,
+  readGithubCoreAllowance,
+  type AuthenticationState,
+  type BudgetDisposition,
+  type BuildRequestPlanInput,
+  type GithubAllowanceResult,
+  type GithubCoreAllowance,
+  type GithubRequestPlan,
+  type RateLimitClass,
+  type ReadGithubAllowanceOptions,
+  type RequestPlanCacheState,
+} from "./request-plan.js";
+export {
+  EVENTS_PER_PAGE,
+  MAX_EVENT_PAGES,
+  MAX_PROFILE_EVENTS,
+  NORMAL_PERSISTENT_CACHE_POLICY,
+  PROFILE_SNAPSHOT_SCHEMA_VERSION,
+  SOURCE_SAMPLE_FAILURE_REASONS,
+} from "./types.js";
+export {
+  GITHUB_USERNAME_MAX_LENGTH,
+  isGithubUsername,
+  normalizeGithubLogin,
+  parseGithubUsername,
+  type GithubUsername,
+} from "./username.js";

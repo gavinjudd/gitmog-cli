@@ -1,0 +1,29 @@
+{
+  "name": "gitmog-public-runtime-source",
+  "version": "0.2.2",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=24.19.0 <25",
+    "pnpm": "11.21.0"
+  },
+  "scripts": {
+    "build": "pnpm exec tsc -p packages/analyzers/tsconfig.build.json && pnpm exec tsc -p packages/github/tsconfig.build.json && pnpm exec tsc -p packages/personality/tsconfig.build.json && pnpm exec tsc -p packages/scoring/tsconfig.build.json && pnpm exec tsc -p packages/source-analysis/tsconfig.build.json && pnpm exec tsc -p packages/battle/tsconfig.build.json && pnpm exec tsc -p packages/cli/tsconfig.build.json && node packages/distribution/build.mjs",
+    "test": "pnpm run build && node scripts/package-acceptance.mjs"
+  },
+  "devDependencies": {
+    "@gitmog/config": "workspace:*",
+    "@gitmog/analyzers": "workspace:*",
+    "@gitmog/github": "workspace:*",
+    "@gitmog/personality": "workspace:*",
+    "@gitmog/scoring": "workspace:*",
+    "@gitmog/source-analysis": "workspace:*",
+    "@gitmog/battle": "workspace:*",
+    "@gitmog/cli": "workspace:*",
+    "@types/node": "24.13.3",
+    "rolldown": "1.2.4",
+    "typescript": "6.0.3"
+  }
+}

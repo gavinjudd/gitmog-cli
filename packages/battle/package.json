@@ -1,0 +1,21 @@
+{
+  "name": "@gitmog/battle",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Orchestration: collect two public GitHub snapshots, score them, and build the battle. The one path every surface uses.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@gitmog/github": "workspace:*",
+    "@gitmog/personality": "workspace:*",
+    "@gitmog/scoring": "workspace:*",
+    "@gitmog/source-analysis": "workspace:*"
+  }
+}
