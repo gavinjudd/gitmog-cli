@@ -230,37 +230,60 @@ const isWordCharacter = (character: string): boolean =>
   character === "_";
 
 const isWhitespace = (character: string): boolean =>
-  character === " " || character === "\t" || character === "\r" || character === "\n";
+  character.length > 0 && character.trim().length === 0;
 
-/** Counts at most one SELECT ... FROM marker per line, matching the prior greedy
- * lexical signal without a backtracking expression over untrusted source. */
-const countSqlSelectFromMarkers = (source: string): number => {
-  let total = 0;
-  for (const rawLine of source.split("\n")) {
-    const line = rawLine.toLowerCase();
-    let searchFrom = 0;
-    let found = false;
-    while (!found) {
-      const selectIndex = line.indexOf("select", searchFrom);
-      if (selectIndex < 0) break;
-      const before = selectIndex === 0 ? "" : (line[selectIndex - 1] ?? "");
-      let cursor = selectIndex + "select".length;
-      if ((selectIndex === 0 || !isWordCharacter(before)) && isWhitespace(line[cursor] ?? "")) {
-        while (isWhitespace(line[cursor] ?? "")) cursor += 1;
-        while (cursor < line.length) {
-          const fromIndex = line.indexOf("from", cursor);
-          if (fromIndex < 0) break;
-          const fromBefore = fromIndex === 0 ? "" : (line[fromIndex - 1] ?? "");
-          if (isWhitespace(fromBefore)) {
-            found = true;
-            break;
-          }
-          cursor = fromIndex + "from".length;
-        }
-      }
-      searchFrom = selectIndex + "select".length;
+const isLineTerminator = (character: string): boolean =>
+  character === "\n" || character === "\r" || character === "\u2028" || character === "\u2029";
+
+const sqlMarkerEnd = (source: string, selectIndex: number): number | null => {
+  const afterSelect = selectIndex + "select".length;
+  if (!isWhitespace(source[afterSelect] ?? "")) return null;
+
+  let cursor = afterSelect;
+  while (isWhitespace(source[cursor] ?? "")) cursor += 1;
+
+  // The earlier expression could divide a run of two or more whitespace characters
+  // between its leading and trailing groups when SELECT was followed directly by FROM.
+  if (cursor - afterSelect >= 2 && source.startsWith("from", cursor)) {
+    return cursor + "from".length;
+  }
+
+  while (cursor < source.length) {
+    if (!isWhitespace(source[cursor] ?? "")) {
+      cursor += 1;
+      continue;
     }
-    if (found) total += 1;
+
+    let crossedLineTerminator = false;
+    while (isWhitespace(source[cursor] ?? "")) {
+      if (isLineTerminator(source[cursor] ?? "")) crossedLineTerminator = true;
+      cursor += 1;
+    }
+    if (source.startsWith("from", cursor)) return cursor + "from".length;
+    if (crossedLineTerminator) return null;
+  }
+  return null;
+};
+
+/** Matches the prior case-insensitive SELECT whitespace content whitespace FROM
+ * lexical signal, including its bounded multiline form, without regex backtracking. */
+const countSqlSelectFromMarkers = (source: string): number => {
+  const lower = source.toLowerCase();
+  let total = 0;
+  let searchFrom = 0;
+  while (searchFrom < lower.length) {
+    const selectIndex = lower.indexOf("select", searchFrom);
+    if (selectIndex < 0) break;
+    const before = selectIndex === 0 ? "" : (lower[selectIndex - 1] ?? "");
+    if (selectIndex === 0 || !isWordCharacter(before)) {
+      const markerEnd = sqlMarkerEnd(lower, selectIndex);
+      if (markerEnd !== null) {
+        total += 1;
+        searchFrom = markerEnd;
+        continue;
+      }
+    }
+    searchFrom = selectIndex + "select".length;
   }
   return total;
 };

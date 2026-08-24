@@ -96,10 +96,21 @@ def dijkstra(graph: dict[str, list[str]]) -> list[str]:
   it("counts SQL data markers without backtracking on bounded hostile whitespace", () => {
     const hostile = "SELECT" + " ".repeat(20 * 1024 - 6);
     expect(extractSourceFeatures("src/query.ts", hostile).dataLibraryMarkers).toBe(0);
+    expect(extractSourceFeatures("src/query.ts", "SELECT ".repeat(1_700)).dataLibraryMarkers).toBe(
+      0,
+    );
     expect(
       extractSourceFeatures("src/query.ts", "const rows = SELECT value FROM table")
         .dataLibraryMarkers,
     ).toBe(1);
+    expect(
+      extractSourceFeatures("src/query.ts", "const rows = SELECT\n  id, name\nFROM users")
+        .dataLibraryMarkers,
+    ).toBe(1);
+    expect(
+      extractSourceFeatures("src/query.ts", "const rows = SELECT\n  id,\n  name FROM users")
+        .dataLibraryMarkers,
+    ).toBe(0);
   });
 
   it("counts Go protocol and guard markers", () => {
