@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "1.0.0-synthetic-fixtures",
+  "license": "MIT",
+  "containsHumanJudgments": false,
+  "containsPublicSource": false,
+  "cases": [
+    {
+      "id": "typescript-bounded-contract",
+      "path": "typescript/bounded-contract.ts",
+      "language": "typescript",
+      "expectedMetrics": ["validation", "error-handling"]
+    },
+    {
+      "id": "javascript-unsafe-evaluation",
+      "path": "javascript/unsafe-evaluation.js",
+      "language": "javascript",
+      "expectedMetrics": ["dynamic-evaluation"]
+    },
+    {
+      "id": "typescript-hostile-depth",
+      "path": "typescript/hostile-depth.ts",
+      "language": "typescript",
+      "expectedMetrics": ["nesting"]
+    }
+  ]
+}

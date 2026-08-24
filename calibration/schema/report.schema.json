@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gavinjudd/gitmog-cli/calibration/schema/report.schema.json",
+  "title": "Quality Judge activation calibration report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "state",
+    "versions",
+    "corpus",
+    "reviewers",
+    "judgments",
+    "holdout",
+    "thresholds",
+    "biasReview",
+    "errorReview",
+    "independentReview",
+    "artifactDigests"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0-blinded-pairwise" },
+    "state": { "const": "complete" },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "result",
+        "parser",
+        "sourceSelection",
+        "attribution",
+        "dimensionFormula",
+        "calibrationSchema",
+        "presentation",
+        "cache"
+      ],
+      "properties": {
+        "result": { "type": "string", "minLength": 1 },
+        "parser": { "type": "string", "minLength": 1 },
+        "sourceSelection": { "type": "string", "minLength": 1 },
+        "attribution": { "type": "string", "minLength": 1 },
+        "dimensionFormula": { "type": "string", "minLength": 1 },
+        "calibrationSchema": { "const": "1.0.0-blinded-pairwise" },
+        "presentation": { "type": "string", "minLength": 1 },
+        "cache": { "type": "string", "minLength": 1 }
+      }
+    },
+    "corpus": {
+      "type": "object",
+      "required": ["repositories", "activatedLanguages"],
+      "properties": {
+        "repositories": { "type": "integer", "minimum": 75, "maximum": 150 },
+        "activatedLanguages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["typescript", "javascript", "python", "go"] }
+        }
+      }
+    },
+    "reviewers": {
+      "type": "object",
+      "required": ["qualifiedHumans", "maximumJudgmentShare"],
+      "properties": {
+        "qualifiedHumans": { "type": "integer", "minimum": 3 },
+        "maximumJudgmentShare": { "type": "number", "minimum": 0, "maximum": 0.5 }
+      }
+    },
+    "judgments": { "type": "integer", "minimum": 200 },
+    "holdout": {
+      "type": "object",
+      "required": ["pairShare", "untouchedDuringTuning"],
+      "properties": {
+        "pairShare": { "type": "number", "minimum": 0.25, "maximum": 1 },
+        "untouchedDuringTuning": { "const": true }
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "interRaterReliability",
+        "overallAgreement",
+        "languageAgreement",
+        "rankCorrelation"
+      ],
+      "properties": {
+        "interRaterReliability": { "type": "number", "minimum": 0.6 },
+        "overallAgreement": { "type": "number", "minimum": 0.7 },
+        "languageAgreement": { "type": "number", "minimum": 0.62 },
+        "rankCorrelation": { "type": "number", "minimum": 0.55 }
+      }
+    },
+    "biasReview": { "type": "object" },
+    "errorReview": { "type": "object" },
+    "independentReview": { "type": "object" },
+    "artifactDigests": {
+      "type": "object",
+      "minProperties": 4,
+      "additionalProperties": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+    }
+  }
+}
