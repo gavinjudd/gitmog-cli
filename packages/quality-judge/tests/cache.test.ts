@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { analyzeQualitySourceFiles } from "../src/analyze.js";
+import { analyzeQualitySourceFiles } from "../src/sync-analyze.js";
 import {
   createFileQualityResultCache,
   isQualityCacheSafe,

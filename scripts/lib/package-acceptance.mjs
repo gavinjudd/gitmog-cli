@@ -21,6 +21,7 @@ export const PUBLISHED_PACKAGE_FILES = Object.freeze([
   "bin/gitmog.mjs",
   "dist/build.json",
   "dist/gitmog.mjs",
+  "dist/parsers/quality-worker.mjs",
   "package.json",
 ]);
 

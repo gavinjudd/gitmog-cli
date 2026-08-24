@@ -5,19 +5,30 @@ import { digest } from "@gitmog/github";
 import ts from "typescript";
 
 import {
+  QUALITY_MAX_AST_NODES,
+  QUALITY_MAX_DECODED_BYTES_PER_FILE,
+  QUALITY_MAX_IMPORTS,
+  QUALITY_MAX_NESTING_DEPTH,
+  QUALITY_MAX_SYMBOLS,
+  QUALITY_MAX_TOKENS,
+  QUALITY_PARSER_WALL_TIME_MS,
+} from "./limits.js";
+import {
   QUALITY_PARSER_CONTRACT_VERSION,
   type ParsedLocationMetric,
   type ParseQualityResult,
   type QualityLanguage,
 } from "./types.js";
 
-export const QUALITY_MAX_DECODED_BYTES_PER_FILE = 20 * 1024;
-export const QUALITY_MAX_AST_NODES = 12_000;
-export const QUALITY_MAX_NESTING_DEPTH = 128;
-export const QUALITY_MAX_IMPORTS = 256;
-export const QUALITY_MAX_SYMBOLS = 2_048;
-export const QUALITY_MAX_TOKENS = 24_000;
-export const QUALITY_PARSER_WALL_TIME_MS = 150;
+export {
+  QUALITY_MAX_AST_NODES,
+  QUALITY_MAX_DECODED_BYTES_PER_FILE,
+  QUALITY_MAX_IMPORTS,
+  QUALITY_MAX_NESTING_DEPTH,
+  QUALITY_MAX_SYMBOLS,
+  QUALITY_MAX_TOKENS,
+  QUALITY_PARSER_WALL_TIME_MS,
+} from "./limits.js";
 const MAX_METRICS = 48;
 const MAX_SHINGLES = 2_048;
 const SHINGLE_SIZE = 12;

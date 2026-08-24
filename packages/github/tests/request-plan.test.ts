@@ -49,7 +49,7 @@ describe("buildGithubRequestPlan", () => {
     expect(plan.minimumUsefulRequests).toBe(12);
   });
 
-  it("makes a fully warm invocation complete without an allowance", () => {
+  it("reuses the exact anonymous quality tier without an allowance", () => {
     const plan = buildGithubRequestPlan({
       authenticationState: "anonymous",
       profiles: [warm, warm],
@@ -60,10 +60,10 @@ describe("buildGithubRequestPlan", () => {
     expect(plan.perProfileRequestCaps).toEqual([1, 1]);
     expect(plan.quality).toMatchObject({
       cacheHits: 2,
-      disposition: "complete",
+      disposition: "limited",
       expectedCurrentRequests: 0,
-      perProfileSourceRequestCaps: [21, 21],
-      perProfileAttributionRequestCaps: [12, 12],
+      perProfileSourceRequestCaps: [5, 5],
+      perProfileAttributionRequestCaps: [0, 0],
     });
     expect(plan.totalExpectedCurrentRequests).toBe(0);
   });
@@ -77,13 +77,13 @@ describe("buildGithubRequestPlan", () => {
     expect(limited.quality).toMatchObject({
       cacheHits: 0,
       disposition: "limited",
-      expectedCurrentRequests: 66,
+      expectedCurrentRequests: 10,
       minimumUsefulRequests: 10,
       completeSupportedRequests: 66,
-      perProfileSourceRequestCaps: [14, 14],
+      perProfileSourceRequestCaps: [5, 5],
       perProfileAttributionRequestCaps: [0, 0],
     });
-    expect(limited.totalExpectedCurrentRequests).toBe(60);
+    expect(limited.totalExpectedCurrentRequests).toBe(42);
 
     const complete = buildGithubRequestPlan({
       authenticationState: "explicit",
@@ -103,7 +103,7 @@ describe("buildGithubRequestPlan", () => {
     const plan = buildGithubRequestPlan({
       authenticationState: "explicit",
       profiles: [cachedQuality, miss],
-      allowance: { ...allowance(65), authenticated: true, limit: 5_000 },
+      allowance: { ...allowance(98), authenticated: true, limit: 5_000 },
     });
     expect(plan.quality).toMatchObject({
       cacheHits: 1,
@@ -113,6 +113,29 @@ describe("buildGithubRequestPlan", () => {
       perProfileSourceRequestCaps: [21, 21],
       perProfileAttributionRequestCaps: [12, 12],
     });
+  });
+
+  it("keeps logical quality caps invariant across canonical cache states", () => {
+    const cold = buildGithubRequestPlan({
+      authenticationState: "anonymous",
+      profiles: [miss, miss],
+      allowance: allowance(60),
+    });
+    const cachedCanonical = buildGithubRequestPlan({
+      authenticationState: "anonymous",
+      profiles: [
+        { ...warm, qualityHit: false },
+        { ...warm, qualityHit: false },
+      ],
+      allowance: allowance(60),
+    });
+    expect(cachedCanonical.quality.perProfileSourceRequestCaps).toEqual(
+      cold.quality.perProfileSourceRequestCaps,
+    );
+    expect(cachedCanonical.quality.perProfileAttributionRequestCaps).toEqual(
+      cold.quality.perProfileAttributionRequestCaps,
+    );
+    expect(cachedCanonical.quality.disposition).toBe(cold.quality.disposition);
   });
 });
 

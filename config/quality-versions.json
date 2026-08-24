@@ -1,0 +1,35 @@
+{
+  "result": "0.3.0-preview.1",
+  "parserContract": "1.0.0-typescript-ast",
+  "sourceSelection": "1.0.0-stratified-public-source",
+  "attribution": "1.0.0-public-path-commits",
+  "dimensionFormula": "1.0.0-preview-29-point",
+  "calibrationSchema": "1.0.0-blinded-pairwise",
+  "presentation": "1.0.0-six-line-preview",
+  "cache": "1.0.0-derived-features-only",
+  "parserImplementations": [
+    {
+      "languages": ["typescript", "javascript"],
+      "package": "typescript",
+      "version": "6.0.3",
+      "license": "Apache-2.0",
+      "asset": "dist/parsers/quality-worker.mjs"
+    }
+  ],
+  "unsupportedLanguages": ["python", "go"],
+  "bounds": {
+    "decodedBytesPerFile": 20480,
+    "decodedBytesPerProfile": 307200,
+    "filesPerProfile": 18,
+    "parserWallTimePerFileMs": 500,
+    "parserWallTimePerProfileMs": 2000,
+    "workerOldGenerationMb": 96,
+    "workerYoungGenerationMb": 16,
+    "workerStackMb": 4,
+    "astNodesPerFile": 12000,
+    "nestingDepth": 128,
+    "importsPerFile": 256,
+    "symbolsPerFile": 2048,
+    "tokensPerFile": 24000
+  }
+}

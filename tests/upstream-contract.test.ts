@@ -114,4 +114,40 @@ describe("public upstream contract", () => {
     expect(scoringSource).not.toMatch(/quality-judge|qualityPreview/u);
     expect(qualitySource).not.toMatch(/@gitmog\/scoring/u);
   });
+
+  it("binds parser versions, limits, and the exact package asset allowlist", () => {
+    const versions = JSON.parse(
+      readFileSync(resolve(root, "config", "quality-versions.json"), "utf8"),
+    ) as {
+      readonly parserContract: string;
+      readonly parserImplementations: readonly {
+        readonly version: string;
+        readonly asset: string;
+      }[];
+      readonly unsupportedLanguages: readonly string[];
+      readonly bounds: Readonly<Record<string, number>>;
+    };
+    const assets = JSON.parse(
+      readFileSync(resolve(root, "config", "parser-assets.json"), "utf8"),
+    ) as { readonly assets: readonly string[] };
+    expect(versions.parserContract).toBe("1.0.0-typescript-ast");
+    expect(versions.parserImplementations).toEqual([
+      {
+        languages: ["typescript", "javascript"],
+        package: "typescript",
+        version: "6.0.3",
+        license: "Apache-2.0",
+        asset: "dist/parsers/quality-worker.mjs",
+      },
+    ]);
+    expect(versions.unsupportedLanguages).toEqual(["python", "go"]);
+    expect(versions.bounds).toMatchObject({
+      decodedBytesPerFile: 20 * 1024,
+      decodedBytesPerProfile: 300 * 1024,
+      parserWallTimePerFileMs: 500,
+      parserWallTimePerProfileMs: 2_000,
+      workerOldGenerationMb: 96,
+    });
+    expect(assets.assets).toEqual(["dist/parsers/quality-worker.mjs"]);
+  });
 });

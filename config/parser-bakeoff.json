@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0.0-parser-bakeoff",
+  "conductedAt": "2026-08-24",
+  "requiredLanguages": ["typescript", "javascript", "python", "go"],
+  "candidates": [
+    {
+      "name": "TypeScript compiler parser",
+      "version": "6.0.3",
+      "languages": ["typescript", "javascript"],
+      "result": "selected",
+      "reason": "Real recoverable AST, pinned Apache-2.0 pure JavaScript, reproducibly bundled in a resource-limited worker, with no native addon, postinstall, external compiler, runtime download, or target execution."
+    },
+    {
+      "name": "Babel parser",
+      "version": null,
+      "languages": ["typescript", "javascript"],
+      "result": "not-selected",
+      "reason": "Would add a second JavaScript and TypeScript parser without improving first-release language coverage."
+    },
+    {
+      "name": "Tree-sitter WebAssembly plus pinned grammars",
+      "version": null,
+      "languages": ["typescript", "javascript", "python", "go"],
+      "result": "deferred",
+      "reason": "The complete grammar checksum, malformed recovery, worker memory, six-architecture portability, package, license, and security-history gate was not completed for v0.3.0."
+    }
+  ],
+  "activatedLanguages": ["typescript", "javascript"],
+  "unsupportedLanguages": ["python", "go"]
+}

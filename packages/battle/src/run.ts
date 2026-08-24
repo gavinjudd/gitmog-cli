@@ -23,7 +23,7 @@ import {
   type RoastMode,
 } from "@gitmog/scoring";
 import {
-  analyzeQualitySourceFiles,
+  analyzeQualitySourceFilesIsolated,
   qualityResultCacheKey,
   type QualityJudgePair,
   type QualityJudgeResult,
@@ -212,8 +212,8 @@ const qualityLimitations = (
     files: limitation.files,
   }));
 
-const insufficientQuality = (detail: string): QualityJudgeResult =>
-  analyzeQualitySourceFiles([], {
+const insufficientQuality = async (detail: string): Promise<QualityJudgeResult> =>
+  await analyzeQualitySourceFilesIsolated([], {
     collectionLimitations: [{ code: "source-unavailable", detail, files: 0 }],
     requestBudget: {
       sourcePlanned: 0,
@@ -236,7 +236,7 @@ async function runQualityPreview(
   caps: { readonly source: number; readonly attribution: number },
 ): Promise<QualityJudgeResult> {
   if (caps.source <= 0)
-    return insufficientQuality(
+    return await insufficientQuality(
       "Quality Preview was disabled or the bounded request plan allowed no source collection.",
     );
   const cacheKey = qualityResultCacheKey({
@@ -262,7 +262,7 @@ async function runQualityPreview(
       sourceRequestCap: caps.source,
       attributionRequestCap: caps.attribution,
     });
-    const result = analyzeQualitySourceFiles(collected.files, {
+    const result = await analyzeQualitySourceFilesIsolated(collected.files, {
       collectionLimitations: qualityLimitations(collected.limitations),
       requestBudget: {
         sourcePlanned: caps.source,
@@ -276,7 +276,7 @@ async function runQualityPreview(
     }
     return result;
   } catch {
-    return insufficientQuality(
+    return await insufficientQuality(
       "Quality Preview stopped safely without affecting the canonical result.",
     );
   }

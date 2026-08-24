@@ -1356,9 +1356,11 @@ const renderActions = (
   ].map((line) => palette.wrap("dim", line));
 };
 
-const joinBlocks = (blocks: readonly (readonly string[])[]): string => {
+const joinBlocks = (blocks: readonly (readonly string[])[], spaced = true): string => {
   const populated = blocks.filter((block) => block.length > 0);
-  return `${populated.flatMap((block, index) => (index === 0 ? block : ["", ...block])).join("\n")}\n`;
+  return `${populated
+    .flatMap((block, index) => (index === 0 || !spaced ? block : ["", ...block]))
+    .join("\n")}\n`;
 };
 
 export function renderBattle(
@@ -1414,20 +1416,23 @@ export function renderBattle(
           palette,
           options.receipts === true,
         );
-  return joinBlocks([
-    renderHeader(battle, presentation, width, palette, detailed),
-    primary,
-    rounds,
-    players,
-    qualityBlock,
-    codeDna,
-    ...(detailed ? [evidence] : []),
-    qualityReceipts,
-    ...(options.receipts === true
-      ? [renderBattleRawReceipts(battle, source, story, width, palette)]
-      : []),
-    detailed ? actions : [...evidence, ...actions],
-  ]);
+  return joinBlocks(
+    [
+      renderHeader(battle, presentation, width, palette, detailed),
+      primary,
+      rounds,
+      players,
+      qualityBlock,
+      codeDna,
+      ...(detailed ? [evidence] : []),
+      qualityReceipts,
+      ...(options.receipts === true
+        ? [renderBattleRawReceipts(battle, source, story, width, palette)]
+        : []),
+      detailed ? actions : [...evidence, ...actions],
+    ],
+    detailed,
+  );
 }
 
 const profileEvidenceSupport = (
@@ -1620,29 +1625,32 @@ export function renderProfile(
     options.qualityPreview !== undefined && !isQualityPair(options.qualityPreview)
       ? options.qualityPreview
       : null;
-  return joinBlocks([
-    header,
-    profileRead.length === 0 ? [] : [section("THE READ", palette), ...profileRead],
-    ...(quality === null
-      ? []
-      : [renderQualityProfile(profile.username, quality, width, palette, detailed)]),
-    ...(detailed ? [renderProfileCodeDna(source, width, palette, true)] : []),
-    ...(detailed ? [evidence] : []),
-    ...(quality === null || !detailed
-      ? []
-      : [
-          renderQualityReceipts(
-            [{ prefix: "P", result: quality }],
-            width,
-            palette,
-            options.receipts === true,
-          ),
-        ]),
-    ...(options.receipts === true
-      ? [renderProfileRawReceipts(profile, source, width, palette)]
-      : []),
-    detailed ? actions : [...evidence, ...actions],
-  ]);
+  return joinBlocks(
+    [
+      header,
+      profileRead.length === 0 ? [] : [section("THE READ", palette), ...profileRead],
+      ...(quality === null
+        ? []
+        : [renderQualityProfile(profile.username, quality, width, palette, detailed)]),
+      ...(detailed ? [renderProfileCodeDna(source, width, palette, true)] : []),
+      ...(detailed ? [evidence] : []),
+      ...(quality === null || !detailed
+        ? []
+        : [
+            renderQualityReceipts(
+              [{ prefix: "P", result: quality }],
+              width,
+              palette,
+              options.receipts === true,
+            ),
+          ]),
+      ...(options.receipts === true
+        ? [renderProfileRawReceipts(profile, source, width, palette)]
+        : []),
+      detailed ? actions : [...evidence, ...actions],
+    ],
+    detailed,
+  );
 }
 
 const cardRows = (value: string, width: number): readonly string[] => {

@@ -27,6 +27,7 @@
     "package:acceptance": "node scripts/package-acceptance.mjs",
     "quality:fixtures": "node scripts/quality-fixtures.mjs",
     "quality:calibration:check": "node scripts/calibration-check.mjs",
+    "quality:benchmark:check": "node scripts/benchmark-quality.mjs",
     "community:check": "node scripts/community-check.mjs",
     "identity:calibrate": "node scripts/identity-calibrate.mjs",
     "code-dna:calibrate": "node scripts/code-dna-calibrate.mjs",

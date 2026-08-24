@@ -1,8 +1,8 @@
 {
   "schema": "gitmog-toolchain-license-review-v1",
   "reviewedAt": "2026-08-24",
-  "scope": "Direct pinned development and build dependencies used by the public contributor toolchain.",
-  "compatibility": "MIT and Apache-2.0 are compatible with Git Mog's MIT-licensed development and distribution model. These tools are not runtime dependencies of the published package.",
+  "scope": "Direct pinned development and build dependencies used by the public contributor toolchain, including the parser code bundled into the standalone artifact.",
+  "compatibility": "MIT and Apache-2.0 are compatible with Git Mog's MIT-licensed development and distribution model. The npm manifest has zero runtime dependencies; TypeScript parser code is reproducibly bundled as a reviewed package asset.",
   "dependencies": [
     {
       "name": "@eslint/js",

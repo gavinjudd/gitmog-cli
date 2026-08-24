@@ -2,7 +2,8 @@ import { Buffer } from "node:buffer";
 
 import { describe, expect, it } from "vitest";
 
-import { analyzeQualitySourceFiles, qualityCacheIdentity } from "../src/analyze.js";
+import { qualityCacheIdentity } from "../src/analyze.js";
+import { analyzeQualitySourceFiles } from "../src/sync-analyze.js";
 import type { QualitySourceInput } from "../src/types.js";
 
 const sourceInput = (
@@ -52,10 +53,15 @@ describe("Quality Judge preview", () => {
       ),
     ).toBe(29);
     expect(result.receipts.length).toBeGreaterThan(0);
+    const lineCounts = new Map([
+      ["src/value.ts", implementation.split("\n").length],
+      ["tests/value.test.ts", tests.split("\n").length],
+    ]);
     for (const receipt of result.receipts) {
       expect(receipt).not.toHaveProperty("source");
       expect(receipt.lineStart).toBeGreaterThanOrEqual(1);
       expect(receipt.lineEnd).toBeGreaterThanOrEqual(receipt.lineStart);
+      expect(receipt.lineEnd).toBeLessThanOrEqual(lineCounts.get(receipt.path) ?? 0);
     }
   });
 
@@ -157,6 +163,90 @@ describe("Quality Judge preview", () => {
     ]);
     expect(unsafe.maintainedCodebase.dimensions.securityHygiene.previewScore).toBeLessThan(
       baseline.maintainedCodebase.dimensions.securityHygiene.previewScore as number,
+    );
+  });
+
+  it("changes only dead-pattern evidence for statements after terminal control flow", () => {
+    const baseline = analyzeQualitySourceFiles([
+      sourceInput("src/a.ts", "export function a(){ return 1; }"),
+      sourceInput("src/b.ts", "export function b(){ return 2; }", { blobSha: "c".repeat(40) }),
+    ]);
+    const unreachable = analyzeQualitySourceFiles([
+      sourceInput("src/a.ts", "export function a(){ return 1; const never = 2; }"),
+      sourceInput("src/b.ts", "export function b(){ return 2; }", { blobSha: "c".repeat(40) }),
+    ]);
+    expect(
+      unreachable.maintainedCodebase.dimensions.duplicationAndDeadPatterns.previewScore,
+    ).toBeLessThan(
+      baseline.maintainedCodebase.dimensions.duplicationAndDeadPatterns.previewScore as number,
+    );
+    for (const id of [
+      "correctnessDiscipline",
+      "testQuality",
+      "maintainability",
+      "contractQuality",
+      "architecture",
+      "securityHygiene",
+    ] as const) {
+      expect(unreachable.maintainedCodebase.dimensions[id]).toEqual(
+        baseline.maintainedCodebase.dimensions[id],
+      );
+    }
+  });
+
+  it("lets meaningful failure tests improve only applicable test evidence", () => {
+    const implementationFile = sourceInput("src/value.ts", implementation);
+    const baseline = analyzeQualitySourceFiles([
+      implementationFile,
+      sourceInput("tests/value.test.ts", 'test("ok", () => { expect(parseValue(1)).toBe(1); });', {
+        isTest: true,
+      }),
+    ]);
+    const failurePath = analyzeQualitySourceFiles([
+      implementationFile,
+      sourceInput(
+        "tests/value.test.ts",
+        'test("ok", () => { expect(parseValue(1)).toBe(1); }); test("bad", () => { expect(() => parseValue("x")).toThrow(); });',
+        { isTest: true },
+      ),
+    ]);
+    expect(failurePath.maintainedCodebase.dimensions.testQuality.previewScore).toBeGreaterThan(
+      baseline.maintainedCodebase.dimensions.testQuality.previewScore as number,
+    );
+    for (const id of [
+      "correctnessDiscipline",
+      "maintainability",
+      "contractQuality",
+      "architecture",
+      "securityHygiene",
+      "duplicationAndDeadPatterns",
+    ] as const) {
+      expect(failurePath.maintainedCodebase.dimensions[id]).toEqual(
+        baseline.maintainedCodebase.dimensions[id],
+      );
+    }
+  });
+
+  it("routes unsafe shell construction and swallowed errors to supported dimensions", () => {
+    const baseline = analyzeQualitySourceFiles([
+      sourceInput("src/a.ts", "export function a(input:string){ return input; }"),
+      sourceInput("src/b.ts", "export function b(){ return 1; }", { blobSha: "d".repeat(40) }),
+    ]);
+    const hostile = analyzeQualitySourceFiles([
+      sourceInput(
+        "src/a.ts",
+        "export function a(input:string){ try { exec(`run ${input}`); } catch {} return input; }",
+      ),
+      sourceInput("src/b.ts", "export function b(){ return 1; }", { blobSha: "d".repeat(40) }),
+    ]);
+    expect(hostile.maintainedCodebase.dimensions.securityHygiene.previewScore).toBeLessThan(
+      baseline.maintainedCodebase.dimensions.securityHygiene.previewScore as number,
+    );
+    expect(hostile.maintainedCodebase.dimensions.correctnessDiscipline.previewScore).toBeLessThan(
+      baseline.maintainedCodebase.dimensions.correctnessDiscipline.previewScore as number,
+    );
+    expect(hostile.maintainedCodebase.weaknesses.map((finding) => finding.dimension)).toEqual(
+      expect.arrayContaining(["securityHygiene", "correctnessDiscipline"]),
     );
   });
 

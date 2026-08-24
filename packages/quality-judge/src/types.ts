@@ -189,5 +189,7 @@ export type ParseQualityResult =
         | "depth-limit"
         | "token-limit"
         | "import-limit"
-        | "symbol-limit";
+        | "symbol-limit"
+        | "cancelled"
+        | "isolation-failure";
     };

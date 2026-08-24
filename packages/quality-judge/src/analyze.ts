@@ -2,7 +2,6 @@ import { posix } from "node:path";
 
 import { digest } from "@gitmog/github";
 
-import { parseQualitySource } from "./parser.js";
 import {
   QUALITY_ATTRIBUTION_VERSION,
   QUALITY_CACHE_VERSION,
@@ -13,6 +12,7 @@ import {
   QUALITY_SOURCE_SELECTION_VERSION,
   type AttributedQualityReading,
   type ParsedQualityFeatures,
+  type ParseQualityResult,
   type QualityDimension,
   type QualityDimensionId,
   type QualityDimensions,
@@ -50,7 +50,7 @@ interface ParsedFile {
   readonly features: ParsedQualityFeatures;
 }
 
-interface AnalyzeOptions {
+export interface AnalyzeOptions {
   readonly requestBudget?: Partial<QualityRequestBudget> | undefined;
   readonly collectionLimitations?: readonly QualityLimitation[] | undefined;
 }
@@ -167,7 +167,7 @@ const dimensionsFor = (files: readonly ParsedFile[]): QualityDimensions => {
   return {
     correctnessDiscipline: dimension(
       functions > 0,
-      72 + Math.min(18, ratio(validation + errorHandling, functions) * 24) - swallowed * 18,
+      72 + Math.min(18, ratio(validation + errorHandling, functions) * 24) - swallowed * 36,
       "correctnessDiscipline",
       validation + errorHandling + swallowed,
     ),
@@ -416,8 +416,9 @@ export function qualityCacheIdentity(
   });
 }
 
-export function analyzeQualitySourceFiles(
+export function analyzeQualityParseResults(
   inputs: readonly QualitySourceInput[],
+  parseResults: readonly (ParseQualityResult | null)[],
   options: AnalyzeOptions = {},
 ): QualityJudgeResult {
   const bounded = inputs.slice(0, QUALITY_MAX_FILES_PER_PROFILE);
@@ -425,13 +426,13 @@ export function analyzeQualitySourceFiles(
   const limitations: QualityLimitation[] = [...(options.collectionLimitations ?? [])];
   const failures = new Map<QualityLimitation["code"], number>();
   let inputBytes = 0;
-  for (const input of bounded) {
+  for (const [index, input] of bounded.entries()) {
     inputBytes += input.byteLength;
     if (inputBytes > QUALITY_MAX_SOURCE_BYTES_PER_PROFILE) {
       failures.set("source-budget", (failures.get("source-budget") ?? 0) + 1);
       continue;
     }
-    const result = parseQualitySource(input.path, input.source);
+    const result = parseResults[index] ?? { ok: false, reason: "isolation-failure" };
     if (!result.ok) {
       const code: QualityLimitation["code"] =
         result.reason === "unsupported-language"

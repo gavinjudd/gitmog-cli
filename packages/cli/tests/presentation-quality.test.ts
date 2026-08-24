@@ -237,12 +237,12 @@ describe("human-readable presentation contract", () => {
 
     const fight = readyLines.slice(
       readyLines.indexOf("THE FIGHT") + 1,
-      readyLines.indexOf("THE READ") - 1,
+      readyLines.indexOf("THE READ"),
     );
     expect(fight).toHaveLength(3);
     const read = readyLines.slice(
       readyLines.indexOf("THE READ") + 1,
-      readyLines.indexOf("CODE QUALITY · PREVIEW") - 1,
+      readyLines.indexOf("CODE QUALITY · PREVIEW"),
     );
     expect(read.length).toBeLessThanOrEqual(4);
   });

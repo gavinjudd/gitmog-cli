@@ -1,25 +1,20 @@
 GIT MOG
 ◆ @strongmaintainer WINS 92–75 · PUBLIC EDGE · LIMITED READ
 Coverage: @strongmaintainer 59% · @partialtree 59%
-
 » 15 releases at 3.0 a project. Somebody tags things. [1]
-
 THE FIGHT
 COLLABORATION  85–43  @strongmaintainer · External contributions: 2–0 [2]
 SHIPPING       96–67  @strongmaintainer · Long-running projects: 5–2 [3]
 ACTIVITY       88–63  @strongmaintainer · Active weeks: 12/12–7/12 [4]
-
 THE READ
 @strongmaintainer — Tests: 25 per 100 source files in inspected trees. [5]
 @partialtree — Tests: 25 per 100 source files in inspected trees. [6]
-
 CODE QUALITY · PREVIEW
 Maintained codebase @strongmaintainer 81 (100%) · @partialtree 81 (100%)
 Attributed code @strongmaintainer 81 (67%) · @partialtree 81 (100%)
 @strongmaintainer — 0 high-complexity funcs · orchestrator/migrate.ts:1 [LQ1]
 @partialtree — 0 high-complexity funcs · alpha/migrate.ts:1 [RQ1]
 Not used in the winner pending human calibration.
-
 RECEIPTS
 [1] Versioned releases — 15 vs 2
 [2] External contributions — 2 vs 0

@@ -79,7 +79,11 @@ const UNKNOWN_ALLOWANCE: GithubCoreAllowance = {
   source: "unknown",
 };
 
-const cacheStateFor = (handle: string, caches: RequestPlanCaches): RequestPlanCacheState => {
+const cacheStateFor = (
+  handle: string,
+  caches: RequestPlanCaches,
+  authenticationState: AuthenticationState,
+): RequestPlanCacheState => {
   if (!caches.read) {
     return {
       snapshotHit: false,
@@ -110,8 +114,8 @@ const cacheStateFor = (handle: string, caches: RequestPlanCaches): RequestPlanCa
     immutableRepositories: snapshot.inspections
       .map((inspection) => ({ repository: inspection.fullName, treeSha: inspection.treeSha }))
       .toSorted((left, right) => left.repository.localeCompare(right.repository)),
-    sourceRequestCap: 21,
-    attributionRequestCap: 12,
+    sourceRequestCap: authenticationState === "anonymous" ? 5 : 21,
+    attributionRequestCap: authenticationState === "anonymous" ? 0 : 12,
   });
   const quality: QualityJudgeResult | undefined = caches.quality?.get(qualityKey);
   return {
@@ -126,7 +130,7 @@ export async function planGithubInvocation(
   options: PlanInvocationOptions,
 ): Promise<PlanInvocationResult> {
   const profiles = options.handles.map((handle) =>
-    cacheStateFor(handle, options.caches),
+    cacheStateFor(handle, options.caches, options.authenticationState),
   ) as unknown as
     readonly [RequestPlanCacheState] | readonly [RequestPlanCacheState, RequestPlanCacheState];
   const provisional = buildGithubRequestPlan({
@@ -140,7 +144,9 @@ export async function planGithubInvocation(
   });
   if (
     provisional.expectedCurrentRequests === 0 &&
-    provisional.quality.expectedCurrentRequests === 0
+    provisional.quality.expectedCurrentRequests === 0 &&
+    (provisional.quality.disposition === "complete" ||
+      provisional.quality.cacheHits === provisional.profileCount)
   ) {
     return { ok: true, plan: provisional };
   }
@@ -151,7 +157,24 @@ export async function planGithubInvocation(
     ...(options.fetchImpl === undefined ? {} : { fetchImpl: options.fetchImpl }),
     ...(options.signal === undefined ? {} : { signal: options.signal }),
   });
-  if (!allowance.ok) return { ok: false, error: allowance.error, plan: provisional };
+  if (!allowance.ok) {
+    if (provisional.expectedCurrentRequests === 0 && provisional.disposition === "complete") {
+      return {
+        ok: true,
+        plan: buildGithubRequestPlan({
+          authenticationState: options.authenticationState,
+          profiles,
+          allowance: {
+            ...UNKNOWN_ALLOWANCE,
+            authenticated: options.authenticationState !== "anonymous",
+            remaining: 0,
+          },
+          qualityEnabled: options.qualityEnabled,
+        }),
+      };
+    }
+    return { ok: false, error: allowance.error, plan: provisional };
+  }
   return {
     ok: true,
     plan: buildGithubRequestPlan({
