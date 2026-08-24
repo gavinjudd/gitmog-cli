@@ -21,7 +21,7 @@
     "format:check": "prettier --check .",
     "lint": "node scripts/turbo.mjs run lint && eslint scripts tests --max-warnings=0",
     "typecheck": "node scripts/turbo.mjs run typecheck && tsc --noEmit -p tsconfig.json",
-    "test": "node scripts/turbo.mjs run test && vitest run && node --test tests/execution-portability.node.mjs",
+    "test": "node scripts/turbo.mjs run test --concurrency=1 && vitest run && node --test tests/execution-portability.node.mjs",
     "build": "node scripts/turbo.mjs run build",
     "verify": "node scripts/verify.mjs",
     "package:acceptance": "node scripts/package-acceptance.mjs",

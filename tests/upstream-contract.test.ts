@@ -56,6 +56,11 @@ describe("public upstream contract", () => {
     expect(manifest.scripts?.postinstall).toBeUndefined();
   });
 
+  it("serializes workspace test packages so parser wall clocks are not measured under CPU starvation", () => {
+    const manifest = readManifest("package.json");
+    expect(manifest.scripts?.test).toContain("turbo.mjs run test --concurrency=1");
+  });
+
   it("binds every direct toolchain pin to a reviewed compatible license", () => {
     const review = JSON.parse(
       readFileSync(resolve(root, "config", "toolchain-licenses.json"), "utf8"),
