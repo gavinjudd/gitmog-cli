@@ -1,23 +1,28 @@
 name: Quality Judge false positive
-description: Report a supported metric that fired incorrectly.
+description: Submit a reduced synthetic fixture for a supported metric that fired incorrectly.
 title: "[Quality false positive]: "
 labels: ["type:false-positive", "area:quality-judge", "status:needs-reproduction"]
 body:
   - type: markdown
     attributes:
-      value: "A bad metric is different from missing coverage. Cite public immutable evidence without copying source. Never include credentials or private source."
+      value: "A bad metric is different from missing coverage. Submit the smallest invented TypeScript or JavaScript fixture that reproduces it. Public immutable evidence is optional context; never copy target source or include credentials or private source."
   - type: input
     id: reference
-    attributes: { label: Public repository and exact commit }
-    validations: { required: true }
+    attributes:
+      {
+        label: Public repository and exact commit (optional context),
+        description: Do not paste source from the repository.,
+      }
   - type: input
     id: path
-    attributes: { label: Safe path and receipt ID }
-    validations: { required: true }
+    attributes:
+      {
+        label: Safe path and receipt ID (optional context),
+        description: Use the synthetic path below when no public result is needed.,
+      }
   - type: dropdown
     id: parser
-    attributes:
-      { label: Language and parser lane, options: ["TypeScript", "JavaScript", "Python", "Go"] }
+    attributes: { label: Supported parser lane, options: ["TypeScript", "JavaScript"] }
     validations: { required: true }
   - type: textarea
     id: metric
@@ -29,7 +34,16 @@ body:
     validations: { required: true }
   - type: textarea
     id: reproduction
-    attributes: { label: Minimal synthetic reproduction }
+    attributes:
+      {
+        label: Reduced synthetic fixture,
+        description: Use invented identifiers and include only the minimum safe source needed to reproduce the metric.,
+        render: text,
+      }
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes: { label: Expected engineering-validation assertion }
     validations: { required: true }
   - type: checkboxes
     id: safety
@@ -37,4 +51,6 @@ body:
       label: Safety confirmation
       options:
         - label: I included no credential, private source, or raw target source.
+          required: true
+        - label: The reproduction is reduced synthetic source that may be retained in the MIT-licensed test suite.
           required: true

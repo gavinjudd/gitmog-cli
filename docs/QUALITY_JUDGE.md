@@ -17,6 +17,8 @@ The preview attaches only after the canonical battle is complete. It has `scoreI
 cannot alter the score, basis, coverage, rounds, winner, margin, verdict, evidence, battle key,
 existing JSON battle fields, or canonical cache identity. Its policy has one informational-only
 state and no enabled branch. See [QUALITY_VALIDATION.md](QUALITY_VALIDATION.md).
+Reduced synthetic parser and metric defects are accepted through the
+[Quality Judge feedback route](QUALITY_FEEDBACK.md).
 
 ## Supported lanes and bounds
 

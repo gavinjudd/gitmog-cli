@@ -41,9 +41,10 @@ tools, or pull requests.
 
 A false positive means a supported metric fired incorrectly. Missing coverage means the
 language, syntax, sample, or attribution evidence was unavailable; it is not automatically a
-false negative. Use the dedicated issue form, cite a public repository and immutable commit,
-identify the parser lane and safe path, and provide the smallest reproduction that does not
-copy source into the issue.
+false negative. Follow [the Quality Judge feedback guide](docs/QUALITY_FEEDBACK.md) and use the
+dedicated issue form. Provide a reduced synthetic fixture with invented identifiers. Public
+repository, immutable commit, safe-path, receipt, and limitation references are optional context;
+never copy target source into the issue.
 
 ## Pull requests and licensing
 
