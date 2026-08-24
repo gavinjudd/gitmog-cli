@@ -15,8 +15,10 @@ pnpm test
 ```
 
 Before opening a pull request, run `pnpm verify`. Run one package test while iterating, for
-example `pnpm --filter @gitmog/cli test`. The complete gate formats, lints, typechecks, tests,
-builds, validates community/calibration fixtures, and accepts the packed package.
+example `node scripts/turbo.mjs run test --filter=@gitmog/cli`. The Turbo wrapper builds the
+focused package's workspace dependencies first, including in a fresh clone. The complete gate
+formats, lints, typechecks, tests, builds, validates community/calibration fixtures, and accepts
+the packed package.
 
 ## Make a useful change
 

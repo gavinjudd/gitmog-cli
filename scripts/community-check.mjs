@@ -89,6 +89,24 @@ if (!qualityBlock.includes("scripts/turbo.mjs run test --filter=@gitmog/quality-
   throw new Error("Focused quality CI must build its workspace dependencies through Turbo.");
 }
 
+const directFocusedTest = /pnpm\s+--filter(?:\s+|=)@gitmog\/cli\s+test/u;
+for (const spelling of ["pnpm --filter @gitmog/cli test", "pnpm --filter=@gitmog/cli test"]) {
+  if (!directFocusedTest.test(spelling)) {
+    throw new Error(`Focused-test bypass guard does not cover: ${spelling}`);
+  }
+}
+for (const document of ["CONTRIBUTING.md", "docs/TESTING.md"]) {
+  const contents = readFileSync(resolve(root, document), "utf8");
+  if (!contents.includes("node scripts/turbo.mjs run test --filter=@gitmog/cli")) {
+    throw new Error(`Focused contributor test must build workspace dependencies: ${document}`);
+  }
+  if (directFocusedTest.test(contents)) {
+    throw new Error(
+      `Focused contributor test must not bypass the workspace dependency graph: ${document}`,
+    );
+  }
+}
+
 console.log(
   `Community contract complete (${String(required.length)} required files, ${String(workflows.length)} workflows).`,
 );

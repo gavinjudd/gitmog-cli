@@ -5,7 +5,7 @@ non-loopback fetch, HTTP, socket, and DNS APIs. Fork pull requests receive no se
 perform live GitHub collection.
 
 ```sh
-pnpm --filter @gitmog/cli test
+node scripts/turbo.mjs run test --filter=@gitmog/cli
 pnpm test
 pnpm build
 pnpm package:acceptance
