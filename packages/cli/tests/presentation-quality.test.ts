@@ -55,8 +55,15 @@ const contextFor = (...personas: readonly PersonaSpec[]): CliContext => {
   };
 };
 
-const invoke = (context: CliContext, ...args: readonly string[]) =>
-  run(["node", "gitmog", ...args], context);
+let invocationLane = Promise.resolve();
+const invoke = (context: CliContext, ...args: readonly string[]) => {
+  const execution = invocationLane.then(() => run(["node", "gitmog", ...args], context));
+  invocationLane = execution.then(
+    () => undefined,
+    () => undefined,
+  );
+  return execution;
+};
 const battleContext = () => contextFor(PERSONAS.strongMaintainer, PERSONAS.manyTinyRepos);
 const markerValues = (value: string): readonly string[] =>
   [...value.matchAll(/\[(\d+)\]/gu)].map((match) => match[1] as string);
