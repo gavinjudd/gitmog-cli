@@ -17,6 +17,8 @@ interface ReleaseEvidenceContract {
   readonly package: {
     readonly dependencies: Readonly<Record<string, string>>;
     readonly installScripts: Readonly<Record<string, string>>;
+    readonly unpackedBytes: number;
+    readonly members: readonly { readonly path: string; readonly bytes: number }[];
   };
   readonly quality: { readonly activation: { readonly state: string } };
   readonly evidence: Readonly<Record<string, unknown>>;
@@ -80,7 +82,12 @@ describe("public upstream contract", () => {
       version: "0.3.0",
       filename: "gitmog-0.3.0.tgz",
       bytes: 1,
+      unpackedBytes: 2,
       files: ["package.json", "dist/gitmog.mjs"],
+      members: [
+        { path: "package.json", bytes: 1 },
+        { path: "dist/gitmog.mjs", bytes: 1 },
+      ],
       sha1: "b".repeat(40),
       sha256: "c".repeat(64),
       integrity: "sha512-synthetic",
@@ -99,6 +106,8 @@ describe("public upstream contract", () => {
       },
     }) as ReleaseEvidenceContract;
     expect(metadata.package.dependencies).toEqual({});
+    expect(metadata.package.unpackedBytes).toBe(2);
+    expect(metadata.package.members).toHaveLength(2);
     expect(metadata.package.installScripts).toEqual({});
     expect(metadata.quality.activation.state).toBe("disabled");
     expect(metadata.evidence).toHaveProperty("platform-acceptance.json");

@@ -27,6 +27,79 @@ jobs:
       - run: node scripts/bootstrap.mjs --ci
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs verify
 
+  packed-artifact:
+    name: packed artifact
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - run: node scripts/bootstrap.mjs --ci
+      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/candidate" --tag v0.3.0 --expected-sha "${{ github.sha }}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-packed-runtime-${{ github.sha }}
+          path: ${{ runner.temp }}/candidate/
+          if-no-files-found: error
+          retention-days: 3
+
+  node-matrix:
+    name: node (${{ matrix.node }})
+    needs: packed-artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22.23.2, 24.19.0, 26.7.0]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: ${{ matrix.node }}
+          check-latest: false
+          package-manager-cache: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ci-packed-runtime-${{ github.sha }}
+          path: candidate
+      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.3.0.tgz node-${{ matrix.node }}.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: node-runtime-${{ matrix.node }}
+          path: node-${{ matrix.node }}.json
+          if-no-files-found: error
+          retention-days: 3
+
+  node-consistency:
+    name: node consistency
+    needs: node-matrix
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: node-runtime-*
+          path: reports
+          merge-multiple: true
+      - run: node scripts/compare-packed-runtime-reports.mjs reports/node-22.23.2.json reports/node-24.19.0.json reports/node-26.7.0.json
+
   architecture:
     name: architecture (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
@@ -34,15 +107,61 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner:
-          - ubuntu-24.04
-          - ubuntu-24.04-arm
-          - windows-2025
-          - windows-11-arm
-          - macos-15
-          - macos-15-intel
+        include:
+          - { runner: ubuntu-24.04, slug: linux-x64 }
+          - { runner: ubuntu-24.04-arm, slug: linux-arm64 }
+          - { runner: windows-2025, slug: windows-x64 }
+          - { runner: windows-11-arm, slug: windows-arm64 }
+          - { runner: macos-15, slug: macos-arm64 }
+          - { runner: macos-15-intel, slug: macos-intel }
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ci-packed-runtime-${{ github.sha }}
+          path: candidate
+      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.3.0.tgz architecture-${{ matrix.slug }}.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: architecture-report-${{ matrix.slug }}
+          path: architecture-${{ matrix.slug }}.json
+          if-no-files-found: error
+          retention-days: 3
+
+  quality:
+    name: quality contracts
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - run: node scripts/bootstrap.mjs --ci
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs --filter @gitmog/quality-judge test
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:fixtures
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:calibration:check
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:benchmark:check
+
+  security:
+    name: security contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version-file: .node-version
@@ -50,7 +169,25 @@ jobs:
           package-manager-cache: false
       - run: node scripts/bootstrap.mjs --ci
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs build
-      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs package:acceptance
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs security:check
+
+  reproducibility:
+    name: reproducibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - run: node scripts/bootstrap.mjs --ci
+      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-a" --tag v0.3.0 --expected-sha "${{ github.sha }}"
+      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-b" --tag v0.3.0 --expected-sha "${{ github.sha }}"
+      - run: diff --recursive --brief "${{ runner.temp }}/repro-a" "${{ runner.temp }}/repro-b"
 
   dependency-review:
     name: dependency review

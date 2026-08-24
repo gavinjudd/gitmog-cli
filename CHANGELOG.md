@@ -4,8 +4,21 @@ All notable changes are documented here. Released artifacts remain tied to immut
 
 ## Unreleased
 
-- Establish `gavinjudd/gitmog-cli` as the contribution-ready development upstream.
-- Add public governance, contributor workflows, and cross-platform verification.
+- Publication of the audited v0.3.0 candidate remains pending explicit release approval.
+
+## 0.3.0 - Quality Judge Preview
+
+- Establish `gavinjudd/gitmog-cli` as the authoritative contribution-ready runtime upstream.
+- Add parser-backed TypeScript and JavaScript Quality Preview readings for maintained codebases
+  and separately attributed code.
+- Keep Quality Preview outside canonical score, coverage, rounds, winner, margin, verdict,
+  battle key, evidence, and cache identity.
+- Add bounded process-only parser isolation, source-free receipts, deterministic sampling, and
+  cache-invariant request planning.
+- Preregister blinded multi-human calibration while leaving score activation disabled and
+  recording zero human judgments.
+- Add public governance, contributor workflows, six-architecture CI, Node 22/24/26 acceptance,
+  security checks, and exact-artifact reproducibility.
 
 ## 0.2.2
 

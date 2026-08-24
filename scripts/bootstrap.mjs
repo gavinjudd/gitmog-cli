@@ -12,6 +12,7 @@ import {
   resetPnpmToolingDirectory,
   resolveNpmCli,
   runNodeCliInherit,
+  workspaceInstallEnvironment,
 } from "./lib/package-manager.mjs";
 import { paths } from "./lib/paths.mjs";
 import { pinnedPnpmVersion, readNodeVersion } from "./lib/versions.mjs";
@@ -119,6 +120,7 @@ const install = runNodeCliInherit(
   hasLockfile
     ? ["install", "--frozen-lockfile", "--ignore-scripts"]
     : ["install", "--ignore-scripts"],
+  { env: workspaceInstallEnvironment(ci) },
 );
 if (install.code !== 0) {
   die(

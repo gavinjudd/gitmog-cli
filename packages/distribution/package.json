@@ -1,8 +1,8 @@
 {
   "name": "gitmog",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
-  "description": "Full bounded deterministic public-GitHub profile battles.",
+  "description": "Deterministic public-GitHub profile battles with a parser-backed Quality Preview.",
   "license": "MIT",
   "repository": {
     "type": "git",

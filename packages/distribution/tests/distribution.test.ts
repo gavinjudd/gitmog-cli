@@ -26,7 +26,7 @@ const binPath = resolve(packageDirectory, "bin/gitmog.mjs");
 describe("standalone npm distribution", () => {
   it("has the public identity, release metadata, accepted engines and both bins", () => {
     expect(manifest.name).toBe("gitmog");
-    expect(manifest.version).toBe("0.2.2");
+    expect(manifest.version).toBe("0.3.0");
     expect(manifest.license).toBe("MIT");
     expect(manifest.repository).toEqual({
       type: "git",

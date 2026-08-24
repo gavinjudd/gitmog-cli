@@ -36,3 +36,20 @@ testing, release, security, and calibration contracts live under [docs/](docs/AR
 
 The released package remains zero-runtime-dependency, has no install lifecycle behavior, uses
 no native addon, and performs no runtime parser download.
+
+## Code Quality · Preview
+
+Ordinary profile and battle output includes a compact parser-backed preview after the canonical
+read. Maintained-codebase quality describes sampled source from public repositories the profile
+owns or materially maintains. Attributed-code quality appears separately only when bounded public
+commit evidence associates sampled paths with that profile. Missing attribution is never negative
+evidence.
+
+TypeScript and JavaScript use the pinned TypeScript AST parser in a resource-limited worker.
+Python, Go, and other languages are unsupported in v0.3.0 and reduce preview coverage instead of
+quality. Target code is never cloned, installed, imported, built, tested, or executed; raw source
+is process-only and is never stored in receipts, caches, logs, exports, or calibration judgments.
+
+Quality Preview has `scoreInfluence: 0`. It does not change the canonical score, score coverage,
+rounds, winner, margin, verdict, battle key, or existing evidence. Human calibration is pending,
+and score activation remains structurally disabled.

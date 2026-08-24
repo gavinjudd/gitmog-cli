@@ -13,6 +13,7 @@ import {
   pnpmToolingLayout,
   resetPnpmToolingDirectory,
   resolveNpmCli,
+  workspaceInstallEnvironment,
   workspacePnpmCliPath,
 } from "../scripts/lib/package-manager.mjs";
 
@@ -130,6 +131,14 @@ test("pnpm.cjs is invoked through the injected Node executable", () => {
       args: ["C:\\repo\\pnpm.cjs", "run", "verify"],
     },
   );
+});
+
+test("bootstrap makes --ci dependency installation noninteractive", () => {
+  assert.deepEqual(workspaceInstallEnvironment(true, { KEEP: "yes", CI: "false" }), {
+    KEEP: "yes",
+    CI: "true",
+  });
+  assert.deepEqual(workspaceInstallEnvironment(false, { KEEP: "yes" }), { KEEP: "yes" });
 });
 
 test("legacy pnpm tooling is recognized and replacement is confined", () => {

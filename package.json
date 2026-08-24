@@ -1,6 +1,6 @@
 {
   "name": "@gitmog/public-upstream",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Authoritative public source for Git Mog's deterministic CLI runtime.",
@@ -29,6 +29,7 @@
     "quality:calibration:check": "node scripts/calibration-check.mjs",
     "quality:benchmark:check": "node scripts/benchmark-quality.mjs",
     "community:check": "node scripts/community-check.mjs",
+    "security:check": "node scripts/security-check.mjs",
     "identity:calibrate": "node scripts/identity-calibrate.mjs",
     "code-dna:calibrate": "node scripts/code-dna-calibrate.mjs",
     "source-analysis:quality": "node scripts/source-analysis-quality.mjs",
