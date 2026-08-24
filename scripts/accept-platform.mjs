@@ -131,7 +131,7 @@ function withoutRequestBudgets(value) {
   if (typeof value !== "object" || value === null) return value;
   return Object.fromEntries(
     Object.entries(value)
-      .filter(([key]) => key !== "requestBudget")
+      .filter(([key]) => key !== "requestBudget" && key !== "requestTelemetry")
       .map(([key, nested]) => [key, withoutRequestBudgets(nested)]),
   );
 }
