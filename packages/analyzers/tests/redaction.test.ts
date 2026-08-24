@@ -59,6 +59,16 @@ describe("secret-shaped-value redaction", () => {
     });
   });
 
+  it("handles repeated escaped quotes without regex backtracking", () => {
+    const source = `"${String.raw`\"\a`.repeat(5_000)}`;
+    expect(redactSecretShapedValues(source)).toEqual({
+      text: source,
+      redactions: 0,
+      redactedBytes: 0,
+      exhausted: false,
+    });
+  });
+
   it("redacts a long, high-entropy quoted string even beside an ordinary name", () => {
     const value = "aB3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5z";
     const result = redactSecretShapedValues(`const value = "${value}";`);

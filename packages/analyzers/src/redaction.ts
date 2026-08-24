@@ -54,7 +54,8 @@ const PRIVATE_KEY_BEGIN = "-----BEGIN ";
 const PRIVATE_KEY_END = "-----END ";
 const ARMOUR_SUFFIX = "-----";
 
-const QUOTED_VALUE = /(["'`])((?:\\.|(?!\1)[^\\\r\n])*)\1/g;
+const QUOTED_VALUE =
+  /"(?:\\[^\r\n\u2028\u2029]|[^"\\\r\n])*"|'(?:\\[^\r\n\u2028\u2029]|[^'\\\r\n])*'|`(?:\\[^\r\n\u2028\u2029]|[^`\\\r\n])*`/g;
 
 export interface RedactionResult {
   readonly text: string;
@@ -157,7 +158,9 @@ export function redactSecretShapedValues(source: string): RedactionResult {
 
   // Quoted values are examined twice: once because the identifier beside them names a
   // secret, once because the value itself looks like one.
-  text = text.replace(QUOTED_VALUE, (matched, quote: string, inner: string, offset: number) => {
+  text = text.replace(QUOTED_VALUE, (matched, offset: number) => {
+    const quote = matched.slice(0, 1);
+    const inner = matched.slice(1, -1);
     if (inner.length === 0 || inner === REDACTION_TOKEN) return matched;
     const preceding = text.slice(Math.max(0, offset - 80), offset);
     const named = SECRET_IDENTIFIER.test(preceding) && /[:=]\s*$|[:=]\s*\S{0,4}$/.test(preceding);
