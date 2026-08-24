@@ -13,8 +13,8 @@ catalogs:
       specifier: 24.13.3
       version: 24.13.3
     eslint:
-      specifier: 10.8.1
-      version: 10.8.1
+      specifier: 10.9.0
+      version: 10.9.0
     eslint-config-prettier:
       specifier: 10.1.8
       version: 10.1.8
@@ -61,7 +61,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       prettier:
         specifier: 'catalog:'
         version: 3.9.6
@@ -88,7 +88,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -125,7 +125,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -165,7 +165,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -220,7 +220,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -248,7 +248,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -273,7 +273,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@24.13.3)(vite@8.2.2(@types/node@24.13.3))
@@ -298,7 +298,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -332,7 +332,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -350,7 +350,7 @@ importers:
         version: 24.13.3
       eslint:
         specifier: 'catalog:'
-        version: 10.8.1
+        version: 10.9.0
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -730,16 +730,6 @@ packages:
   eslint-visitor-keys@5.0.1:
     resolution: {integrity: sha512-tD40eHxA35h0PEIZNeIjkHoDR4YjjJp34biM0mDvplBe//mB+IHCqHDGV7pxF+7MklTvighcCPPZC7ynWyjdTA==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
-
-  eslint@10.8.1:
-    resolution: {integrity: sha512-wqA7W2jbsC/BnV9Iv1UZpKVFkO1AdNoSmYW8NWG4HNOBbkAMvIqDZ27pI2f07dqn583NcIC44ckjAcOXDL1QbQ==}
-    engines: {node: ^20.19.0 || ^22.13.0 || >=24}
-    hasBin: true
-    peerDependencies:
-      jiti: '*'
-    peerDependenciesMeta:
-      jiti:
-        optional: true
 
   eslint@10.9.0:
     resolution: {integrity: sha512-5KeEOJZBfEVA47boFiBsf+6MmmJpffM7qEBg4pLla2e4nlKgdKlqCW0oSLOGsT8Wl5uCGJptLV1bkaiShj90Gw==}
@@ -1192,11 +1182,6 @@ packages:
 
 snapshots:
 
-  '@eslint-community/eslint-utils@4.10.1(eslint@10.8.1)':
-    dependencies:
-      eslint: 10.8.1
-      eslint-visitor-keys: 3.4.3
-
   '@eslint-community/eslint-utils@4.10.1(eslint@10.9.0)':
     dependencies:
       eslint: 10.9.0
@@ -1521,41 +1506,6 @@ snapshots:
   eslint-visitor-keys@3.4.3: {}
 
   eslint-visitor-keys@5.0.1: {}
-
-  eslint@10.8.1:
-    dependencies:
-      '@eslint-community/eslint-utils': 4.10.1(eslint@10.8.1)
-      '@eslint-community/regexpp': 4.12.2
-      '@eslint/config-array': 0.23.5
-      '@eslint/config-helpers': 0.7.0
-      '@eslint/core': 1.2.1
-      '@eslint/plugin-kit': 0.7.2
-      '@humanfs/node': 0.16.8
-      '@humanwhocodes/module-importer': 1.0.1
-      '@humanwhocodes/retry': 0.4.3
-      '@types/estree': 1.0.9
-      ajv: 6.15.0
-      cross-spawn: 7.0.6
-      debug: 4.4.3
-      escape-string-regexp: 4.0.0
-      eslint-scope: 9.1.2
-      eslint-visitor-keys: 5.0.1
-      espree: 11.2.0
-      esquery: 1.7.0
-      esutils: 2.0.3
-      fast-deep-equal: 3.1.3
-      file-entry-cache: 8.0.0
-      find-up: 5.0.0
-      glob-parent: 6.0.2
-      ignore: 5.3.2
-      imurmurhash: 0.1.4
-      is-glob: 4.0.3
-      json-stable-stringify-without-jsonify: 1.0.1
-      minimatch: 10.2.6
-      natural-compare: 1.4.0
-      optionator: 0.9.4
-    transitivePeerDependencies:
-      - supports-color
 
   eslint@10.9.0:
     dependencies:
