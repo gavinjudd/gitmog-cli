@@ -10,6 +10,7 @@ import {
   type GithubRequestPlan,
 } from "@gitmog/github";
 import { createFileCodeDnaCache, createFileDerivedFeatureCache } from "@gitmog/source-analysis";
+import { createFileQualityResultCache } from "@gitmog/quality-judge";
 import { parseRoastMode } from "@gitmog/scoring";
 
 import { createPalette, parseColorMode, shouldUseColor } from "./color.js";
@@ -107,9 +108,11 @@ export function usage(invokedAs = "gitmog"): string {
     "  --details    Full score breakdown",
     "  --receipts   Every supporting receipt",
     "  --export     Self-contained .html or .svg battle",
+    "  --no-quality Disable the automatic code-quality preview",
     "",
     "Coverage is the share of the public scorecard Git Mog could measure.",
     "If GitHub's anonymous limit is low, Git Mog may offer one-time sign-in.",
+    "Code Quality Preview is parser-backed and never affects the winner.",
     "Entertainment based on public evidence—not a hiring score.",
     `More options: ${command} --help-all`,
     "",
@@ -135,6 +138,8 @@ export function advancedUsage(invokedAs = "gitmog"): string {
     "  --roast clean|spicy|unhinged",
     "  --color auto|always|never",
     "  --no-motion                  Static progress updates",
+    "  --quality                    Require a complete preview; sign in once if needed",
+    "  --no-quality                 Disable Code Quality Preview",
     "",
     "GitHub and cache:",
     "  --sign-in                    One-time GitHub sign-in for this run",
@@ -171,6 +176,8 @@ const OPTIONS = {
   anonymous: { type: "boolean" },
   "no-prompt": { type: "boolean" },
   "no-motion": { type: "boolean" },
+  quality: { type: "boolean" },
+  "no-quality": { type: "boolean" },
   "cache-info": { type: "boolean" },
   "clear-cache": { type: "boolean" },
   export: { type: "string" },
@@ -198,7 +205,7 @@ const renderCacheInfo = (info: CacheInspection): string =>
     `Path: ${info.path}`,
     `Usage: ${String(info.totalBytes)} bytes across ${String(info.fileCount)} files`,
     `Maximum: ${String(info.maximumBytes)} bytes (25 MiB)`,
-    `Entries: ${String(info.snapshotEntries)} snapshots · ${String(info.analysisEntries)} analyses · ${String(info.derivedFeatureEntries)} derived`,
+    `Entries: ${String(info.snapshotEntries)} snapshots · ${String(info.analysisEntries)} analyses · ${String(info.derivedFeatureEntries)} derived · ${String(info.qualityEntries)} quality`,
     `Oldest valid entry: ${info.oldestValidEntryAt ?? "none"}`,
     `Newest valid entry: ${info.newestValidEntryAt ?? "none"}`,
     `Removed during inspection: ${String(info.expiredOrCorruptEntriesRemoved)} expired/corrupt`,
@@ -561,6 +568,21 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       values.json === true,
     );
   }
+  if (values.quality === true && values["no-quality"] === true) {
+    return invalid(
+      "--quality cannot be combined with --no-quality.",
+      context.invokedAs,
+      values.json === true,
+    );
+  }
+  if (values.quality === true && values.anonymous === true) {
+    return invalid(
+      "--quality cannot be combined with --anonymous because a complete preview may require sign-in.",
+      context.invokedAs,
+      values.json === true,
+    );
+  }
+  let qualityEnabledForRun = values["no-quality"] !== true;
   if (values["sign-in"] === true && values.json === true) {
     return invalid(
       "--sign-in is interactive and cannot be combined with --json.",
@@ -643,6 +665,12 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         directory: join(cacheDirectory, "features"),
         afterWrite: afterCacheWrite,
       });
+  const qualityCache = !persistentCache
+    ? null
+    : createFileQualityResultCache({
+        directory: join(cacheDirectory, "quality"),
+        afterWrite: afterCacheWrite,
+      });
   const cachePolicy = {
     read: !noCache && values.refresh !== true,
     write: !noCache,
@@ -672,7 +700,13 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         handles: positionals as [string] | [string, string],
         authenticationState,
         ...(invocationToken === undefined ? {} : { token: invocationToken }),
-        caches: { snapshots: snapshotCache, analyses: sourceCache, read: cachePolicy.read },
+        caches: {
+          snapshots: snapshotCache,
+          analyses: sourceCache,
+          quality: qualityCache,
+          read: cachePolicy.read,
+        },
+        qualityEnabled: qualityEnabledForRun,
         ...(context.fetchImpl === undefined ? {} : { fetchImpl: context.fetchImpl }),
         ...(context.signal === undefined ? {} : { signal: context.signal }),
         ...(context.readAllowance === undefined ? {} : { readAllowance: context.readAllowance }),
@@ -773,6 +807,63 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         context.timeZone,
       );
     }
+    if (
+      qualityEnabledForRun &&
+      requestPlan.quality.disposition !== "complete" &&
+      invocationToken === undefined &&
+      values.anonymous !== true &&
+      values["no-prompt"] !== true &&
+      values.json !== true &&
+      context.isTty === true &&
+      context.prompt !== undefined
+    ) {
+      const limited = requestPlan.quality.disposition === "limited";
+      const qualityRequired = values.quality === true;
+      const choices = qualityRequired
+        ? "[s] sign in once, [c] cancel"
+        : limited
+          ? "[s] sign in once, [l] run the bounded preview, [w] continue without quality"
+          : "[s] sign in once, [w] continue without quality";
+      const answer = (
+        await context.prompt(
+          `Code Quality Preview needs more public GitHub requests for complete coverage.\n${choices}: `,
+        )
+      )
+        .trim()
+        .toLowerCase();
+      if (answer === "s" || answer === "sign in" || answer === "sign-in") {
+        const authorized = await authorizeOnce(context);
+        if (authorized.ok) {
+          invocationToken = authorized.token;
+          authenticationState = "device";
+          invocationAuthenticationState = "device";
+          const qualityPlanned = await makePlan();
+          if (qualityPlanned.ok) requestPlan = qualityPlanned.plan;
+          else qualityEnabledForRun = false;
+        } else {
+          qualityEnabledForRun = false;
+        }
+      } else if (!qualityRequired && (answer === "l" || answer === "limited") && limited) {
+        // The bounded preview remains enabled with explicit coverage limits.
+      } else {
+        qualityEnabledForRun = false;
+      }
+    }
+    if (
+      values.quality === true &&
+      (!qualityEnabledForRun || requestPlan.quality.disposition !== "complete")
+    ) {
+      return budgetFailure(
+        requestPlan,
+        context.invokedAs,
+        values.json === true,
+        requestPlan.quality.disposition === "blocked"
+          ? "github_limit_reached"
+          : "github_budget_limited",
+        "A complete Code Quality Preview is not available within GitHub's current public request allowance. No collection began.",
+        context.timeZone,
+      );
+    }
   }
   const fetchOptions = {
     ...(invocationToken === undefined ? {} : { token: invocationToken }),
@@ -811,6 +902,16 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         ...fetchOptions,
         ...(requestPlan === null ? {} : { maxRequests: requestPlan.perProfileRequestCaps[0] }),
         sourceAnalysis: { cache: sourceCache, derivedCache, cachePolicy },
+        quality: {
+          enabled: qualityEnabledForRun,
+          cache: qualityCache,
+          cachePolicy,
+          sourceRequestCap:
+            requestPlan?.quality.perProfileSourceRequestCaps[0] ?? (qualityEnabledForRun ? 21 : 0),
+          attributionRequestCap:
+            requestPlan?.quality.perProfileAttributionRequestCaps[0] ??
+            (qualityEnabledForRun ? 12 : 0),
+        },
         onProgress: progress.update,
       });
       if (!result.ok) {
@@ -825,12 +926,13 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       }
       const stdout =
         values.json === true
-          ? `${JSON.stringify({ profile: withoutScanType(result.profile), sourceAnalysis: result.sourceAnalysis, requestBudget: result.requestBudget }, null, 2)}\n`
+          ? `${JSON.stringify({ profile: withoutScanType(result.profile), sourceAnalysis: result.sourceAnalysis, ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}), requestBudget: result.requestBudget }, null, 2)}\n`
           : renderProfile(result.profile, result.sourceAnalysis, {
               palette,
               columns: context.terminalColumns,
               details: values.details === true || values.receipts === true,
               receipts: values.receipts === true,
+              ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
             });
       progress.update({ type: "command-complete" });
       return { exitCode: 0, stdout, stderr: "" };
@@ -850,6 +952,25 @@ export async function run(argv: readonly string[], context: CliContext): Promise
             },
           }),
       sourceAnalysis: { cache: sourceCache, derivedCache, cachePolicy },
+      quality: {
+        enabled: qualityEnabledForRun,
+        cache: qualityCache,
+        cachePolicy,
+        sourceRequestCaps: {
+          left:
+            requestPlan?.quality.perProfileSourceRequestCaps[0] ?? (qualityEnabledForRun ? 21 : 0),
+          right:
+            requestPlan?.quality.perProfileSourceRequestCaps[1] ?? (qualityEnabledForRun ? 21 : 0),
+        },
+        attributionRequestCaps: {
+          left:
+            requestPlan?.quality.perProfileAttributionRequestCaps[0] ??
+            (qualityEnabledForRun ? 12 : 0),
+          right:
+            requestPlan?.quality.perProfileAttributionRequestCaps[1] ??
+            (qualityEnabledForRun ? 12 : 0),
+        },
+      },
       onProgress: progress.update,
     });
     if (!result.ok) {
@@ -867,6 +988,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         battle: result.battle,
         source: result.sourceAnalysis,
         story: result.story,
+        ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
         version: context.version,
         format: exportDestination.format,
         destination: exportDestination.path,
@@ -898,7 +1020,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       progress.update({ type: "command-complete" });
       return {
         exitCode: 0,
-        stdout: `${JSON.stringify({ battle: battleJson(result), presentationVerdict: derivePresentationVerdict(result.battle, result.sourceAnalysis), sourceAnalysis: result.sourceAnalysis, story: result.story }, null, 2)}\n`,
+        stdout: `${JSON.stringify({ battle: battleJson(result), presentationVerdict: derivePresentationVerdict(result.battle, result.sourceAnalysis), sourceAnalysis: result.sourceAnalysis, story: result.story, ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}) }, null, 2)}\n`,
         stderr: "",
       };
     }
@@ -915,12 +1037,14 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         ? renderCard(result.battle, result.sourceAnalysis, result.story, {
             palette: PLAIN_PALETTE,
             columns: context.terminalColumns,
+            ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
           })
         : renderBattle(result.battle, result.sourceAnalysis, result.story, {
             palette,
             columns: context.terminalColumns,
             details: values.details === true || values.receipts === true,
             receipts: values.receipts === true,
+            ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
           });
     progress.update({ type: "command-complete" });
     return { exitCode: 0, stdout, stderr: "" };

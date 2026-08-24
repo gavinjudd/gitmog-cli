@@ -13,6 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { Worker } from "node:worker_threads";
 
 import { captureNodeCli, resolveNpmEntrypoints } from "./lib/package-manager.mjs";
 import { canonicalizePackageHelpInvocation } from "./lib/package-acceptance.mjs";
@@ -412,7 +413,7 @@ function assertBalancedAnsi(value) {
 
 async function main() {
   const options = parseArguments(process.argv.slice(2));
-  const scratch = mkdtempSync(join(tmpdir(), "gitmog-packed-acceptance-"));
+  const scratch = mkdtempSync(join(tmpdir(), "gitmog packed acceptance "));
   const installDirectory = scratch;
   const cacheDirectory = join(scratch, "cache");
   const npmCacheDirectory = join(scratch, "npm-cache");
@@ -464,6 +465,74 @@ async function main() {
 
     const installedBinary = join(scratch, "node_modules", "gitmog", "bin", "gitmog.mjs");
     const installedBundlePath = join(scratch, "node_modules", "gitmog", "dist", "gitmog.mjs");
+    const installedParserPath = join(
+      scratch,
+      "node_modules",
+      "gitmog",
+      "dist",
+      "parsers",
+      "quality-worker.mjs",
+    );
+    const installedBuild = JSON.parse(
+      readFileSync(join(scratch, "node_modules", "gitmog", "dist", "build.json"), "utf8"),
+    );
+    if (
+      !existsSync(installedParserPath) ||
+      JSON.stringify(installedBuild.parserAssets) !== JSON.stringify(["parsers/quality-worker.mjs"])
+    ) {
+      fail("Packed parser asset allowlist is incomplete.");
+    }
+    const parserMarker = "PACKED_RAW_SOURCE_MUST_NOT_RETURN";
+    const parserResult = await new Promise((resolveResult, rejectResult) => {
+      const worker = new Worker(pathToFileURL(installedParserPath), {
+        resourceLimits: {
+          maxOldGenerationSizeMb: 96,
+          maxYoungGenerationSizeMb: 16,
+          stackSizeMb: 4,
+        },
+        stdout: true,
+        stderr: true,
+      });
+      worker.stdout.resume();
+      worker.stderr.resume();
+      const timer = setTimeout(() => {
+        void worker.terminate();
+        rejectResult(
+          new Error("Packed parser worker did not complete within its acceptance bound."),
+        );
+      }, 5_000);
+      timer.unref();
+      worker.once("error", () => {
+        clearTimeout(timer);
+        rejectResult(new Error("Packed parser worker failed without exposing parser input."));
+      });
+      worker.on("message", (message) => {
+        if (message?.type === "ready") {
+          worker.postMessage({
+            type: "parse",
+            id: 1,
+            path: "synthetic.ts",
+            source: `export const value: string = "${parserMarker}";`,
+          });
+        } else if (message?.type === "result" && message.id === 1) {
+          clearTimeout(timer);
+          void worker.terminate();
+          resolveResult(message.result);
+        }
+      });
+    });
+    const parserRecord =
+      typeof parserResult === "object" && parserResult !== null
+        ? /** @type {Record<string, unknown>} */ (parserResult)
+        : null;
+    if (
+      parserRecord === null ||
+      parserRecord.ok !== true ||
+      JSON.stringify(parserRecord).includes(parserMarker)
+    ) {
+      fail("Packed parser worker did not return safe derived TypeScript AST features.");
+    }
+    record("parser-asset-smoke", "TypeScript AST; resource-limited worker; source-free result");
     const installedBundle = readFileSync(installedBundlePath, "utf8");
     const installedReadme = readFileSync(
       join(scratch, "node_modules", "gitmog", "README.md"),
@@ -647,7 +716,10 @@ async function main() {
       "two exact commands; generic grammar first; all help forms zero-call; ordinary fixture battles",
     );
 
-    const canonicalScopePayload = (value) => JSON.stringify(withoutRequestBudgets(value));
+    const canonicalScopePayload = (value) => {
+      const { qualityPreview: _qualityPreview, ...canonical } = value;
+      return JSON.stringify(withoutRequestBudgets(canonical));
+    };
     const sourceScopeStatus = (value) => ({
       status: value.sourceAnalysis?.status,
       cacheDisposition: value.sourceAnalysis?.cacheDisposition,
@@ -1260,6 +1332,9 @@ async function main() {
     const firstResult = npx("gitmog", args);
     const first = parseJson(firstResult, "direct-battle");
     report.canonicalJsonSha256 = createHash("sha256").update(firstResult.stdout).digest("hex");
+    report.canonicalBattleSha256 = createHash("sha256")
+      .update(JSON.stringify(first.battle))
+      .digest("hex");
     if (!first.battle || !first.presentationVerdict || !first.sourceAnalysis || !first.story) {
       fail("Battle JSON does not contain the complete contract.");
     }

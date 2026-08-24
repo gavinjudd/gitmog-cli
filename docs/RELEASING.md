@@ -7,6 +7,8 @@ runtime dependencies, install scripts, engine range, platform evidence, and acti
 GitHub Actions may build and retain a candidate but cannot publish from an ordinary pull request.
 No npm credential is stored in repository secrets. Tags are annotated and immutable. The exact
 candidate is accepted under every supported Node and architecture lane before publication.
+The release workflow uses standard GitHub-hosted runners only; no self-hosted or paid larger
+runner is part of the release contract.
 
 `scripts/build-release-artifact.mjs` packs once, runs the complete offline platform acceptance
 against that exact tarball, and emits `release-metadata.json`, `SHA256SUMS.txt`, `SBOM.json`,

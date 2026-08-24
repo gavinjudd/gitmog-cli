@@ -2,11 +2,14 @@ GIT MOG
 @strongmaintainer
 Score: 92
 Coverage: 59%
-
 THE READ
 @strongmaintainer — Tests: 25 per 100 source files in inspected trees.
   orchestrator has build output or dependencies committed. [1]
-
+CODE QUALITY · PREVIEW
+Maintained codebase 81 (100%)
+Attributed code 81 (67%)
+@strongmaintainer — 0 high-complexity funcs · orchestrator/migrate.ts:1 [PQ1]
+Not used in the score pending human calibration.
 RECEIPTS
 [1] @strongmaintainer — Test files 25 per 100 source files; Project structure
 More: --details · --receipts

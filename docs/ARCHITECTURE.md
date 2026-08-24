@@ -7,6 +7,7 @@ github -> analyzers
 personality -> github + analyzers
 source-analysis -> github + analyzers + personality + scoring
 battle -> github + personality + scoring + source-analysis
+quality-judge -> github (safe digests and immutable source identities only)
 cli -> battle and presentation dependencies
 distribution -> bundled CLI
 ```
@@ -14,7 +15,13 @@ distribution -> bundled CLI
 `packages/scoring` owns the canonical numeric score, rounds, winner, verdict, evidence, and
 battle key. Additive products may consume a completed immutable battle but scoring cannot import
 them. The package is bundled into `dist/gitmog.mjs`; workspace imports and development tools may
-not survive into the tarball.
+not survive into the tarball. Quality Judge attaches only after the canonical battle has been
+built. Canonical scoring, winner selection, battle-key construction, and scorecard serialization
+have no dependency path into Quality Judge.
+
+The TypeScript/JavaScript parser is a separate allowlisted worker asset. The main process sends
+bounded source to that worker, receives only derived features or structured failures, and
+terminates it at hard time or memory boundaries. Raw source never returns in a result.
 
 Public source is authoritative for every runtime package, runtime test, bundle tool, package
 acceptance harness, public ADR, and release workflow. A private integration consumer pins one

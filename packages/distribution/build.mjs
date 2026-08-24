@@ -7,30 +7,57 @@ import { build } from "rolldown";
 const packageDirectory = dirname(fileURLToPath(import.meta.url));
 const input = resolve(packageDirectory, "../cli/dist/bin.js");
 const output = resolve(packageDirectory, "dist/gitmog.mjs");
+const parserInput = resolve(packageDirectory, "../quality-judge/dist/parser-worker.js");
+const parserOutput = resolve(packageDirectory, "dist/parsers/quality-worker.mjs");
 const manifest = JSON.parse(readFileSync(resolve(packageDirectory, "package.json"), "utf8"));
 
 rmSync(resolve(packageDirectory, "dist"), { recursive: true, force: true });
 mkdirSync(dirname(output), { recursive: true });
+mkdirSync(dirname(parserOutput), { recursive: true });
 
-await build({
-  input,
-  platform: "node",
-  external: [/^node:/],
-  output: {
-    file: output,
-    format: "esm",
-    codeSplitting: false,
-    minify: false,
-    sourcemap: false,
-  },
-});
+/** @param {string} entry @param {string} file */
+const bundle = async (entry, file) => {
+  await build({
+    input: entry,
+    platform: "node",
+    external: [/^node:/],
+    transform: {
+      define: {
+        __filename: "import.meta.filename",
+        __dirname: "import.meta.dirname",
+      },
+    },
+    output: {
+      file,
+      format: "esm",
+      codeSplitting: false,
+      minify: false,
+      sourcemap: false,
+    },
+  });
+};
+
+await bundle(input, output);
+await bundle(parserInput, parserOutput);
 
 chmodSync(resolve(packageDirectory, "bin/gitmog.mjs"), 0o755);
 
 // Rolldown's region comments expose workspace-relative source locations. They are not
 // runtime data and have no place in the standalone artifact.
-const bundled = readFileSync(output, "utf8").replace(/^\s*\/\/#(?:end)?region(?: .*)?\r?\n/gm, "");
-writeFileSync(output, bundled, "utf8");
+/** @param {string} file */
+const sanitize = (file) => {
+  const bundled = readFileSync(file, "utf8")
+    .replace(/^\s*\/\/#(?:end)?region(?: .*)?\r?\n/gm, "")
+    // The bundled TypeScript parser contains its own emitter's source-map vocabulary.
+    // Preserve that runtime string while ensuring the shipped file contains no active
+    // source-map directive or review-confusing literal directive marker.
+    .replace(/^\s*\/\/[#@]\s*sourceMappingURL=.*\r?\n?/gmu, "")
+    .replaceAll("sourceMappingURL=", "sourceMappingURL\\x3d");
+  writeFileSync(file, bundled, "utf8");
+  return bundled;
+};
+const bundled = sanitize(output);
+const parserBundle = sanitize(parserOutput);
 /** @type {readonly (readonly [string, RegExp])[]} */
 const forbidden = [
   ["workspace dependency", /(?:from|import\s*\()\s*["']@gitmog\//],
@@ -42,7 +69,7 @@ const forbidden = [
   ["developer-machine path", /\/Users\/|[A-Za-z]:\\Users\\/],
 ];
 for (const [label, pattern] of forbidden) {
-  if (pattern.test(bundled)) {
+  if (pattern.test(bundled) || pattern.test(parserBundle)) {
     throw new Error(`Distribution bundle still contains ${label}.`);
   }
 }
@@ -65,7 +92,10 @@ const retiredTerms = [
   `--${["ultra", "think"].join("")}`,
 ];
 for (const term of retiredTerms) {
-  if (bundled.toLowerCase().includes(term.toLowerCase())) {
+  if (
+    bundled.toLowerCase().includes(term.toLowerCase()) ||
+    parserBundle.toLowerCase().includes(term.toLowerCase())
+  ) {
     throw new Error("Distribution bundle contains a retired product term.");
   }
 }
@@ -75,7 +105,12 @@ for (const term of retiredTerms) {
 writeFileSync(
   resolve(packageDirectory, "dist/build.json"),
   `${JSON.stringify(
-    { package: manifest.name, version: manifest.version, entry: "gitmog.mjs" },
+    {
+      package: manifest.name,
+      version: manifest.version,
+      entry: "gitmog.mjs",
+      parserAssets: ["parsers/quality-worker.mjs"],
+    },
     null,
     2,
   )}\n`,

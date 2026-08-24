@@ -72,6 +72,23 @@ for (const issueForm of required.filter(
   }
 }
 
+const ciWorkflow = readFileSync(resolve(workflowRoot, "ci.yml"), "utf8");
+const architectureStart = ciWorkflow.indexOf("\n  architecture:");
+const qualityStart = ciWorkflow.indexOf("\n  quality:");
+const architectureBlock = ciWorkflow.slice(architectureStart, qualityStart);
+if (
+  architectureStart < 0 ||
+  qualityStart < 0 ||
+  !architectureBlock.includes("needs: packed-artifact")
+) {
+  throw new Error("Architecture acceptance must wait for the exact shared packed artifact.");
+}
+const qualityEnd = ciWorkflow.indexOf("\n  security:", qualityStart);
+const qualityBlock = ciWorkflow.slice(qualityStart, qualityEnd);
+if (!qualityBlock.includes("scripts/turbo.mjs run test --filter=@gitmog/quality-judge")) {
+  throw new Error("Focused quality CI must build its workspace dependencies through Turbo.");
+}
+
 console.log(
   `Community contract complete (${String(required.length)} required files, ${String(workflows.length)} workflows).`,
 );

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/gavinjudd/gitmog-cli/calibration/schema/judgment.schema.json",
+  "title": "Quality Judge blinded judgment export",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "calibrationVersion",
+    "batchId",
+    "reviewerPseudonym",
+    "toolVersion",
+    "judgments"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0.0-blinded-pairwise" },
+    "calibrationVersion": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "batchId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$" },
+    "reviewerPseudonym": { "type": "string", "pattern": "^reviewer_[0-9a-f]{16}$" },
+    "toolVersion": { "const": "1.0.0" },
+    "judgments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": { "$ref": "#/$defs/judgment" }
+    }
+  },
+  "$defs": {
+    "judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pairId",
+        "languageCohort",
+        "presentedOrder",
+        "choice",
+        "confidence",
+        "insufficientReason"
+      ],
+      "properties": {
+        "pairId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$" },
+        "languageCohort": { "enum": ["typescript", "javascript", "python", "go"] },
+        "presentedOrder": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$" }
+        },
+        "choice": { "enum": ["A", "B", "tie", "insufficient"] },
+        "confidence": { "enum": ["low", "medium", "high"] },
+        "insufficientReason": {
+          "type": ["string", "null"],
+          "enum": [
+            null,
+            "sample-too-small",
+            "source-unavailable",
+            "identity-recognized",
+            "language-outside-expertise",
+            "other-bounded-review-failure"
+          ]
+        }
+      }
+    }
+  }
+}

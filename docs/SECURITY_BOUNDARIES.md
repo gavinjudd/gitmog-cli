@@ -6,6 +6,8 @@
   artifacts, calibration judgments, or repository history.
 - Bound requests, response bytes, decoded bytes, parser time, memory, nodes, nesting, imports,
   symbols, and tokens; a parser failure lowers quality coverage and cannot fail canonical scoring.
+- Run parser-backed product analysis in a dedicated worker with hard per-file and profile timers,
+  V8 heap/stack resource limits, cancellation, discarded stdout/stderr, and source-free errors.
 - Package runtime is pure Node plus reviewed embedded Wasm if needed: no native addon, install
   script, runtime download, target runtime, model provider, or external prose generation.
 - Workflows use SHA-pinned actions, read-only default permissions, no `pull_request_target`, no

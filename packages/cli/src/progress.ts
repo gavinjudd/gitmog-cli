@@ -13,6 +13,7 @@ export const PROGRESS_STAGE_LABELS = Object.freeze({
   source: "Reading code samples",
   scoring: "Scoring matchup",
   story: "Building verdict",
+  quality: "Reviewing code quality",
 });
 
 type ProgressStage = keyof typeof PROGRESS_STAGE_LABELS;
@@ -183,6 +184,7 @@ export function createTerminalProgress(options: TerminalProgressOptions): Termin
       case "scoring-complete":
       case "source-analysis-complete":
       case "story-complete":
+      case "quality-analysis-complete":
         return;
       case "repository-ranking-start":
         activate("repositories");
@@ -195,6 +197,9 @@ export function createTerminalProgress(options: TerminalProgressOptions): Termin
         return;
       case "story-start":
         activate("story");
+        return;
+      case "quality-analysis-start":
+        activate("quality");
         return;
       case "command-complete":
         finish();

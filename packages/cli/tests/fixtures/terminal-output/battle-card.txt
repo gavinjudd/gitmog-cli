@@ -4,6 +4,7 @@
 │ ◆ @strongmaintainer WINS · PUBLIC REPO GAP                             │
 │ @strongmaintainer SCORE 92 · COVERAGE 59% · @sidequester SCORE 39 ·    │
 │ COVERAGE 54%                                                           │
+│ PREVIEW · code quality 81–89 · not used in winner                      │
 ├────────────────────────────────────────────────────────────────────────┤
 │ » @strongmaintainer/@sidequester: Same coding style; @strongmaintainer │
 │ and @sidequester take different implementation routes. [1]             │

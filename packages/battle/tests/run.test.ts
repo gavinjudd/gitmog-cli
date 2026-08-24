@@ -3,6 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { createSnapshotCache, type ProfileSnapshot } from "@gitmog/github";
+import {
+  createFileQualityResultCache,
+  isQualityJudgeResult,
+  qualityResultValidationCode,
+} from "@gitmog/quality-judge";
 import { createFileCodeDnaCache, createFileDerivedFeatureCache } from "@gitmog/source-analysis";
 import {
   createFixtureFetch,
@@ -75,6 +80,10 @@ describe("one complete orchestration path", () => {
     expect(result.story.planId).toBeTruthy();
     expect(result.story.finisher.evidenceIds.length).toBeGreaterThan(0);
     expect(result.sourceAnalysis.requestBudget.total).toBeLessThanOrEqual(32);
+    expect(result.qualityPreview.left.requestBudget.completeOpportunity).toBe(33);
+    expect(result.qualityPreview.right.requestBudget.completeOpportunity).toBe(33);
+    expect(result.qualityPreview.left.scoreInfluence).toBe(0);
+    expect(result.qualityPreview.right.scoreInfluence).toBe(0);
     expect(JSON.stringify(result)).not.toContain('"content"');
     expect(
       transport.calls.filter((url) => new URL(url).pathname === "/users/strongmaintainer"),
@@ -82,13 +91,13 @@ describe("one complete orchestration path", () => {
     expect(
       transport.calls.filter((url) => new URL(url).pathname === "/users/sidequester"),
     ).toHaveLength(1);
-    expect(transport.calls.length).toBeLessThanOrEqual(32);
+    expect(transport.calls.length).toBeLessThanOrEqual(98);
     for (const handle of ["strongmaintainer", "sidequester"]) {
       const profileCalls = transport.calls.filter((url) => {
         const path = new URL(url).pathname.toLowerCase();
         return path.startsWith(`/users/${handle}`) || path.startsWith(`/repos/${handle}/`);
       });
-      expect(profileCalls.length, handle).toBeLessThanOrEqual(16);
+      expect(profileCalls.length, handle).toBeLessThanOrEqual(49);
     }
     const treeCalls = transport.calls.filter((url) =>
       new URL(url).pathname.includes("/git/trees/"),
@@ -97,7 +106,9 @@ describe("one complete orchestration path", () => {
       new URL(url).pathname.includes("/git/blobs/"),
     );
     expect(new Set(treeCalls).size).toBe(treeCalls.length);
-    expect(new Set(blobCalls).size).toBe(blobCalls.length);
+    const blobCallCounts = new Map<string, number>();
+    for (const call of blobCalls) blobCallCounts.set(call, (blobCallCounts.get(call) ?? 0) + 1);
+    expect(Math.max(...blobCallCounts.values())).toBeLessThanOrEqual(2);
   });
 
   it("reports real orchestration transitions without changing the canonical result", async () => {
@@ -129,6 +140,8 @@ describe("one complete orchestration path", () => {
       "source-analysis-complete",
       "story-start",
       "story-complete",
+      "quality-analysis-start",
+      "quality-analysis-complete",
     ]);
     expect(instrumented.ok && baseline.ok).toBe(true);
     if (!instrumented.ok || !baseline.ok) return;
@@ -263,6 +276,52 @@ describe("one complete orchestration path", () => {
     expect(completeTransport.calls.some((url) => url.includes("/git/blobs/"))).toBe(true);
   });
 
+  it("keeps every canonical battle byte invariant across arbitrary preview states", async () => {
+    const run = async (quality: Parameters<typeof runBattle>[0]["quality"]) => {
+      const transport = serve(PERSONAS.strongMaintainer, PERSONAS.manyTinyRepos);
+      return runBattle({
+        left: "strongmaintainer",
+        right: "sidequester",
+        fetchImpl: transport.fetchImpl,
+        quality,
+        ...base,
+      });
+    };
+    const disabled = await run({ enabled: false });
+    const partial = await run({
+      enabled: true,
+      sourceRequestCaps: { left: 5, right: 5 },
+      attributionRequestCaps: { left: 0, right: 0 },
+    });
+    const ready = await run({ enabled: true });
+    expect(disabled.ok && partial.ok && ready.ok).toBe(true);
+    if (!disabled.ok || !partial.ok || !ready.ok) return;
+    const canonical = JSON.stringify(disabled.battle);
+    expect(JSON.stringify(partial.battle)).toBe(canonical);
+    expect(JSON.stringify(ready.battle)).toBe(canonical);
+
+    const arbitraryPreview = {
+      ...ready.qualityPreview,
+      left: {
+        ...ready.qualityPreview.left,
+        maintainedCodebase: {
+          ...ready.qualityPreview.left.maintainedCodebase,
+          previewScore: 0,
+          coverage: 1,
+        },
+      },
+      right: {
+        ...ready.qualityPreview.right,
+        maintainedCodebase: {
+          ...ready.qualityPreview.right.maintainedCodebase,
+          previewScore: 100,
+          coverage: 100,
+        },
+      },
+    };
+    expect(JSON.stringify({ ...ready, qualityPreview: arbitraryPreview }.battle)).toBe(canonical);
+  });
+
   it("reuses both profile snapshots in a reversed battle", async () => {
     const directory = mkdtempSync(join(tmpdir(), "gitmog-reversed-analysis-"));
     const cache = createSnapshotCache<ProfileSnapshot>();
@@ -271,11 +330,17 @@ describe("one complete orchestration path", () => {
       cache: createFileCodeDnaCache({ directory: join(directory, "analysis") }),
       derivedCache: createFileDerivedFeatureCache({ directory: join(directory, "features") }),
     };
+    const quality = {
+      enabled: true,
+      cache: createFileQualityResultCache({ directory: join(directory, "quality") }),
+      cachePolicy: { read: true, write: true },
+    } as const;
     const options = {
       fetchImpl: transport.fetchImpl,
       cache,
       now: () => FIXTURE_NOW_MS,
       sourceAnalysis,
+      quality,
     };
     try {
       const forward = await runBattle({
@@ -284,6 +349,17 @@ describe("one complete orchestration path", () => {
         ...options,
       });
       const after = transport.calls.length;
+      if (forward.ok) {
+        expect(
+          isQualityJudgeResult(forward.qualityPreview.left),
+          qualityResultValidationCode(forward.qualityPreview.left) ?? "valid",
+        ).toBe(true);
+        expect(
+          isQualityJudgeResult(forward.qualityPreview.right),
+          qualityResultValidationCode(forward.qualityPreview.right) ?? "valid",
+        ).toBe(true);
+        expect(quality.cache.size).toBe(2);
+      }
       const reversed = await runBattle({
         left: "sidequester",
         right: "strongmaintainer",
@@ -294,6 +370,8 @@ describe("one complete orchestration path", () => {
       if (!forward.ok || !reversed.ok) return;
       expect(reversed.sourceAnalysis.left.codeDna).toEqual(forward.sourceAnalysis.right.codeDna);
       expect(reversed.sourceAnalysis.right.codeDna).toEqual(forward.sourceAnalysis.left.codeDna);
+      expect(reversed.qualityPreview.left).toEqual(forward.qualityPreview.right);
+      expect(reversed.qualityPreview.right).toEqual(forward.qualityPreview.left);
       expect(reversed.battle.margin).toBe(forward.battle.margin);
       expect(reversed.story.finisher.text).not.toBe(forward.story.finisher.text);
     } finally {

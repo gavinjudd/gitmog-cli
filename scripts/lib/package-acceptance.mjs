@@ -21,6 +21,7 @@ export const PUBLISHED_PACKAGE_FILES = Object.freeze([
   "bin/gitmog.mjs",
   "dist/build.json",
   "dist/gitmog.mjs",
+  "dist/parsers/quality-worker.mjs",
   "package.json",
 ]);
 
@@ -103,6 +104,22 @@ export function buildExternalTarball({ npmCli, packageDirectory, context, enviro
   if (packedFiles.length === 0 || JSON.stringify(packedFiles) !== JSON.stringify(dryRunFiles)) {
     throw new Error("npm pack dry-run and real artifact file lists differ.");
   }
+  const members = Array.isArray(entry?.files)
+    ? entry.files.map((file) => ({ path: file?.path, bytes: file?.size }))
+    : [];
+  const dryRunMembers = Array.isArray(dryRunEntry?.files)
+    ? dryRunEntry.files.map((file) => ({ path: file?.path, bytes: file?.size }))
+    : [];
+  if (
+    members.some(
+      (member) => typeof member.path !== "string" || !Number.isSafeInteger(member.bytes),
+    ) ||
+    JSON.stringify(members) !== JSON.stringify(dryRunMembers) ||
+    !Number.isSafeInteger(entry?.unpackedSize) ||
+    entry.unpackedSize <= 0
+  ) {
+    throw new Error("npm pack did not return stable member sizes and unpacked size.");
+  }
   if (JSON.stringify([...packedFiles].sort()) !== JSON.stringify(PUBLISHED_PACKAGE_FILES)) {
     throw new Error(
       `Packed file allowlist changed. Expected: ${PUBLISHED_PACKAGE_FILES.join(", ")}. ` +
@@ -131,7 +148,9 @@ export function buildExternalTarball({ npmCli, packageDirectory, context, enviro
   return {
     tarball,
     bytes: statSync(tarball).size,
+    unpackedBytes: entry.unpackedSize,
     files: packedFiles,
+    members,
     integrity: entry.integrity,
     shasum: entry.shasum,
   };

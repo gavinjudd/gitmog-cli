@@ -257,7 +257,7 @@ export function createFixtureFetch(persona: PersonaSpec): FixtureFetch {
     }
 
     const repoMatch =
-      /^\/repos\/([^/]+)\/([^/]+)\/(languages|releases|commits|git\/trees\/.+|git\/blobs\/.+)$/.exec(
+      /^\/repos\/([^/]+)\/([^/]+)\/(languages|releases|commits(?:\/[^/]+)?|git\/trees\/.+|git\/blobs\/.+)$/.exec(
         url.pathname,
       );
     if (repoMatch !== null) {
@@ -271,6 +271,18 @@ export function createFixtureFetch(persona: PersonaSpec): FixtureFetch {
       }
       if (endpoint === "commits") {
         return respond(commitsJson(persona.commitMessages ?? [], login), 200, remaining);
+      }
+      if (endpoint.startsWith("commits/")) {
+        const paths = persona.trees?.[repository];
+        if (paths === undefined) return respond({ message: "Not Found" }, 404, remaining);
+        return respond(
+          {
+            sha: fixtureSha(`${login}/${repository}:commit`),
+            commit: { tree: { sha: treeJson(paths).sha } },
+          },
+          200,
+          remaining,
+        );
       }
       if (endpoint.startsWith("git/blobs/")) {
         const sha = endpoint.slice("git/blobs/".length);

@@ -4,6 +4,10 @@ export const REQUEST_PLAN_VERSION = "1.0.0-first-run-budget";
 export const COMPLETE_PROFILE_REQUESTS = 16;
 export const MINIMUM_USEFUL_PROFILE_REQUESTS = 6;
 export const MAXIMUM_SOURCE_REQUESTS_PER_PROFILE = 4;
+export const QUALITY_REQUEST_PLAN_VERSION = "1.1.0-cache-invariant-quality-tier";
+export const COMPLETE_QUALITY_SOURCE_REQUESTS_PER_PROFILE = 21;
+export const COMPLETE_QUALITY_ATTRIBUTION_REQUESTS_PER_PROFILE = 12;
+export const MINIMUM_USEFUL_QUALITY_REQUESTS_PER_PROFILE = 5;
 
 export type AuthenticationState = "anonymous" | "explicit" | "device";
 export type RateLimitClass = "none" | "primary" | "secondary" | "unknown";
@@ -12,6 +16,7 @@ export type BudgetDisposition = "complete" | "limited" | "blocked" | "unknown";
 export interface RequestPlanCacheState {
   readonly snapshotHit: boolean;
   readonly analysisHit: boolean;
+  readonly qualityHit: boolean;
   readonly maximumSourceRequests: number;
 }
 
@@ -49,6 +54,18 @@ export interface GithubRequestPlan {
   readonly perProfileRequestCaps: readonly [number] | readonly [number, number];
   /** @deprecated Prefer the position-specific caps above. */
   readonly perProfileRequestCap: number;
+  readonly quality: {
+    readonly version: typeof QUALITY_REQUEST_PLAN_VERSION;
+    readonly enabled: boolean;
+    readonly cacheHits: number;
+    readonly disposition: BudgetDisposition;
+    readonly expectedCurrentRequests: number;
+    readonly minimumUsefulRequests: number;
+    readonly completeSupportedRequests: number;
+    readonly perProfileSourceRequestCaps: readonly [number] | readonly [number, number];
+    readonly perProfileAttributionRequestCaps: readonly [number] | readonly [number, number];
+  };
+  readonly totalExpectedCurrentRequests: number;
 }
 
 export interface BuildRequestPlanInput {
@@ -56,6 +73,7 @@ export interface BuildRequestPlanInput {
   readonly profiles:
     readonly [RequestPlanCacheState] | readonly [RequestPlanCacheState, RequestPlanCacheState];
   readonly allowance: GithubCoreAllowance;
+  readonly qualityEnabled?: boolean | undefined;
 }
 
 const boundedSourceMaximum = (value: number): number =>
@@ -117,6 +135,61 @@ export function buildGithubRequestPlan(input: BuildRequestPlanInput): GithubRequ
   const typedCaps = perProfileRequestCaps as unknown as
     readonly [number] | readonly [number, number];
   const perProfileRequestCap = Math.max(...perProfileRequestCaps);
+  const qualityEnabled = input.qualityEnabled !== false;
+  const qualityIndexes = qualityEnabled ? input.profiles.map((_, index) => index) : [];
+  const qualityComplete = qualityEnabled
+    ? profileCount *
+      (COMPLETE_QUALITY_SOURCE_REQUESTS_PER_PROFILE +
+        COMPLETE_QUALITY_ATTRIBUTION_REQUESTS_PER_PROFILE)
+    : 0;
+  const qualityMinimum = qualityEnabled
+    ? profileCount * MINIMUM_USEFUL_QUALITY_REQUESTS_PER_PROFILE
+    : 0;
+  // Quality opportunity is based on the canonical cold-plan contract, never on cache state.
+  // A cache may save a call but cannot unlock more source, attribution, coverage, or score.
+  const canonicalQualityReservation = profileCount * COMPLETE_PROFILE_REQUESTS;
+  const qualityAvailable =
+    remaining === null ? 0 : Math.max(0, remaining - canonicalQualityReservation);
+  const authenticatedQuality = input.authenticationState !== "anonymous";
+  const allQualityTierCacheHits =
+    qualityEnabled && input.profiles.every((profile) => profile.qualityHit);
+  const qualityDisposition: BudgetDisposition =
+    !qualityEnabled || qualityComplete === 0
+      ? "complete"
+      : remaining === null
+        ? allQualityTierCacheHits
+          ? authenticatedQuality
+            ? "complete"
+            : "limited"
+          : "unknown"
+        : authenticatedQuality && qualityAvailable >= qualityComplete
+          ? "complete"
+          : qualityAvailable >= qualityMinimum
+            ? "limited"
+            : "blocked";
+  const qualitySourceCaps = Array.from({ length: profileCount }, () => 0);
+  const qualityAttributionCaps = Array.from({ length: profileCount }, () => 0);
+  if (qualityDisposition === "complete" && qualityEnabled) {
+    for (const index of qualityIndexes) {
+      qualitySourceCaps[index] = COMPLETE_QUALITY_SOURCE_REQUESTS_PER_PROFILE;
+      qualityAttributionCaps[index] = COMPLETE_QUALITY_ATTRIBUTION_REQUESTS_PER_PROFILE;
+    }
+  } else if (qualityDisposition === "limited" && qualityEnabled) {
+    for (const index of qualityIndexes) {
+      qualitySourceCaps[index] = MINIMUM_USEFUL_QUALITY_REQUESTS_PER_PROFILE;
+    }
+  }
+  const qualityCacheHits = qualityIndexes.filter(
+    (index) => input.profiles[index]?.qualityHit === true,
+  );
+  const qualityCacheHitSet = new Set(qualityCacheHits);
+  const qualityAllocated =
+    qualityIndexes
+      .filter((index) => !qualityCacheHitSet.has(index))
+      .reduce((total, index) => total + (qualitySourceCaps[index] ?? 0), 0) +
+    qualityIndexes
+      .filter((index) => !qualityCacheHitSet.has(index))
+      .reduce((total, index) => total + (qualityAttributionCaps[index] ?? 0), 0);
 
   return {
     version: REQUEST_PLAN_VERSION,
@@ -141,6 +214,24 @@ export function buildGithubRequestPlan(input: BuildRequestPlanInput): GithubRequ
     collectionMayBegin: disposition === "complete" || disposition === "limited",
     perProfileRequestCaps: typedCaps,
     perProfileRequestCap,
+    quality: {
+      version: QUALITY_REQUEST_PLAN_VERSION,
+      enabled: qualityEnabled,
+      cacheHits: qualityCacheHits.length,
+      disposition: qualityDisposition,
+      expectedCurrentRequests: qualityAllocated,
+      minimumUsefulRequests: qualityMinimum,
+      completeSupportedRequests: qualityEnabled
+        ? profileCount *
+          (COMPLETE_QUALITY_SOURCE_REQUESTS_PER_PROFILE +
+            COMPLETE_QUALITY_ATTRIBUTION_REQUESTS_PER_PROFILE)
+        : 0,
+      perProfileSourceRequestCaps: qualitySourceCaps as unknown as
+        readonly [number] | readonly [number, number],
+      perProfileAttributionRequestCaps: qualityAttributionCaps as unknown as
+        readonly [number] | readonly [number, number],
+    },
+    totalExpectedCurrentRequests: expectedCurrentRequests + qualityAllocated,
   };
 }
 

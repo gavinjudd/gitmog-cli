@@ -20,12 +20,13 @@ const manifest = JSON.parse(readFileSync(resolve(packageDirectory, "package.json
   readonly devDependencies?: Readonly<Record<string, string>>;
 };
 const bundlePath = resolve(packageDirectory, "dist/gitmog.mjs");
+const parserBundlePath = resolve(packageDirectory, "dist/parsers/quality-worker.mjs");
 const binPath = resolve(packageDirectory, "bin/gitmog.mjs");
 
 describe("standalone npm distribution", () => {
   it("has the public identity, release metadata, accepted engines and both bins", () => {
     expect(manifest.name).toBe("gitmog");
-    expect(manifest.version).toBe("0.2.2");
+    expect(manifest.version).toBe("0.3.0");
     expect(manifest.license).toBe("MIT");
     expect(manifest.repository).toEqual({
       type: "git",
@@ -44,7 +45,9 @@ describe("standalone npm distribution", () => {
     expect(readdirSync(resolve(packageDirectory, "dist")).sort()).toEqual([
       "build.json",
       "gitmog.mjs",
+      "parsers",
     ]);
+    expect(readdirSync(resolve(packageDirectory, "dist/parsers"))).toEqual(["quality-worker.mjs"]);
     expect(readdirSync(resolve(packageDirectory, "bin"))).toEqual(["gitmog.mjs"]);
     if (process.platform === "win32") {
       expect(readFileSync(binPath, "utf8")).toMatch(/^#!\/usr\/bin\/env node/);
@@ -55,6 +58,7 @@ describe("standalone npm distribution", () => {
 
   it("bundles every workspace package into one pure-Node executable", () => {
     const bundle = readFileSync(bundlePath, "utf8");
+    const parserBundle = readFileSync(parserBundlePath, "utf8");
     expect(bundle.length).toBeGreaterThan(100_000);
     expect(bundle).not.toMatch(/(?:from|import\s*\()\s*["']@gitmog\//);
     expect(bundle).not.toContain("workspace:");
@@ -66,6 +70,12 @@ describe("standalone npm distribution", () => {
     expect(bundle).toContain("1.2.0-cache-invariant-support");
     expect(bundle).toContain("2.0.0-default-full-profile-snapshot");
     expect(bundle).toContain("default-full-snapshot:2");
+    expect(bundle).toContain("0.3.0-preview.1");
+    expect(bundle).toContain("1.0.0-typescript-ast");
+    expect(bundle).toContain("parsers/quality-worker.mjs");
+    expect(parserBundle).toContain("1.0.0-typescript-ast");
+    expect(parserBundle).not.toContain("sourceMappingURL=");
+    expect(parserBundle).not.toContain("node:child_process");
     expect(bundle).not.toContain("5.0.0-raw-path-blob-receipts");
     expect(bundle).not.toContain("1.1.0-stable-cache-raw-receipts");
     expect(bundle).not.toContain("fast-scan:1");
@@ -99,11 +109,12 @@ describe("standalone npm distribution", () => {
 
   it("contains no tests, fixtures, source samples or repository handoff files", () => {
     const bundle = readFileSync(bundlePath, "utf8");
+    const parserBundle = readFileSync(parserBundlePath, "utf8");
     for (const forbidden of [
       "docs/EXECUTION_STATE.md",
       "tests/fixtures",
       ".env.local",
-      "sourceFiles",
+      '"sourceFiles":{',
       "agent-transcripts",
       "synthetic fixture",
       "api.example.test",
@@ -111,6 +122,7 @@ describe("standalone npm distribution", () => {
       "secret-shaped-source",
     ]) {
       expect(bundle, forbidden).not.toContain(forbidden);
+      expect(parserBundle, forbidden).not.toContain(forbidden);
     }
   });
 

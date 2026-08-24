@@ -8,11 +8,9 @@ The standalone package compares public GitHub work for entertainment. One userna
 a profile read; two start a battle. It has both `gitmog` and `git-mog` binary names, zero
 runtime dependencies, and needs no credential when the anonymous GitHub allowance fits.
 
-Releases come from [gavinjudd/gitmog-cli](https://github.com/gavinjudd/gitmog-cli). Temporary
-repository-scoped self-hosted Mac and Windows runners verify the exact candidate without
-publishing it. A maintainer stages that audited tarball through an authenticated npm
-session, downloads it for independent comparison, and approves it with two-factor
-authentication. No long-lived npm token is used.
+Releases come from [gavinjudd/gitmog-cli](https://github.com/gavinjudd/gitmog-cli). Standard public
+GitHub-hosted x64 and ARM64 runners verify one exact candidate without publishing it. npm
+publication uses no long-lived repository token.
 
 ```powershell
 npx -y gitmog alice
@@ -21,6 +19,8 @@ npx -y gitmog https://github.com/alice https://github.com/bob
 npx -y gitmog alice bob --card
 npx -y gitmog alice bob --details
 npx -y gitmog alice bob --receipts
+npx -y gitmog alice bob --quality
+npx -y gitmog alice bob --no-quality
 npx -y gitmog alice bob --json
 npx -y gitmog alice bob --export battle.html
 npx -y gitmog alice bob --export battle.svg
@@ -60,6 +60,11 @@ Public profiles. No affiliation or endorsement implied.
 The source pass never executes or persists target code. Unsupported languages lower
 coverage. Versioned source analysis informs the matchup read and remains separate from the
 numeric score. There is no LLM and no higher-quality mode.
+
+`CODE QUALITY · PREVIEW` separately reports maintained-codebase evidence and publicly attributed
+code when attribution is sufficient. The TypeScript and JavaScript lanes use a pinned real AST
+parser; unsupported languages lower preview coverage. Quality Preview has no influence on the
+canonical score or winner. Human calibration is pending and quality-score activation is disabled.
 
 Default human output leads with the result, scores, public-score coverage, three plain-language
 fight rows, concise factual player reads, and four to six claim-specific receipts. Internal

@@ -7,6 +7,12 @@ import {
 } from "@gitmog/personality";
 import type { SourceAnalysisResult, StoryResult } from "@gitmog/source-analysis";
 import type {
+  QualityFinding,
+  QualityJudgePair,
+  QualityJudgeResult,
+  QualityReading,
+} from "@gitmog/quality-judge";
+import type {
   BattleResult,
   BattleRound,
   EvidenceItem,
@@ -112,7 +118,204 @@ export interface RenderOptions {
   readonly receipts?: boolean | undefined;
   readonly details?: boolean | undefined;
   readonly columns?: number | undefined;
+  readonly qualityPreview?: QualityJudgeResult | QualityJudgePair | undefined;
 }
+
+const isQualityPair = (value: QualityJudgeResult | QualityJudgePair): value is QualityJudgePair =>
+  "left" in value && "right" in value;
+
+const qualityScoreText = (reading: QualityReading): string =>
+  reading.previewScore === null
+    ? "— not enough supported source"
+    : `${String(reading.previewScore)} (${String(reading.coverage)}%)`;
+
+const compactQualityMetric = (metric: string, observed: number): string => {
+  const value = String(observed);
+  switch (metric) {
+    case "high-complexity-function":
+      return `${value} high-complexity funcs`;
+    case "assertions":
+      return `${value} test assertions`;
+    case "failure-path-assertions":
+      return `${value} failure-path tests`;
+    case "import-cycles":
+      return `${value} sampled import cycles`;
+    case "dynamic-evaluation":
+      return `${value} dynamic-eval patterns`;
+    case "shell-template-construction":
+      return `${value} unsafe shell patterns`;
+    case "empty-catch":
+      return `${value} empty catch blocks`;
+    case "parsed-files":
+      return `${value} parser-supported files`;
+    default:
+      return `${terminalSafe(metric)} ${value}`;
+  }
+};
+
+const qualityProfileSummary = (
+  handle: string,
+  result: QualityJudgeResult,
+  width: number,
+  palette: Palette,
+  receiptPrefix: string,
+): readonly string[] => {
+  const strength = result.maintainedCodebase.strengths[0];
+  const weakness = result.maintainedCodebase.weaknesses[0];
+  const finding: QualityFinding | undefined = weakness ?? strength;
+  const receipt =
+    finding === undefined
+      ? undefined
+      : result.receipts.find((candidate) => finding.receiptIds.includes(candidate.id));
+  if (finding === undefined || receipt === undefined) {
+    return wrapPlain(`@${terminalSafe(handle)} — limited parser-supported evidence.`, width).map(
+      (line) => palette.wrap("yellow", line),
+    );
+  }
+  const safeHandle = terminalSafe(handle);
+  const metric = compactQualityMetric(receipt.metric, receipt.observed);
+  const repository = terminalSafe(receipt.repository.split("/").at(-1) ?? receipt.repository);
+  const file = terminalSafe(receipt.path.split("/").at(-1) ?? receipt.path);
+  const marker = `[${receiptPrefix}${terminalSafe(receipt.id)}]`;
+  const candidates = [
+    `@${safeHandle} — ${metric} · ${repository}/${file}:${String(receipt.lineStart)} ${marker}`,
+    `@${safeHandle} — ${metric} · ${repository}:${String(receipt.lineStart)} ${marker}`,
+    `@${safeHandle} — ${metric} ${marker}`,
+  ] as const;
+  const plain = candidates.find((candidate) => plainLength(candidate) <= width) ?? candidates[2];
+  return wrapPlain(plain, width).map((line) => {
+    return line
+      .replace(`@${safeHandle}`, palette.wrap("cyan", `@${safeHandle}`))
+      .replace(metric, palette.wrap(finding.kind === "strength" ? "green" : "red", metric))
+      .replace(marker, palette.wrap("dim", marker));
+  });
+};
+
+const renderQualityPair = (
+  battle: BattleResult,
+  quality: QualityJudgePair,
+  width: number,
+  palette: Palette,
+  detailed: boolean,
+): string[] => {
+  const maintained = `Maintained codebase  @${terminalSafe(battle.left.username)} ${qualityScoreText(quality.left.maintainedCodebase)} · @${terminalSafe(battle.right.username)} ${qualityScoreText(quality.right.maintainedCodebase)}`;
+  const attributed = `Attributed code      @${terminalSafe(battle.left.username)} ${qualityScoreText(quality.left.attributedCode)} · @${terminalSafe(battle.right.username)} ${qualityScoreText(quality.right.attributedCode)}`;
+  const lines = [section("CODE QUALITY · PREVIEW", palette)];
+  for (const value of [maintained, attributed]) {
+    lines.push(
+      ...wrapPlain(value, width).map((line) =>
+        line
+          .replace(/@[-\w]+/gu, (handle) => palette.wrap("cyan", handle))
+          .replace(/\((\d+)%\)/gu, (coverage) => palette.wrap("dim", coverage))
+          .replace(/— not enough[^·]*/gu, (limited) => palette.wrap("yellow", limited)),
+      ),
+    );
+  }
+  if (!detailed) {
+    lines.push(...qualityProfileSummary(battle.left.username, quality.left, width, palette, "L"));
+    lines.push(...qualityProfileSummary(battle.right.username, quality.right, width, palette, "R"));
+  } else {
+    const labels: Readonly<Record<string, string>> = {
+      correctnessDiscipline: "Correctness discipline",
+      testQuality: "Test quality",
+      maintainability: "Maintainability",
+      contractQuality: "Contract quality",
+      architecture: "Architecture",
+      securityHygiene: "Security hygiene",
+      duplicationAndDeadPatterns: "Duplication / dead patterns",
+    };
+    for (const id of Object.keys(labels)) {
+      const left =
+        quality.left.maintainedCodebase.dimensions[id as keyof QualityReading["dimensions"]];
+      const right =
+        quality.right.maintainedCodebase.dimensions[id as keyof QualityReading["dimensions"]];
+      lines.push(
+        ...wrapPlain(
+          `${labels[id]} · @${terminalSafe(battle.left.username)} ${left.previewScore === null ? "unavailable" : String(left.previewScore)} · @${terminalSafe(battle.right.username)} ${right.previewScore === null ? "unavailable" : String(right.previewScore)}`,
+          width,
+          "  ",
+        ),
+      );
+    }
+    for (const side of ["left", "right"] as const) {
+      for (const limitation of quality[side].limitations.slice(0, 4)) {
+        lines.push(
+          ...wrapStyledPrefix(
+            "! ",
+            `@${terminalSafe(battle[side].username)} ${terminalSafe(limitation.detail)}`,
+            width,
+            palette,
+            "yellow",
+          ),
+        );
+      }
+    }
+  }
+  lines.push(palette.wrap("dim", "Not used in the winner pending human calibration."));
+  return lines;
+};
+
+const renderQualityProfile = (
+  handle: string,
+  quality: QualityJudgeResult,
+  width: number,
+  palette: Palette,
+  detailed: boolean,
+): string[] => {
+  const lines = [
+    section("CODE QUALITY · PREVIEW", palette),
+    ...wrapPlain(`Maintained codebase  ${qualityScoreText(quality.maintainedCodebase)}`, width),
+    ...wrapPlain(`Attributed code      ${qualityScoreText(quality.attributedCode)}`, width),
+    ...qualityProfileSummary(handle, quality, width, palette, "P"),
+  ];
+  if (detailed) {
+    for (const [id, value] of Object.entries(quality.maintainedCodebase.dimensions)) {
+      lines.push(
+        ...wrapPlain(
+          `${id} · ${value.previewScore === null ? "unavailable" : String(value.previewScore)}`,
+          width,
+          "  ",
+        ),
+      );
+    }
+    for (const limitation of quality.limitations.slice(0, 6)) {
+      lines.push(...wrapStyledPrefix("! ", limitation.detail, width, palette, "yellow"));
+    }
+  }
+  lines.push(palette.wrap("dim", "Not used in the score pending human calibration."));
+  return lines;
+};
+
+const renderQualityReceipts = (
+  entries: readonly { readonly prefix: string; readonly result: QualityJudgeResult }[],
+  width: number,
+  palette: Palette,
+  complete: boolean,
+): string[] => {
+  const receipts = entries.flatMap(({ prefix, result }) =>
+    result.receipts.map((receipt) => ({ prefix, receipt })),
+  );
+  if (receipts.length === 0) return [];
+  const visible = complete ? receipts : receipts.slice(0, 4);
+  const lines = [section(complete ? "QUALITY RECEIPTS" : "RECEIPTS", palette)];
+  for (const { prefix, receipt } of visible) {
+    lines.push(
+      ...wrapStyledPrefix(
+        `[${prefix}${receipt.id}] `,
+        `${terminalSafe(receipt.metric)} — ${String(receipt.observed)} · ${terminalSafe(receipt.repository)}:${terminalSafe(receipt.path)}:${String(receipt.lineStart)}`,
+        width,
+        palette,
+        "dim",
+      ),
+    );
+    if (complete) {
+      lines.push(
+        ...wrapStyledPrefix("    ", terminalSafe(receipt.sourceUrl), width, palette, "dim"),
+      );
+    }
+  }
+  return lines;
+};
 
 interface MarkerEntry {
   readonly marker: number;
@@ -1153,9 +1356,11 @@ const renderActions = (
   ].map((line) => palette.wrap("dim", line));
 };
 
-const joinBlocks = (blocks: readonly (readonly string[])[]): string => {
+const joinBlocks = (blocks: readonly (readonly string[])[], spaced = true): string => {
   const populated = blocks.filter((block) => block.length > 0);
-  return `${populated.flatMap((block, index) => (index === 0 ? block : ["", ...block])).join("\n")}\n`;
+  return `${populated
+    .flatMap((block, index) => (index === 0 || !spaced ? block : ["", ...block]))
+    .join("\n")}\n`;
 };
 
 export function renderBattle(
@@ -1193,18 +1398,41 @@ export function renderBattle(
   const codeDna = detailed ? renderCodeDna(battle, source, width, palette, true) : [];
   const evidence = renderNumberedEvidence(registry, width, palette);
   const actions = renderActions(battle, width, detailed, options.receipts === true, palette);
-  return joinBlocks([
-    renderHeader(battle, presentation, width, palette, detailed),
-    primary,
-    rounds,
-    players,
-    codeDna,
-    ...(detailed ? [evidence] : []),
-    ...(options.receipts === true
-      ? [renderBattleRawReceipts(battle, source, story, width, palette)]
-      : []),
-    detailed ? actions : [...evidence, ...actions],
-  ]);
+  const quality =
+    options.qualityPreview !== undefined && isQualityPair(options.qualityPreview)
+      ? options.qualityPreview
+      : null;
+  const qualityBlock =
+    quality === null ? [] : renderQualityPair(battle, quality, width, palette, detailed);
+  const qualityReceipts =
+    quality === null || !detailed
+      ? []
+      : renderQualityReceipts(
+          [
+            { prefix: "L", result: quality.left },
+            { prefix: "R", result: quality.right },
+          ],
+          width,
+          palette,
+          options.receipts === true,
+        );
+  return joinBlocks(
+    [
+      renderHeader(battle, presentation, width, palette, detailed),
+      primary,
+      rounds,
+      players,
+      qualityBlock,
+      codeDna,
+      ...(detailed ? [evidence] : []),
+      qualityReceipts,
+      ...(options.receipts === true
+        ? [renderBattleRawReceipts(battle, source, story, width, palette)]
+        : []),
+      detailed ? actions : [...evidence, ...actions],
+    ],
+    detailed,
+  );
 }
 
 const profileEvidenceSupport = (
@@ -1393,16 +1621,36 @@ export function renderProfile(
     ...wrapPlain(`Next: gitmog ${terminalSafe(profile.username)} <handle>`, width),
   ].map((line) => palette.wrap("dim", line));
   const evidence = renderNumberedEvidence(registry, width, palette);
-  return joinBlocks([
-    header,
-    profileRead.length === 0 ? [] : [section("THE READ", palette), ...profileRead],
-    ...(detailed ? [renderProfileCodeDna(source, width, palette, true)] : []),
-    ...(detailed ? [evidence] : []),
-    ...(options.receipts === true
-      ? [renderProfileRawReceipts(profile, source, width, palette)]
-      : []),
-    detailed ? actions : [...evidence, ...actions],
-  ]);
+  const quality =
+    options.qualityPreview !== undefined && !isQualityPair(options.qualityPreview)
+      ? options.qualityPreview
+      : null;
+  return joinBlocks(
+    [
+      header,
+      profileRead.length === 0 ? [] : [section("THE READ", palette), ...profileRead],
+      ...(quality === null
+        ? []
+        : [renderQualityProfile(profile.username, quality, width, palette, detailed)]),
+      ...(detailed ? [renderProfileCodeDna(source, width, palette, true)] : []),
+      ...(detailed ? [evidence] : []),
+      ...(quality === null || !detailed
+        ? []
+        : [
+            renderQualityReceipts(
+              [{ prefix: "P", result: quality }],
+              width,
+              palette,
+              options.receipts === true,
+            ),
+          ]),
+      ...(options.receipts === true
+        ? [renderProfileRawReceipts(profile, source, width, palette)]
+        : []),
+      detailed ? actions : [...evidence, ...actions],
+    ],
+    detailed,
+  );
 }
 
 const cardRows = (value: string, width: number): readonly string[] => {
@@ -1450,6 +1698,16 @@ export function renderCard(
   const border = `┌${"─".repeat(width - 2)}┐`;
   const close = `└${"─".repeat(width - 2)}┘`;
   const divider = `├${"─".repeat(width - 2)}┤`;
+  const quality =
+    options.qualityPreview !== undefined && isQualityPair(options.qualityPreview)
+      ? options.qualityPreview
+      : null;
+  const qualityLine =
+    quality !== null &&
+    quality.left.maintainedCodebase.previewScore !== null &&
+    quality.right.maintainedCodebase.previewScore !== null
+      ? `PREVIEW · code quality ${String(quality.left.maintainedCodebase.previewScore)}–${String(quality.right.maintainedCodebase.previewScore)} · not used in winner`
+      : null;
   return [
     "",
     border,
@@ -1459,6 +1717,7 @@ export function renderCard(
       `@${terminalSafe(battle.left.username)} SCORE ${String(battle.left.overallScore)} · COVERAGE ${String(battle.left.confidence.measuredWeight)}% · @${terminalSafe(battle.right.username)} SCORE ${String(battle.right.overallScore)} · COVERAGE ${String(battle.right.confidence.measuredWeight)}%`,
       width,
     ),
+    ...(qualityLine === null ? [] : cardRows(qualityLine, width)),
     ...(claim.length === 0 ? [] : [divider, ...claim, ...evidence]),
     close,
     "",

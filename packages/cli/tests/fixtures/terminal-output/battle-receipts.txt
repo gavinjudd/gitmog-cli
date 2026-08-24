@@ -39,6 +39,20 @@ THE READ
 + All 3 selected repositories were readable end to end.
 − 64% of sampled commit messages are one word or shorter.
 
+CODE QUALITY · PREVIEW
+Maintained codebase @strongmaintainer 81 (100%) · @sidequester 89 (100%)
+Attributed code @strongmaintainer 81 (67%) · @sidequester 89 (100%)
+  Correctness discipline · @strongmaintainer 72 · @sidequester 72
+  Test quality · @strongmaintainer unavailable · @sidequester unavailable
+  Maintainability · @strongmaintainer 92 · @sidequester 92
+  Contract quality · @strongmaintainer 42 · @sidequester unavailable
+  Architecture · @strongmaintainer unavailable · @sidequester unavailable
+  Security hygiene · @strongmaintainer 96 · @sidequester 96
+  Duplication / dead patterns · @strongmaintainer 96 · @sidequester 96
+! @strongmaintainer The attribution request cap left some files as
+  maintained-codebase evidence only.
+Not used in the winner pending human calibration.
+
 SOURCE ANALYSIS · READY
   @strongmaintainer 3 files across 3 repositories · @sidequester 3 files across
   3 repositories
@@ -71,6 +85,22 @@ RECEIPTS
 [10] @strongmaintainer — Versioned releases 15
 [11] @sidequester — Automated tests 0/3; Commit messages — 64% are one word or
      shorter
+
+QUALITY RECEIPTS
+[LQ1] high-complexity-function — 0 ·
+      strongmaintainer/orchestrator:src/migrate.ts:1
+    https://github.com/strongmaintainer/orchestrator/blob/0000000000000000000000
+    000000000004591b26/src/migrate.ts
+[LA1] high-complexity-function — 0 ·
+      strongmaintainer/orchestrator:src/migrate.ts:1
+    https://github.com/strongmaintainer/orchestrator/blob/0000000000000000000000
+    000000000004591b26/src/migrate.ts
+[RQ1] high-complexity-function — 0 · sidequester/project-0:index.js:1
+    https://github.com/sidequester/project-0/blob/000000000000000000000000000000
+    0003f0fdda/index.js
+[RA1] high-complexity-function — 0 · sidequester/project-0:index.js:1
+    https://github.com/sidequester/project-0/blob/000000000000000000000000000000
+    0003f0fdda/index.js
 
 RAW RECEIPTS
   @strongmaintainer [craft.testing.breadth:ratio] Averaged over 3 repositories

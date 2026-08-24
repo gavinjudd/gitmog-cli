@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 import { dirname, join, parse, posix, relative, sep, win32 } from "node:path";
 
 import type { SourceAnalysisResult, StoryResult } from "@gitmog/source-analysis";
+import type { QualityJudgePair, QualityReading } from "@gitmog/quality-judge";
 import type { BattleResult, BattleRound, EvidenceItem, Side } from "@gitmog/scoring";
 
 import { derivePresentationVerdict, type PresentationVerdict } from "./presentation-verdict.js";
@@ -55,6 +56,12 @@ interface ExportDocument {
   readonly version: string;
   readonly rematch: string;
   readonly limitation: string;
+  readonly quality: {
+    readonly leftMaintained: string;
+    readonly rightMaintained: string;
+    readonly leftAttributed: string;
+    readonly rightAttributed: string;
+  } | null;
 }
 
 export interface RenderBattleExportInput {
@@ -63,6 +70,7 @@ export interface RenderBattleExportInput {
   readonly story: StoryResult;
   readonly version: string;
   readonly format: BattleExportFormat;
+  readonly qualityPreview?: QualityJudgePair | undefined;
 }
 
 export interface WriteBattleExportInput extends RenderBattleExportInput {
@@ -156,6 +164,11 @@ const readFor = (battle: BattleResult, story: StoryResult, side: Side): string =
   return terminalSafe(storyRead?.text ?? battle.strengths[side].text);
 };
 
+const exportQualityReading = (reading: QualityReading): string =>
+  reading.previewScore === null
+    ? "not enough supported source"
+    : `${String(reading.previewScore)} · coverage ${String(reading.coverage)}%`;
+
 const exportDocument = (input: RenderBattleExportInput): ExportDocument => {
   const { battle, source, story } = input;
   const presentation = derivePresentationVerdict(battle, source);
@@ -182,6 +195,15 @@ const exportDocument = (input: RenderBattleExportInput): ExportDocument => {
     rematch: battle.challenge.canonical,
     limitation:
       "Coverage is the share of the public scorecard measured, not an estimate of total engineering ability.",
+    quality:
+      input.qualityPreview === undefined
+        ? null
+        : {
+            leftMaintained: exportQualityReading(input.qualityPreview.left.maintainedCodebase),
+            rightMaintained: exportQualityReading(input.qualityPreview.right.maintainedCodebase),
+            leftAttributed: exportQualityReading(input.qualityPreview.left.attributedCode),
+            rightAttributed: exportQualityReading(input.qualityPreview.right.attributedCode),
+          },
   };
 };
 
@@ -229,6 +251,7 @@ const renderHtml = (document: ExportDocument): string => `<!doctype html>
   </section>
   <section aria-labelledby="fight-heading"><h2 id="fight-heading">Three decisive comparisons</h2><ol>${document.comparisons.map((entry) => `<li>${escapeMarkup(entry)}</li>`).join("")}</ol></section>
   <section aria-labelledby="read-heading"><h2 id="read-heading">The read</h2><div class="reads"><p><strong>${escapeMarkup(document.leftHandle)}</strong><br>${escapeMarkup(document.leftRead)}</p><p><strong>${escapeMarkup(document.rightHandle)}</strong><br>${escapeMarkup(document.rightRead)}</p></div></section>
+  ${document.quality === null ? "" : `<section aria-labelledby="quality-heading"><h2 id="quality-heading">Code Quality · Preview</h2><div class="reads"><p><strong>${escapeMarkup(document.leftHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.leftMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.leftAttributed)}</p><p><strong>${escapeMarkup(document.rightHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.rightMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.rightAttributed)}</p></div><p class="muted">Not used in the winner pending human calibration.</p></section>`}
   <section aria-labelledby="receipt-heading"><h2 id="receipt-heading">Public receipts</h2><ol>${document.receipts.map((entry) => `<li>${escapeMarkup(entry)}</li>`).join("")}</ol></section>
   <footer><p>${escapeMarkup(document.limitation)}</p><p>Git Mog ${escapeMarkup(document.version)} · Rematch: <code>${escapeMarkup(document.rematch)}</code></p></footer>
 </main>
@@ -278,10 +301,22 @@ const renderSvg = (document: ExportDocument): string => {
   const receipts = document.receipts.flatMap((entry, index) =>
     wrapText(`${String(index + 1)}. ${entry}`, 82),
   );
-  const height = 620 + (comparisons.length + reads.length + receipts.length) * 24;
+  const qualityLines =
+    document.quality === null
+      ? []
+      : [
+          `${document.leftHandle} maintained: ${document.quality.leftMaintained}; attributed: ${document.quality.leftAttributed}`,
+          `${document.rightHandle} maintained: ${document.quality.rightMaintained}; attributed: ${document.quality.rightAttributed}`,
+          "Not used in the winner pending human calibration.",
+        ];
+  const height =
+    620 +
+    (comparisons.length + reads.length + qualityLines.length + receipts.length) * 24 +
+    (qualityLines.length > 0 ? 70 : 0);
   const comparisonY = 330;
   const readY = comparisonY + comparisons.length * 24 + 70;
-  const receiptY = readY + reads.length * 24 + 70;
+  const qualityY = readY + reads.length * 24 + 70;
+  const receiptY = qualityY + qualityLines.length * 24 + (qualityLines.length > 0 ? 70 : 0);
   const footerY = receiptY + receipts.length * 24 + 70;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${String(height)}" viewBox="0 0 1200 ${String(height)}" role="img" aria-labelledby="title description">
   <title id="title">${escapeMarkup(document.title)}: ${escapeMarkup(document.leftHandle)} versus ${escapeMarkup(document.rightHandle)}</title>
@@ -298,6 +333,7 @@ const renderSvg = (document: ExportDocument): string => {
   ${svgText(comparisons, 80, comparisonY, "body")}
   ${svgText(["THE READ"], 80, readY - 34, "label")}
   ${svgText(reads, 80, readY, "body")}
+  ${qualityLines.length === 0 ? "" : `${svgText(["CODE QUALITY · PREVIEW"], 80, qualityY - 34, "label")} ${svgText(qualityLines, 80, qualityY, "body")}`}
   ${svgText(["PUBLIC RECEIPTS"], 80, receiptY - 34, "label")}
   ${svgText(receipts, 80, receiptY, "body")}
   ${svgText(wrapText(document.limitation, 96), 80, footerY, "muted")}

@@ -25,7 +25,9 @@ for (const script of [
   "build",
   "quality:fixtures",
   "quality:calibration:check",
+  "quality:benchmark:check",
   "community:check",
+  "security:check",
   "package:acceptance",
 ]) {
   step(`pnpm run ${script}`);

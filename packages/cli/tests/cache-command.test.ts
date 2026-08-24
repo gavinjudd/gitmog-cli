@@ -82,6 +82,7 @@ describe("local cache commands", () => {
         snapshotEntries: 0,
         analysisEntries: 0,
         derivedFeatureEntries: 0,
+        qualityEntries: 0,
         rawSourceStored: false,
         npmCacheControlled: false,
       },

@@ -134,6 +134,41 @@ describe("request-budget preflight", () => {
     expect(JSON.parse(result.stdout)).toHaveProperty("battle");
   });
 
+  it("fails closed when --quality cannot obtain the complete preview tier", async () => {
+    let collectionCalls = 0;
+    const result = await invoke(
+      {
+        ...baseContext(PERSONAS.strongMaintainer),
+        fetchImpl: () => {
+          collectionCalls += 1;
+          return Promise.resolve(new Response("{}"));
+        },
+        readAllowance: () => Promise.resolve(allowance(60)),
+      },
+      PERSONAS.strongMaintainer.login,
+      "--quality",
+      "--json",
+    );
+    expect(result.exitCode).toBe(1);
+    expect(collectionCalls).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      error: { code: "github_budget_limited", collectionBegan: false },
+      requestPlan: { quality: { disposition: "limited" } },
+    });
+  });
+
+  it("rejects mutually exclusive complete-quality and anonymous modes", async () => {
+    const result = await invoke(
+      baseContext(PERSONAS.strongMaintainer),
+      PERSONAS.strongMaintainer.login,
+      "--quality",
+      "--anonymous",
+      "--json",
+    );
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({ error: { code: "usage" } });
+  });
+
   it("continues the same battle after session-only device authorization", async () => {
     const token = "fixture-device-token-never-render";
     const routed = routedFetch(PERSONAS.strongMaintainer, PERSONAS.manyTinyRepos);

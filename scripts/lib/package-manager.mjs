@@ -162,6 +162,10 @@ export function runNodeCliInherit(logicalTool, entrypoint, args = [], options = 
   };
 }
 
+export function workspaceInstallEnvironment(ci, environment = process.env) {
+  return ci ? { ...environment, CI: "true" } : { ...environment };
+}
+
 export function spawnNodeCli(logicalTool, entrypoint, args = [], options = {}) {
   if (logicalTool === "") throw new Error("A logical tool name is required.");
   const invocation = nodeCliInvocation(entrypoint, args, options);

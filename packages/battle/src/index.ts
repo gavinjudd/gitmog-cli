@@ -32,3 +32,4 @@ export type {
   CodeDnaStatus,
 } from "@gitmog/personality";
 export type { SourceAnalysisResult, StoryResult } from "@gitmog/source-analysis";
+export type { QualityJudgePair, QualityJudgeResult } from "@gitmog/quality-judge";

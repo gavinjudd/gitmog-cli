@@ -1,9 +1,11 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import { releaseMetadata } from "../scripts/build-release-artifact.mjs";
+import { comparePackedRuntimeReports } from "../scripts/compare-packed-runtime-reports.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 
@@ -17,6 +19,8 @@ interface ReleaseEvidenceContract {
   readonly package: {
     readonly dependencies: Readonly<Record<string, string>>;
     readonly installScripts: Readonly<Record<string, string>>;
+    readonly unpackedBytes: number;
+    readonly members: readonly { readonly path: string; readonly bytes: number }[];
   };
   readonly quality: { readonly activation: { readonly state: string } };
   readonly evidence: Readonly<Record<string, unknown>>;
@@ -29,6 +33,12 @@ function readManifest(...segments: readonly string[]): PackageManifest {
   }
   return parsed;
 }
+
+const sourceTextBelow = (directory: string): string =>
+  readdirSync(directory, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && /\.[cm]?[jt]sx?$/u.test(entry.name))
+    .map((entry) => readFileSync(resolve(entry.parentPath, entry.name), "utf8"))
+    .join("\n");
 
 describe("public upstream contract", () => {
   it("owns the package repository metadata", () => {
@@ -44,6 +54,11 @@ describe("public upstream contract", () => {
     expect(manifest.scripts?.preinstall).toBeUndefined();
     expect(manifest.scripts?.install).toBeUndefined();
     expect(manifest.scripts?.postinstall).toBeUndefined();
+  });
+
+  it("serializes workspace test packages so parser wall clocks are not measured under CPU starvation", () => {
+    const manifest = readManifest("package.json");
+    expect(manifest.scripts?.test).toContain("turbo.mjs run test --concurrency=1");
   });
 
   it("binds every direct toolchain pin to a reviewed compatible license", () => {
@@ -74,7 +89,12 @@ describe("public upstream contract", () => {
       version: "0.3.0",
       filename: "gitmog-0.3.0.tgz",
       bytes: 1,
+      unpackedBytes: 2,
       files: ["package.json", "dist/gitmog.mjs"],
+      members: [
+        { path: "package.json", bytes: 1 },
+        { path: "dist/gitmog.mjs", bytes: 1 },
+      ],
       sha1: "b".repeat(40),
       sha256: "c".repeat(64),
       integrity: "sha512-synthetic",
@@ -93,8 +113,88 @@ describe("public upstream contract", () => {
       },
     }) as ReleaseEvidenceContract;
     expect(metadata.package.dependencies).toEqual({});
+    expect(metadata.package.unpackedBytes).toBe(2);
+    expect(metadata.package.members).toHaveLength(2);
     expect(metadata.package.installScripts).toEqual({});
     expect(metadata.quality.activation.state).toBe("disabled");
     expect(metadata.evidence).toHaveProperty("platform-acceptance.json");
+  });
+
+  it("keeps canonical scoring and Quality Judge dependency directions separate", () => {
+    const scoringManifest = readManifest("packages", "scoring", "package.json");
+    const qualityManifest = readManifest("packages", "quality-judge", "package.json");
+    const scoringSource = sourceTextBelow(resolve(root, "packages", "scoring", "src"));
+    const qualitySource = sourceTextBelow(resolve(root, "packages", "quality-judge", "src"));
+    expect(scoringManifest.dependencies ?? {}).not.toHaveProperty("@gitmog/quality-judge");
+    expect(qualityManifest.dependencies ?? {}).not.toHaveProperty("@gitmog/scoring");
+    expect(scoringSource).not.toMatch(/quality-judge|qualityPreview/u);
+    expect(qualitySource).not.toMatch(/@gitmog\/scoring/u);
+  });
+
+  it("binds parser versions, limits, and the exact package asset allowlist", () => {
+    const versions = JSON.parse(
+      readFileSync(resolve(root, "config", "quality-versions.json"), "utf8"),
+    ) as {
+      readonly parserContract: string;
+      readonly parserImplementations: readonly {
+        readonly version: string;
+        readonly asset: string;
+      }[];
+      readonly unsupportedLanguages: readonly string[];
+      readonly bounds: Readonly<Record<string, number>>;
+    };
+    const assets = JSON.parse(
+      readFileSync(resolve(root, "config", "parser-assets.json"), "utf8"),
+    ) as { readonly assets: readonly string[] };
+    expect(versions.parserContract).toBe("1.0.0-typescript-ast");
+    expect(versions.parserImplementations).toEqual([
+      {
+        languages: ["typescript", "javascript"],
+        package: "typescript",
+        version: "6.0.3",
+        license: "Apache-2.0",
+        asset: "dist/parsers/quality-worker.mjs",
+      },
+    ]);
+    expect(versions.unsupportedLanguages).toEqual(["python", "go"]);
+    expect(versions.bounds).toMatchObject({
+      decodedBytesPerFile: 20 * 1024,
+      decodedBytesPerProfile: 300 * 1024,
+      parserWallTimePerFileMs: 500,
+      parserWallTimePerProfileMs: 2_000,
+      workerOldGenerationMb: 96,
+    });
+    expect(assets.assets).toEqual(["dist/parsers/quality-worker.mjs"]);
+  });
+
+  it("compares additive JSON and canonical battle bytes separately across Node lanes", () => {
+    const directory = mkdtempSync(join(tmpdir(), "gitmog-node-reports-"));
+    const paths = ["22.23.2", "24.19.0", "26.7.0"].map((version, index) => {
+      const path = join(directory, `${String(index)}.json`);
+      writeFileSync(
+        path,
+        `${JSON.stringify({
+          node: `v${version}`,
+          checks: [{ name: "synthetic", detail: "passed" }],
+          canonicalJsonSha256: "a".repeat(64),
+          canonicalBattleSha256: "b".repeat(64),
+        })}\n`,
+      );
+      return path;
+    });
+    try {
+      expect(comparePackedRuntimeReports(paths)).toHaveLength(3);
+      const changed = JSON.parse(readFileSync(paths[2] as string, "utf8")) as Record<
+        string,
+        unknown
+      >;
+      changed.canonicalBattleSha256 = "c".repeat(64);
+      writeFileSync(paths[2] as string, `${JSON.stringify(changed)}\n`);
+      expect(() => {
+        comparePackedRuntimeReports(paths);
+      }).toThrow("Canonical battle bytes differ");
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
