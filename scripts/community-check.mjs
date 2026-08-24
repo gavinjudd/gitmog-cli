@@ -23,6 +23,11 @@ const required = [
   ".github/ISSUE_TEMPLATE/documentation.yml",
   ".github/ISSUE_TEMPLATE/config.yml",
   ".github/dependabot.yml",
+  ".github/workflows/ci.yml",
+  ".github/workflows/codeql.yml",
+  ".github/workflows/release.yml",
+  ".github/workflows/calibration.yml",
+  ".github/workflows/community.yml",
 ];
 
 for (const path of required) {
