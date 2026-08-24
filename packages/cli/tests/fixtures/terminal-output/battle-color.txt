@@ -1,0 +1,27 @@
+[36mGIT MOG[0m
+[32m◆ @strongmaintainer WINS[0m [32m92[0m–39 · PUBLIC REPO GAP
+[2mCoverage: [0m[36m@strongmaintainer[0m[2m 59% · [0m[36m@sidequester[0m[2m 54%[0m
+
+[36m» [0mOne side has releases. The other has lore. [2m[1][0m
+
+[36mTHE FIGHT[0m
+[36mTOOLING       [0m  [32m100[0m–[97m0[0m  [32m@strongmaintainer[0m · Project automation: 3/3–0/3 [2m[2][0m
+[36mTESTS         [0m  [32m98[0m–[97m0[0m  [32m@strongmaintainer[0m · Automated tests: 100%–0% [2m[3][0m
+[36mCOMMIT QUALITY[0m  [32m94[0m–[97m9[0m  [32m@strongmaintainer[0m · Revert rate: 0%–9.1% [2m[4][0m
+
+[36mTHE READ[0m
+[36m@strongmaintainer —[0m [32mTests: 25 per 100 source files in inspected trees.[0m [2m[5][0m
+[36m@sidequester —[0m [32mUpdated publicly today.[0m
+  [31m64% of sampled commit messages are one word or shorter.[0m [2m[6][0m
+
+[36mRECEIPTS[0m
+[2m[1] [0mVersioned releases — 15 vs 0
+[2m[2] [0mProject automation — 3/3 vs 0/3
+[2m[3] [0mAutomated tests — 100% vs 0%
+[2m[4] [0mRevert rate — 0% vs 9.1%
+[2m[5] [0m@strongmaintainer — Test files 25 per 100 source files
+[2m[6] [0m@sidequester — Last public update 0d ago; Commit messages — 64% are one word
+    or shorter
+[2mMore: --details · --receipts · --share x[0m
+[2mRematch: gitmog strongmaintainer sidequester[0m
+[2mNext: gitmog strongmaintainer <handle>[0m

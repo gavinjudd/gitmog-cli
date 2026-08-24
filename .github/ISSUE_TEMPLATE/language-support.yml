@@ -1,0 +1,38 @@
+name: Language support proposal
+description: Propose a real parser-backed language lane.
+title: "[Language]: "
+labels: ["area:language-support", "status:needs-calibration"]
+body:
+  - type: markdown
+    attributes:
+      value: "Filename or regex evidence cannot activate quality. Never include credentials, private source, or copied target source."
+  - type: input
+    id: language
+    attributes: { label: Language and exact parser candidate }
+    validations: { required: true }
+  - type: textarea
+    id: parser
+    attributes:
+      {
+        label: Parser contract,
+        description: "Version, AST/CST, license, packaging, recovery, safety, and maintenance evidence.",
+      }
+    validations: { required: true }
+  - type: input
+    id: reference
+    attributes:
+      {
+        label: Public repository and exact commit controls,
+        description: "References only; do not copy source.",
+      }
+  - type: textarea
+    id: gates
+    attributes: { label: Fixtures, portability, package, and calibration plan }
+    validations: { required: true }
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I included no credential, private source, or raw target source.
+          required: true

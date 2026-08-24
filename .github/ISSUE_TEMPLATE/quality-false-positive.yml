@@ -1,0 +1,40 @@
+name: Quality Judge false positive
+description: Report a supported metric that fired incorrectly.
+title: "[Quality false positive]: "
+labels: ["type:false-positive", "area:quality-judge", "status:needs-reproduction"]
+body:
+  - type: markdown
+    attributes:
+      value: "A bad metric is different from missing coverage. Cite public immutable evidence without copying source. Never include credentials or private source."
+  - type: input
+    id: reference
+    attributes: { label: Public repository and exact commit }
+    validations: { required: true }
+  - type: input
+    id: path
+    attributes: { label: Safe path and receipt ID }
+    validations: { required: true }
+  - type: dropdown
+    id: parser
+    attributes:
+      { label: Language and parser lane, options: ["TypeScript", "JavaScript", "Python", "Go"] }
+    validations: { required: true }
+  - type: textarea
+    id: metric
+    attributes:
+      {
+        label: Incorrect metric,
+        description: "Explain applicability, observed bounded value, and expected finding without source excerpts.",
+      }
+    validations: { required: true }
+  - type: textarea
+    id: reproduction
+    attributes: { label: Minimal synthetic reproduction }
+    validations: { required: true }
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I included no credential, private source, or raw target source.
+          required: true

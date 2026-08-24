@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and support
+    url: https://github.com/gavinjudd/gitmog-cli/discussions/categories/q-a
+    about: Ask a question without posting a credential, private source, or raw target source.
+  - name: Private security report
+    url: https://github.com/gavinjudd/gitmog-cli/security/advisories/new
+    about: Report vulnerabilities privately; never include credentials or private source publicly.

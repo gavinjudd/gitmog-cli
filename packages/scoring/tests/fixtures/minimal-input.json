@@ -1,0 +1,7 @@
+{
+  "craft": 0.8,
+  "activity": 0.6,
+  "collaboration": 0.5,
+  "projectHealth": 0.4,
+  "impact": 0.2
+}

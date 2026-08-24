@@ -1,0 +1,191 @@
+[
+  {
+    "sha": "3d6d817622b0a9721e3cc404df3469171582be13",
+    "node_id": "C_kwDOACN7MtoAKDNkNmQ4MTc2MjJiMGE5NzIxZTNjYzQwNGRmMzQ2OTE3MTU4MmJlMTM",
+    "commit": {
+      "author": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-12T15:03:31Z"
+      },
+      "committer": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-12T15:03:31Z"
+      },
+      "message": "Merge tag 'scsi-fixes' of git://git.kernel.org/pub/scm/linux/kernel/git/jejb/scsi\n\nPull SCSI fixes from James Bottomley:\n \"Two minor core fixes: one for power management issues in error\n  handling and the other to fix a deadlock in door locking of SCSI\n  devices with removable media; and a minor bug fix for the debug\n  driver\"\n\n* tag 'scsi-fixes' of git://git.kernel.org/pub/scm/linux/kernel/git/jejb/scsi:\n  scsi: scsi_debug: Negate wrapped memcmp() result\n  scsi: core: Do not block on tag allocation in scsi_eh_lock_door()\n  scsi: core: pair EH runtime PM get and put",
+      "comment_count": 0
+    },
+    "html_url": "https://github.com/torvalds/linux/commit/3d6d817622b0a9721e3cc404df3469171582be13",
+    "author": {
+      "login": "torvalds",
+      "id": 1024025,
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "f5bbbfec59b4e2fb7520a91de3df8a6174325d6a"
+      },
+      {
+        "sha": "c4f6916a99cf105c3ff340b6210fcbba3fa66b35"
+      }
+    ]
+  },
+  {
+    "sha": "f5bbbfec59b4e2fb7520a91de3df8a6174325d6a",
+    "node_id": "C_kwDOACN7MtoAKGY1YmJiZmVjNTliNGUyZmI3NTIwYTkxZGUzZGY4YTYxNzQzMjVkNmE",
+    "commit": {
+      "author": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-11T13:51:46Z"
+      },
+      "committer": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-11T13:51:46Z"
+      },
+      "message": "Merge tag 'probes-fixes-v7.2-rc7' of git://git.kernel.org/pub/scm/linux/kernel/git/trace/linux-trace\n\nPull probes fix from Masami Hiramatsu:\n\n - Convert ELF entry point to file offset in uprobe test\n\n   Convert the ELF entry point address (e_entry) to a file offset using\n   LOAD segment headers in add_remove_uprobe test. This fixes uprobe\n   registration failures (-EINVAL) on non-PIE executables where vaddr\n   exceeds file size.\n\n* tag 'probes-fixes-v7.2-rc7' of git://git.kernel.org/pub/scm/linux/kernel/git/trace/linux-trace:\n  selftests/ftrace: Convert ELF entry point to file offset in uprobe test",
+      "comment_count": 0
+    },
+    "html_url": "https://github.com/torvalds/linux/commit/f5bbbfec59b4e2fb7520a91de3df8a6174325d6a",
+    "author": {
+      "login": "torvalds",
+      "id": 1024025,
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "d58772d8520c7ef247c4b95c9bd76d3a25da9ff5"
+      },
+      {
+        "sha": "24aa630f6259e6a2107936c06fed72063f712b64"
+      }
+    ]
+  },
+  {
+    "sha": "d58772d8520c7ef247c4b95c9bd76d3a25da9ff5",
+    "node_id": "C_kwDOACN7MtoAKGQ1ODc3MmQ4NTIwYzdlZjI0N2M0Yjk1YzliZDc2ZDNhMjVkYTlmZjU",
+    "commit": {
+      "author": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-10T16:15:27Z"
+      },
+      "committer": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-10T16:15:27Z"
+      },
+      "message": "Merge tag 'regmap-fix-v7.2-rc7' of git://git.kernel.org/pub/scm/linux/kernel/git/broonie/regmap\n\nPull regmap fixes from Mark Brown:\n \"These fix some issues which were noticed in some drivers where caches\n  were not fully resynced after suspend. Drivers are supposed to be\n  sorting the table of register defaults they provide to the core and\n  the core was relying on that but it turns out there are many cases\n  where this does not happen, it's easy to get wrong when using named\n  defines for registers rather than numbers. It is more robust to remove\n  the requirement for sorting and instead have the core ensure\n  everything it needs sorting is sorted so do that.\n\n  There will be patches during the merge window sorting the tables in\n  drivers since it is more efficient to do that but this will just be a\n  minor performance win rather than a correctness fix\"\n\n* tag 'regmap-fix-v7.2-rc7' of git://git.kernel.org/pub/scm/linux/kernel/git/broonie/regmap:\n  regcache: Sort the local copy of an unsorted reg_defaults array\n  regcache: Use a consistent sort for defaults table",
+      "comment_count": 0
+    },
+    "html_url": "https://github.com/torvalds/linux/commit/d58772d8520c7ef247c4b95c9bd76d3a25da9ff5",
+    "author": {
+      "login": "torvalds",
+      "id": 1024025,
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "5eabf07a0bf317723da229376b4e910f12b4644b"
+      },
+      {
+        "sha": "4b05ccb17f92268384d483221a577fccfc291c7a"
+      }
+    ]
+  },
+  {
+    "sha": "5eabf07a0bf317723da229376b4e910f12b4644b",
+    "node_id": "C_kwDOACN7MtoAKDVlYWJmMDdhMGJmMzE3NzIzZGEyMjkzNzZiNGU5MTBmMTJiNDY0NGI",
+    "commit": {
+      "author": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-10T15:36:22Z"
+      },
+      "committer": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-10T15:36:22Z"
+      },
+      "message": "Merge tag 'v7.2-p3' of git://git.kernel.org/pub/scm/linux/kernel/git/herbert/crypto-2.6\n\nPull crypto fixes from Herbert Xu:\n\n - Fix lockdep warning regression in rhashtable\n\n - Fix default authsize in rfc4309\n\n - Fix gcm cryptlen calculation in tegra\n\n - Fix qce registration error-path bug\n\n - Fix incorrect use of sg_dma_len before mapping in starfive\n\n - Allow cbc(paes) to be used with af_alg\n\n* tag 'v7.2-p3' of git://git.kernel.org/pub/scm/linux/kernel/git/herbert/crypto-2.6:\n  crypto: af_alg - Allow cbc(paes)\n  crypto: starfive - use scatterlist length before DMA mapping\n  crypto: qce - fix error path in devm_qce_register_algs\n  rhashtable: fix false-positive lockdep splat on rhltable destruction\n  crypto: tegra - fix rctx->cryptlen calculation in tegra_gcm_do_one_req()\n  crypto: ccm - Set rfc4309 maxauthsize from child",
+      "comment_count": 0
+    },
+    "html_url": "https://github.com/torvalds/linux/commit/5eabf07a0bf317723da229376b4e910f12b4644b",
+    "author": {
+      "login": "torvalds",
+      "id": 1024025,
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "db2ddb87143519e20a95aa36c60b36107b736a58"
+      },
+      {
+        "sha": "285d8204638cf8be0dc304dc40f0290ada701340"
+      }
+    ]
+  },
+  {
+    "sha": "db2ddb87143519e20a95aa36c60b36107b736a58",
+    "node_id": "C_kwDOACN7MtoAKGRiMmRkYjg3MTQzNTE5ZTIwYTk1YWEzNmM2MGIzNjEwN2I3MzZhNTg",
+    "commit": {
+      "author": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-09T21:54:50Z"
+      },
+      "committer": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-09T21:54:50Z"
+      },
+      "message": "Linux 7.2-rc7",
+      "comment_count": 0
+    },
+    "html_url": "https://github.com/torvalds/linux/commit/db2ddb87143519e20a95aa36c60b36107b736a58",
+    "author": {
+      "login": "torvalds",
+      "id": 1024025,
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "b9b3e33b70b71e516930117e21de3ad2a7723747"
+      }
+    ]
+  },
+  {
+    "sha": "b9b3e33b70b71e516930117e21de3ad2a7723747",
+    "node_id": "C_kwDOACN7MtoAKGI5YjNlMzNiNzBiNzFlNTE2OTMwMTE3ZTIxZGUzYWQyYTc3MjM3NDc",
+    "commit": {
+      "author": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-09T15:47:31Z"
+      },
+      "committer": {
+        "name": "Linus Torvalds",
+        "email": "torvalds@linux-foundation.org",
+        "date": "2026-08-09T15:47:31Z"
+      },
+      "message": "Merge tag 'trace-v7.2-rc6' of git://git.kernel.org/pub/scm/linux/kernel/git/trace/linux-trace\n\nPull tracing fixes from Steven Rostedt:\n\n - Fix use-after-free in eventfs_remove_rec()\n\n   The freeing of the eventfs_inode children used list_for_each_entry()\n   where the child is freed via srcu, but there's still a chance that it\n   gets freed. It should be using list_for_each_entry_safe().\n\n - Fix eventfs_inode SRCU use of list in freeing\n\n   The iterator uses an SRCU protected list walk on the eventfs inodes.\n   The eventfs inode uses its \"list\" field in a union with the RCU list\n   head. When the inode gets added to the SRCU list it immediately\n   corrupts the list pointer and can cause an issue with the iterator.\n   Move the RCU list head to be shared with the children list head which\n   allows the iterator to check the parent inode if is freed before\n   referencing the child. Have the iterator check the parent \"is_freed\"\n   field and break out if it is set. Also add memory barriers to make\n   sure the ordering is correct.\n\n - Fix various RCU synchronization issues with direct_functions\n\n   Updates to direct_functions have some missing RCU protection and\n   synchronization. Restructure the code a bit to make sure updates to\n   the direct_functions are protected.\n\n - Remove an unneeded comma from a scope_guard()\n\n   There's a spurious comma in a scope_guard(). Remove it.\n\n - Fix race in per CPU buffer swap in the ring buffer\n\n   When a per CPU buffer swap happens, it must make sure that it doesn't\n   occur while a writer is active. Instead it returns an -EBUSY. But\n   there's a small race window when a writer moves from one sub-buffer\n   to the next that it resets the \"committing\" counter. If a swap\n   happens at that moment, the buffer used for the commit of an event\n   will not match the buffer the event is actually on. Instead of using\n   the \"committing\" counter, use the recursive detection counter that\n   does not get reset when the writer crosses sub-buffers.\n\n - Fix off-by-one in ftrace_free_mem()\n\n   The function ftrace_free_mem() gets an \"end_ptr\" as a parameter that\n   is exclusive to the rang to be freed. But its value is used to search\n   for the records that expects an inclusive value. Subtract one from\n   the parameter to convert it to an inclusive range.\n\n - Disable resizing of the ring buffer for persistent buffers\n\n   Resizing the persistent buffer has undefined behavior. Prevent it\n   from being resized.\n\n - Disable changing ring buffer subbuf order when resizing is disabled\n\n   The ring buffer subbuffer order can not be changed during resizing.\n   Use that instead of just checking if the buffer is mapped as mapped\n   buffers also have resizing disabled.\n\n - Initialize subbuf_order of reader pages when they are created\n\n   In rb_allocate_cpu_buffer() the bpage->order is not updated to the\n   current subbuf_order leaving it as zero. This value is used when the\n   page is freed.\n\n - Fix test_ringbuffer() to test for ERR_PTR before calling\n   kthread_stop()\n\n   The rb_threads[] array is assigned the output of kthread_run_on_cpu()\n   which could return an ERR_PTR. At the end of the test, all threads in\n   the array are cleaned up by kthread_stop() passing in the value in\n   the array if it isn't zero. But if the array contains an ERR_PTR,\n   kthread_stop() will not be able to handle it properly.\n\n* tag 'trace-v7.2-rc6' of git://git.kernel.org/pub/scm/linux/kernel/git/trace/linux-trace:\n  ring-buffer: Fix crash passing ERR_PTR to kthread_stop()\n  ring-buffer: Initialise reader page order in rb_allocate_cpu_buffer()\n  ring-buffer: Prevent subbuf order change when resizing is disabled\n  ring-buffer: Prevent resizing of persistent ring buffer\n  ftrace: Fix off-by-one fentry site disable in ftrace_free_mem()\n  ring-buffer: Use current_context for safe per-CPU buffer swap\n  ftrace: Drop extra comma in trace_buffered_event_enable\n  ftrace: Protect direct_functions in update_ftrace_direct_mod\n  ftrace: Protect direct_functions in update_ftrace_direct_del\n  ftrace: Protect direct_functions in ftrace_find_rec_direct\n  eventfs: Use children field for rcu head and add memory barriers\n  eventfs: Fix use-after-free in eventfs_remove_rec()",
+      "comment_count": 0
+    },
+    "html_url": "https://github.com/torvalds/linux/commit/b9b3e33b70b71e516930117e21de3ad2a7723747",
+    "author": {
+      "login": "torvalds",
+      "id": 1024025,
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "b643e495ae92e2aa75a54c557a756e02f049781d"
+      },
+      {
+        "sha": "91542863abade2fd4f2b361991f5386ad9d19c8c"
+      }
+    ]
+  }
+]

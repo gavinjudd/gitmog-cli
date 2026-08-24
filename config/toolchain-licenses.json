@@ -1,0 +1,74 @@
+{
+  "schema": "gitmog-toolchain-license-review-v1",
+  "reviewedAt": "2026-08-24",
+  "scope": "Direct pinned development and build dependencies used by the public contributor toolchain.",
+  "compatibility": "MIT and Apache-2.0 are compatible with Git Mog's MIT-licensed development and distribution model. These tools are not runtime dependencies of the published package.",
+  "dependencies": [
+    {
+      "name": "@eslint/js",
+      "version": "10.0.1",
+      "license": "MIT",
+      "source": "https://github.com/eslint/eslint/tree/main/packages/js"
+    },
+    {
+      "name": "@types/node",
+      "version": "24.13.3",
+      "license": "MIT",
+      "source": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node"
+    },
+    {
+      "name": "eslint",
+      "version": "10.8.1",
+      "license": "MIT",
+      "source": "https://github.com/eslint/eslint"
+    },
+    {
+      "name": "eslint-config-prettier",
+      "version": "10.1.8",
+      "license": "MIT",
+      "source": "https://github.com/prettier/eslint-config-prettier"
+    },
+    {
+      "name": "globals",
+      "version": "17.10.0",
+      "license": "MIT",
+      "source": "https://github.com/sindresorhus/globals"
+    },
+    {
+      "name": "prettier",
+      "version": "3.9.6",
+      "license": "MIT",
+      "source": "https://github.com/prettier/prettier"
+    },
+    {
+      "name": "rolldown",
+      "version": "1.2.4",
+      "license": "MIT",
+      "source": "https://github.com/rolldown/rolldown/tree/main/packages/rolldown"
+    },
+    {
+      "name": "turbo",
+      "version": "2.10.9",
+      "license": "MIT",
+      "source": "https://github.com/vercel/turborepo"
+    },
+    {
+      "name": "typescript",
+      "version": "6.0.3",
+      "license": "Apache-2.0",
+      "source": "https://github.com/microsoft/TypeScript"
+    },
+    {
+      "name": "typescript-eslint",
+      "version": "8.67.0",
+      "license": "MIT",
+      "source": "https://github.com/typescript-eslint/typescript-eslint/tree/main/packages/typescript-eslint"
+    },
+    {
+      "name": "vitest",
+      "version": "4.1.10",
+      "license": "MIT",
+      "source": "https://github.com/vitest-dev/vitest/tree/main/packages/vitest"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.next/
+.turbo/
+coverage/
+*.tgz
+*.tsbuildinfo
+next-env.d.ts
+
+.env
+.env.*
+!.env.example
+
+# Local service state and the workspace-local pnpm installed by bootstrap.
+.gitmog/
+
+# pnpm falls back to a project-local content-addressable store when the
+# home-directory store is unavailable.
+.pnpm-store/
+
+.DS_Store
+
+packages/distribution/*.tgz

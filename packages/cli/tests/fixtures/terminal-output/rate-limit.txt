@@ -1,0 +1,5 @@
+GITHUB LIMIT REACHED
+
+GitHub's current limit could not finish @ratelimited vs @strongmaintainer.
+Retry after Aug 13, 2026, 6:30:00 AM EDT: gitmog ratelimited strongmaintainer.
+Or sign in once: gitmog --sign-in ratelimited strongmaintainer

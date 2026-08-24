@@ -1,0 +1,47 @@
+name: Bug report
+description: Report a reproducible Git Mog defect without posting source or secrets.
+title: "[Bug]: "
+labels: ["type:bug", "status:needs-reproduction"]
+body:
+  - type: markdown
+    attributes:
+      value: "Do not paste credentials, private source, raw target source, or personal data. Use a public repository and immutable commit only when needed."
+  - type: input
+    id: version
+    attributes: { label: Git Mog version, placeholder: "0.2.2" }
+    validations: { required: true }
+  - type: input
+    id: reference
+    attributes:
+      {
+        label: Public repository and exact commit,
+        description: "Optional unless the defect depends on a repository.",
+      }
+  - type: textarea
+    id: reproduction
+    attributes:
+      {
+        label: Minimal reproduction,
+        description: "Commands and synthetic or public identifiers; never copy source.",
+      }
+    validations: { required: true }
+  - type: textarea
+    id: behavior
+    attributes: { label: Observed and expected behavior }
+    validations: { required: true }
+  - type: dropdown
+    id: parser
+    attributes:
+      {
+        label: Language or parser lane,
+        options:
+          ["Not applicable", "TypeScript", "JavaScript", "Python", "Go", "Unsupported or unknown"],
+      }
+    validations: { required: true }
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I included no credential, private source, or raw target source.
+          required: true

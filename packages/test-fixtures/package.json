@@ -1,0 +1,21 @@
+{
+  "name": "@gitmog/test-fixtures",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic fixtures shared by more than one package's test suite. Never imported by product code.",
+  "exports": {
+    "./github-personas": "./src/github-personas.ts",
+    "./battle-result": "./src/battle-result.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0"
+  },
+  "devDependencies": {
+    "@gitmog/config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

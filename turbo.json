@@ -1,0 +1,31 @@
+{
+  "$schema": "https://turborepo.dev/schema.json",
+  "ui": "stream",
+  "envMode": "strict",
+  "globalDependencies": [".node-version", "tsconfig.json", "packages/config/**"],
+  "globalEnv": ["CI", "NODE_ENV", "GITMOG_INTEGRATION", "DO_NOT_TRACK"],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "gitmog#build": {
+      "dependsOn": ["@gitmog/cli#build"],
+      "outputs": ["dist/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "lint": {
+      "dependsOn": ["^build"]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "gitmog#test": {
+      "dependsOn": ["@gitmog/cli#build"],
+      "outputs": []
+    }
+  }
+}

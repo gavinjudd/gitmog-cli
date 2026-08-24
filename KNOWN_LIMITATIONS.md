@@ -1,6 +1,8 @@
 # Known limitations
 
-- Git Mog uses only public GitHub evidence; unavailable or rate-limited evidence lowers coverage.
-- One-time GitHub device authorization is session-only and requests no scope. Tokens are not persisted.
-- The cache stores stable derived/public API data, never raw source, and is capped at 25 MiB.
-- Identical source and tool versions are required for exact artifact reproduction. Platform-specific npm archive metadata can otherwise affect tarball bytes even when all six member bytes match.
+- Git Mog observes public GitHub evidence only; missing evidence lowers coverage.
+- The released v0.2.2 source analyzer is lexical. Parser-backed Quality Judge work remains
+  preview-only until the v0.3.0 implementation and later human calibration gates are complete.
+- One-time GitHub device authorization is session-only and requests no scope.
+- Cache entries contain stable public metadata and derived features, never raw source.
+- Architecture support is claimed only after an exact package passes the named hosted lane.

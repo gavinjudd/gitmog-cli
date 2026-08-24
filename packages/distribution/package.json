@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Incit-AI/Git-Mog.git"
+    "url": "https://github.com/gavinjudd/gitmog-cli.git"
   },
   "engines": {
     "node": "^22.23.2 || >=24.16.0 <25 || ^26.7.0"

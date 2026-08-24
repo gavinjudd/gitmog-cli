@@ -50,10 +50,9 @@ const KNOWN_PREFIXES: readonly RegExp[] = Object.freeze([
   /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
 ]);
 
-const PRIVATE_KEY_BLOCK =
-  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g;
-
-const QUOTED_VALUE = /(["'`])((?:\\.|(?!\1)[^\\\r\n])*)\1/g;
+const PRIVATE_KEY_BEGIN = "-----BEGIN ";
+const PRIVATE_KEY_END = "-----END ";
+const ARMOUR_SUFFIX = "-----";
 
 export interface RedactionResult {
   readonly text: string;
@@ -73,6 +72,114 @@ function shannonEntropy(value: string): number {
     entropy -= probability * Math.log2(probability);
   }
   return entropy;
+}
+
+const isPrivateKeyLabel = (label: string): boolean => {
+  if (!label.endsWith("PRIVATE KEY")) return false;
+  for (const character of label) {
+    const code = character.codePointAt(0) ?? -1;
+    const upper = code >= 65 && code <= 90;
+    const digit = code >= 48 && code <= 57;
+    if (!upper && !digit && character !== " ") return false;
+  }
+  return true;
+};
+
+interface ArmourMarker {
+  readonly start: number;
+  readonly end: number;
+}
+
+function findPrivateKeyMarker(source: string, prefix: string, from: number): ArmourMarker | null {
+  let searchFrom = from;
+  while (searchFrom < source.length) {
+    const start = source.indexOf(prefix, searchFrom);
+    if (start < 0) return null;
+    const labelStart = start + prefix.length;
+    const labelEnd = source.indexOf(ARMOUR_SUFFIX, labelStart);
+    if (labelEnd < 0) return null;
+    if (isPrivateKeyLabel(source.slice(labelStart, labelEnd))) {
+      return { start, end: labelEnd + ARMOUR_SUFFIX.length };
+    }
+    searchFrom = labelStart;
+  }
+  return null;
+}
+
+function redactPrivateKeyBlocks(source: string, replace: (matched: string) => string): string {
+  let cursor = 0;
+  let output = "";
+  while (cursor < source.length) {
+    const begin = findPrivateKeyMarker(source, PRIVATE_KEY_BEGIN, cursor);
+    if (begin === null) return output + source.slice(cursor);
+    const end = findPrivateKeyMarker(source, PRIVATE_KEY_END, begin.end);
+    if (end === null) return output + source.slice(cursor);
+    output += source.slice(cursor, begin.start);
+    output += replace(source.slice(begin.start, end.end));
+    cursor = end.end;
+  }
+  return output;
+}
+
+const isQuote = (character: string): boolean =>
+  character === '"' || character === "'" || character === "`";
+
+const isLineTerminator = (character: string): boolean =>
+  character === "\r" || character === "\n" || character === "\u2028" || character === "\u2029";
+
+function replaceQuotedValues(
+  source: string,
+  replace: (matched: string, quote: string, inner: string, offset: number) => string,
+): string {
+  const closable = new Uint8Array(source.length);
+  let backslashes = 0;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index] ?? "";
+    if (character === "\\") {
+      backslashes += 1;
+      continue;
+    }
+    if (isQuote(character) && backslashes % 2 === 0) closable[index] = 1;
+    backslashes = 0;
+  }
+
+  const nextClose = new Int32Array(source.length);
+  nextClose.fill(-1);
+  const nextByQuote = new Map<string, number>([
+    ['"', -1],
+    ["'", -1],
+    ["`", -1],
+  ]);
+  for (let index = source.length - 1; index >= 0; index -= 1) {
+    const character = source[index] ?? "";
+    if (isLineTerminator(character)) {
+      nextByQuote.set('"', -1);
+      nextByQuote.set("'", -1);
+      nextByQuote.set("`", -1);
+      continue;
+    }
+    if (!isQuote(character)) continue;
+    nextClose[index] = nextByQuote.get(character) ?? -1;
+    if (closable[index] === 1) nextByQuote.set(character, index);
+  }
+
+  let cursor = 0;
+  let search = 0;
+  let output = "";
+  while (search < source.length) {
+    const quote = source[search] ?? "";
+    const close = isQuote(quote) ? (nextClose[search] ?? -1) : -1;
+    if (close < 0) {
+      search += 1;
+      continue;
+    }
+    const matched = source.slice(search, close + 1);
+    output += source.slice(cursor, search);
+    output += replace(matched, quote, matched.slice(1, -1), search);
+    cursor = close + 1;
+    search = cursor;
+  }
+  return output + source.slice(cursor);
 }
 
 const isCredentialShaped = (value: string): boolean =>
@@ -95,7 +202,7 @@ export function redactSecretShapedValues(source: string): RedactionResult {
     return REDACTION_TOKEN;
   };
 
-  let text = source.replace(PRIVATE_KEY_BLOCK, (matched) => {
+  let text = redactPrivateKeyBlocks(source, (matched) => {
     redactions += 1;
     redactedBytes += matched.length;
     // Keep the newline count so line-based features are not distorted by the removal.
@@ -109,7 +216,7 @@ export function redactSecretShapedValues(source: string): RedactionResult {
 
   // Quoted values are examined twice: once because the identifier beside them names a
   // secret, once because the value itself looks like one.
-  text = text.replace(QUOTED_VALUE, (matched, quote: string, inner: string, offset: number) => {
+  text = replaceQuotedValues(text, (matched, quote, inner, offset) => {
     if (inner.length === 0 || inner === REDACTION_TOKEN) return matched;
     const preceding = text.slice(Math.max(0, offset - 80), offset);
     const named = SECRET_IDENTIFIER.test(preceding) && /[:=]\s*$|[:=]\s*\S{0,4}$/.test(preceding);

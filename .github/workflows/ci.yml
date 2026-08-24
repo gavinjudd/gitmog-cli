@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - run: node scripts/bootstrap.mjs --ci
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs verify
+
+  architecture:
+    name: architecture (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - windows-2025
+          - windows-11-arm
+          - macos-15
+          - macos-15-intel
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - run: node scripts/bootstrap.mjs --ci
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs build
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs package:acceptance
+
+  dependency-review:
+    name: dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      # The initial foundation PR precedes repository security-setting activation.
+      # Remove this exception once GitHub's dependency graph is enabled on main.
+      - continue-on-error: true
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0

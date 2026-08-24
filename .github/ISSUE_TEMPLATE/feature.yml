@@ -1,0 +1,43 @@
+name: Feature proposal
+description: Propose a bounded product or contributor improvement.
+title: "[Feature]: "
+labels: ["type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: "Explain the user problem. Do not include credentials, private source, or raw target source."
+  - type: textarea
+    id: problem
+    attributes: { label: Problem, description: "Who is blocked and what outcome is missing?" }
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes:
+      {
+        label: Proposed contract,
+        description: "Include deterministic, package, platform, security, and calibration effects.",
+      }
+    validations: { required: true }
+  - type: input
+    id: reference
+    attributes:
+      {
+        label: Public repository and exact commit,
+        description: "Only when relevant; do not paste source.",
+      }
+  - type: dropdown
+    id: parser
+    attributes:
+      {
+        label: Language or parser lane,
+        options:
+          ["Not applicable", "TypeScript", "JavaScript", "Python", "Go", "Unsupported or new"],
+      }
+    validations: { required: true }
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I included no credential, private source, or raw target source.
+          required: true

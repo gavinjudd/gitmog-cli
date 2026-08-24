@@ -8,12 +8,31 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./calibration": {
+      "types": "./dist/calibration.d.ts",
+      "default": "./dist/calibration.js"
     }
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "node ../../scripts/clean-build-output.mjs dist && tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@gitmog/analyzers": "workspace:*",
     "@gitmog/github": "workspace:*"
+  },
+  "devDependencies": {
+    "@gitmog/config": "workspace:*",
+    "@gitmog/test-fixtures": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

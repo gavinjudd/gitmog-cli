@@ -1,0 +1,27 @@
+GIT MOG
+◆ @strongmaintainer WINS 92–39 · PUBLIC REPO GAP
+Coverage: @strongmaintainer 59% · @sidequester 54%
+
+» One side has releases. The other has lore. [1]
+
+THE FIGHT
+TOOLING         100–0  @strongmaintainer · Project automation: 3/3–0/3 [2]
+TESTS           98–0  @strongmaintainer · Automated tests: 100%–0% [3]
+COMMIT QUALITY  94–9  @strongmaintainer · Revert rate: 0%–9.1% [4]
+
+THE READ
+@strongmaintainer — Tests: 25 per 100 source files in inspected trees. [5]
+@sidequester — Updated publicly today.
+  64% of sampled commit messages are one word or shorter. [6]
+
+RECEIPTS
+[1] Versioned releases — 15 vs 0
+[2] Project automation — 3/3 vs 0/3
+[3] Automated tests — 100% vs 0%
+[4] Revert rate — 0% vs 9.1%
+[5] @strongmaintainer — Test files 25 per 100 source files
+[6] @sidequester — Last public update 0d ago; Commit messages — 64% are one word
+    or shorter
+More: --details · --receipts · --share x
+Rematch: gitmog strongmaintainer sidequester
+Next: gitmog strongmaintainer <handle>

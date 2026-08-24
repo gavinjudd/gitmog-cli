@@ -1,0 +1,41 @@
+name: Community contracts
+
+on:
+  pull_request:
+    paths:
+      - ".github/**"
+      - "CODE_OF_CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "GOVERNANCE.md"
+      - "MAINTAINERS.md"
+      - "SECURITY.md"
+      - "SUPPORT.md"
+      - "scripts/community-check.mjs"
+  push:
+    branches: [main]
+    paths:
+      - ".github/**"
+      - "CODE_OF_CONDUCT.md"
+      - "CONTRIBUTING.md"
+      - "GOVERNANCE.md"
+      - "MAINTAINERS.md"
+      - "SECURITY.md"
+      - "SUPPORT.md"
+      - "scripts/community-check.mjs"
+
+permissions:
+  contents: read
+
+jobs:
+  community:
+    name: community contracts
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - run: node scripts/bootstrap.mjs --ci
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs community:check
