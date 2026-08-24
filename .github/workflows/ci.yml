@@ -23,6 +23,7 @@ jobs:
         with:
           node-version-file: .node-version
           check-latest: false
+          package-manager-cache: false
       - run: node scripts/bootstrap.mjs --ci
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs verify
 
@@ -46,6 +47,7 @@ jobs:
         with:
           node-version-file: .node-version
           check-latest: false
+          package-manager-cache: false
       - run: node scripts/bootstrap.mjs --ci
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs build
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs package:acceptance

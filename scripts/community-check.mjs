@@ -49,6 +49,14 @@ for (const workflow of workflows) {
   if (contents.includes("self-hosted")) {
     throw new Error(`Self-hosted runners are forbidden: ${relative(root, workflow)}`);
   }
+  if (
+    contents.includes("actions/setup-node@") &&
+    !contents.includes("package-manager-cache: false")
+  ) {
+    throw new Error(
+      `setup-node must not probe pnpm before zero-dependency bootstrap: ${relative(root, workflow)}`,
+    );
+  }
   for (const line of contents.split("\n").filter((value) => value.includes("uses:"))) {
     actionPin.lastIndex = 0;
     if (!actionPin.test(line)) throw new Error(`Action is not SHA-pinned: ${line.trim()}`);

@@ -29,6 +29,7 @@ jobs:
         with:
           node-version-file: .node-version
           check-latest: false
+          package-manager-cache: false
       - run: node scripts/bootstrap.mjs --ci
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs verify
       - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/candidate" --tag "${{ inputs.tag }}" --expected-sha "${{ inputs.commit }}"

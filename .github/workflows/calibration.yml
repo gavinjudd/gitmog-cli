@@ -30,6 +30,7 @@ jobs:
         with:
           node-version-file: .node-version
           check-latest: false
+          package-manager-cache: false
       - run: node scripts/bootstrap.mjs --ci
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:fixtures
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:calibration:check
