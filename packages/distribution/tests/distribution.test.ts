@@ -66,6 +66,8 @@ describe("standalone npm distribution", () => {
     expect(bundle).toContain("1.2.0-cache-invariant-support");
     expect(bundle).toContain("2.0.0-default-full-profile-snapshot");
     expect(bundle).toContain("default-full-snapshot:2");
+    expect(bundle).toContain("0.3.0-preview.1");
+    expect(bundle).toContain("1.0.0-typescript-ast");
     expect(bundle).not.toContain("5.0.0-raw-path-blob-receipts");
     expect(bundle).not.toContain("1.1.0-stable-cache-raw-receipts");
     expect(bundle).not.toContain("fast-scan:1");
@@ -103,7 +105,7 @@ describe("standalone npm distribution", () => {
       "docs/EXECUTION_STATE.md",
       "tests/fixtures",
       ".env.local",
-      "sourceFiles",
+      '"sourceFiles":{',
       "agent-transcripts",
       "synthetic fixture",
       "api.example.test",

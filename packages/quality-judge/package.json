@@ -1,0 +1,32 @@
+{
+  "name": "@gitmog/quality-judge",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Parser-backed, preview-only static quality analysis for bounded public source.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gitmog/github": "workspace:*",
+    "typescript": "catalog:"
+  },
+  "devDependencies": {
+    "@gitmog/config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

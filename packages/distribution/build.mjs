@@ -16,6 +16,12 @@ await build({
   input,
   platform: "node",
   external: [/^node:/],
+  transform: {
+    define: {
+      __filename: "import.meta.filename",
+      __dirname: "import.meta.dirname",
+    },
+  },
   output: {
     file: output,
     format: "esm",
@@ -29,7 +35,13 @@ chmodSync(resolve(packageDirectory, "bin/gitmog.mjs"), 0o755);
 
 // Rolldown's region comments expose workspace-relative source locations. They are not
 // runtime data and have no place in the standalone artifact.
-const bundled = readFileSync(output, "utf8").replace(/^\s*\/\/#(?:end)?region(?: .*)?\r?\n/gm, "");
+const bundled = readFileSync(output, "utf8")
+  .replace(/^\s*\/\/#(?:end)?region(?: .*)?\r?\n/gm, "")
+  // The bundled TypeScript parser contains its own emitter's source-map vocabulary.
+  // Preserve that runtime string while ensuring the shipped file contains no active
+  // source-map directive or review-confusing literal directive marker.
+  .replace(/^\s*\/\/[#@]\s*sourceMappingURL=.*\r?\n?/gmu, "")
+  .replaceAll("sourceMappingURL=", "sourceMappingURL\\x3d");
 writeFileSync(output, bundled, "utf8");
 /** @type {readonly (readonly [string, RegExp])[]} */
 const forbidden = [

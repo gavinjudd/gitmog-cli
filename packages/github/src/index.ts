@@ -87,8 +87,12 @@ export type {
 } from "./types.js";
 export {
   COMPLETE_PROFILE_REQUESTS,
+  COMPLETE_QUALITY_ATTRIBUTION_REQUESTS_PER_PROFILE,
+  COMPLETE_QUALITY_SOURCE_REQUESTS_PER_PROFILE,
   MAXIMUM_SOURCE_REQUESTS_PER_PROFILE,
+  MINIMUM_USEFUL_QUALITY_REQUESTS_PER_PROFILE,
   MINIMUM_USEFUL_PROFILE_REQUESTS,
+  QUALITY_REQUEST_PLAN_VERSION,
   REQUEST_PLAN_VERSION,
   allowanceFromKnownHeaders,
   buildGithubRequestPlan,
@@ -103,6 +107,24 @@ export {
   type ReadGithubAllowanceOptions,
   type RequestPlanCacheState,
 } from "./request-plan.js";
+export {
+  QUALITY_ATTRIBUTION_COLLECTION_VERSION,
+  QUALITY_MAX_ATTRIBUTION_REQUESTS,
+  QUALITY_MAX_FILE_BYTES,
+  QUALITY_MAX_FILES,
+  QUALITY_MAX_IMPLEMENTATION_FILES_PER_REPOSITORY,
+  QUALITY_MAX_REPOSITORIES,
+  QUALITY_MAX_SOURCE_REQUESTS,
+  QUALITY_MAX_TEST_FILES_PER_REPOSITORY,
+  QUALITY_MAX_TOTAL_BYTES,
+  QUALITY_SOURCE_COLLECTION_VERSION,
+  collectQualitySource,
+  supportedQualityPath,
+  type CollectQualitySourceOptions,
+  type CollectedQualitySourceFile,
+  type QualitySourceCollection,
+  type QualitySourceCollectionLimitation,
+} from "./quality-source.js";
 export {
   EVENTS_PER_PAGE,
   MAX_EVENT_PAGES,

@@ -104,6 +104,9 @@ importers:
       '@gitmog/personality':
         specifier: workspace:*
         version: link:../personality
+      '@gitmog/quality-judge':
+        specifier: workspace:*
+        version: link:../quality-judge
       '@gitmog/scoring':
         specifier: workspace:*
         version: link:../scoring
@@ -141,6 +144,9 @@ importers:
       '@gitmog/personality':
         specifier: workspace:*
         version: link:../personality
+      '@gitmog/quality-judge':
+        specifier: workspace:*
+        version: link:../quality-judge
       '@gitmog/scoring':
         specifier: workspace:*
         version: link:../scoring
@@ -246,6 +252,28 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@24.13.3)(vite@8.2.2(@types/node@24.13.3))
+
+  packages/quality-judge:
+    dependencies:
+      '@gitmog/github':
+        specifier: workspace:*
+        version: link:../github
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+    devDependencies:
+      '@gitmog/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 24.13.3
+      eslint:
+        specifier: 'catalog:'
+        version: 10.8.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@24.13.3)(vite@8.2.2(@types/node@24.13.3))
