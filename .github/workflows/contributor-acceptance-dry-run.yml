@@ -1,0 +1,60 @@
+name: Contributor acceptance dry run
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/contributor-acceptance-dry-run.yml
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu:
+    name: contributor (ubuntu-24.04)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - name: Run the documented contributor path
+        shell: bash
+        run: |
+          node scripts/bootstrap.mjs --ci
+          export PATH="$PWD/.gitmog/tooling/pnpm/node_modules/.bin:$PATH"
+          pnpm run doctor
+          node scripts/turbo.mjs run test --filter=@gitmog/cli
+          pnpm quality:fixtures
+          pnpm verify
+          pnpm build
+          pnpm package:acceptance
+
+  windows:
+    name: contributor (windows-2025)
+    runs-on: windows-2025
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - name: Run the documented contributor path
+        shell: pwsh
+        run: |
+          node scripts/bootstrap.mjs --ci
+          $env:Path = "$(Resolve-Path '.gitmog\tooling\pnpm\node_modules\.bin');$env:Path"
+          pnpm run doctor
+          node scripts/turbo.mjs run test --filter=@gitmog/cli
+          pnpm quality:fixtures
+          pnpm verify
+          pnpm build
+          pnpm package:acceptance
