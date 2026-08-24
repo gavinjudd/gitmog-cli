@@ -154,6 +154,7 @@ jobs:
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:fixtures
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:policy:check
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs quality:benchmark:check
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs benchmark:check
 
   security:
     name: security contract

@@ -16,3 +16,5 @@ pnpm verify
 outside the checkout, installs it into disposable storage with scripts disabled, and exercises
 both bins and supported surfaces. Quality fixtures and the informational-only policy have
 independent commands so parser behavior, policy, and package acceptance are checked separately.
+The required [CLI benchmark](BENCHMARKS.md) gates deterministic request reconciliation while
+recording hosted-runner timing as informational evidence.
