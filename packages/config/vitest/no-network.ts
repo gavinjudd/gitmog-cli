@@ -66,6 +66,29 @@ function hostFromSocketArguments(args: readonly unknown[]): string {
 
 type Guarded = Record<string, unknown>;
 
+const DNS_HOST_METHODS = Object.freeze([
+  "lookup",
+  "lookupService",
+  "resolve",
+  "resolve4",
+  "resolve6",
+  "resolveAny",
+  "resolveCaa",
+  "resolveCname",
+  "resolveMx",
+  "resolveNaptr",
+  "resolveNs",
+  "resolvePtr",
+  "resolveSoa",
+  "resolveSrv",
+  "resolveTxt",
+  "reverse",
+]);
+
+const DNS_RESOLVER_METHODS = DNS_HOST_METHODS.filter(
+  (key) => key !== "lookup" && key !== "lookupService",
+);
+
 function guard(target: Guarded, key: string, hostOf: (args: readonly unknown[]) => string): void {
   const original = target[key];
   if (typeof original !== "function") return;
@@ -116,9 +139,13 @@ function installNoNetworkGuard(): void {
 
   const hostFromFirstArgument = (args: readonly unknown[]): string =>
     typeof args[0] === "string" ? args[0] : "";
-  for (const key of ["lookup", "resolve"]) {
+  for (const key of DNS_HOST_METHODS) {
     guard(dns as unknown as Guarded, key, hostFromFirstArgument);
     guard(dnsPromises as unknown as Guarded, key, hostFromFirstArgument);
+  }
+  for (const key of DNS_RESOLVER_METHODS) {
+    guard(dns.Resolver.prototype as unknown as Guarded, key, hostFromFirstArgument);
+    guard(dnsPromises.Resolver.prototype as unknown as Guarded, key, hostFromFirstArgument);
   }
 }
 

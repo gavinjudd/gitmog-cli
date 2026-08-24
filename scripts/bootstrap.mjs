@@ -123,7 +123,7 @@ const install = runNodeCliInherit(
 if (install.code !== 0) {
   die(
     `Dependency installation failed. ${describeNodeCliFailure("pnpm", pnpmCli, install)}`,
-    "If pnpm reported blocked dependency build scripts, review each package and add it to allowBuilds in pnpm-workspace.yaml with a rationale in docs/decisions/0001-foundation-toolchain-pins.md.",
+    "If pnpm reported blocked dependency build scripts, review each package and add it to allowBuilds in pnpm-workspace.yaml with a rationale in docs/decisions/0001-public-upstream-and-toolchain.md.",
   );
 }
 if (!hasLockfile) warn("pnpm-lock.yaml was created. Review it before committing.");

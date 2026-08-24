@@ -21,6 +21,12 @@ exact catalog pins with present callers. Bootstrap installs workspace-local pnpm
 npm, ignores lifecycle scripts, and requires the frozen lockfile in CI. The shipped package retains
 zero runtime dependencies and zero install lifecycle behavior.
 
+The direct development and build dependency license review is recorded in
+`config/toolchain-licenses.json`. Every pinned tool is MIT-licensed except TypeScript, which is
+Apache-2.0. Both licenses are compatible with this MIT-licensed development and distribution model;
+none of these tools is a runtime dependency of the published package. A dependency change must
+update the exact pin, lockfile, license review, and this decision in the same pull request.
+
 ## Consequences
 
 External contributors can reproduce the real merge and package gates without private files. Public
