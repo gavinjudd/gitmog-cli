@@ -1,6 +1,6 @@
 # Git Mog
 
-Git Mog is a deterministic CLI that compares public GitHub evidence for entertainment.
+Git Mog is a deterministic CLI that compares public GitHub evidence for entertainment. Created by https://github.com/gavinjudd and https://github.com/Solvent-Duck
 
 ```sh
 npx -y gitmog alice bob
