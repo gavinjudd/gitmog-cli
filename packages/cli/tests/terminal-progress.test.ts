@@ -7,20 +7,24 @@ import {
   PERSONAS,
   type PersonaSpec,
 } from "@gitmog/test-fixtures/github-personas";
+import { PRIVATE_CONTEXT_APP_CONFIG } from "@gitmog/private-context";
 import { describe, expect, it } from "vitest";
 
 import { run, usage, type CliContext } from "../src/cli.js";
 import { createPalette, stripAnsi } from "../src/color.js";
 import {
   createTerminalProgress,
+  PROGRESS_REVEAL_MS,
   renderProgressHeader,
   shouldRenderProgress,
   type ProgressClock,
   type TerminalProgressEvent,
 } from "../src/progress.js";
+import { PRIVATE_CONTEXT_FIXTURE } from "./private-context-fixture.js";
 
 const ESCAPE = String.fromCodePoint(27);
 const CSI_PATTERN = new RegExp(`${ESCAPE}\\[[0-9;?]*[A-Za-z]`, "gu");
+const CSI_PREFIX_PATTERN = new RegExp(`^${ESCAPE}\\[[0-9;?]*[A-Za-z]`, "u");
 
 class ManualClock implements ProgressClock {
   nowMs = 0;
@@ -130,6 +134,34 @@ const expectGolden = (name: string, value: string): void => {
   expect(value).toBe(golden(name));
 };
 const normalizedMotion = (value: string): string => `${normalized(value)}\n`;
+
+const renderedTerminalLines = (transcript: string): readonly string[] => {
+  const lines: string[] = [];
+  let current = "";
+  for (let index = 0; index < transcript.length; index += 1) {
+    const character = transcript[index] as string;
+    if (character === "\u001B" && transcript[index + 1] === "[") {
+      const match = CSI_PREFIX_PATTERN.exec(transcript.slice(index));
+      if (match !== null) {
+        if (match[0].endsWith("K")) current = "";
+        index += match[0].length - 1;
+        continue;
+      }
+    }
+    if (character === "\r") {
+      current = "";
+      continue;
+    }
+    if (character === "\n") {
+      lines.push(current);
+      current = "";
+      continue;
+    }
+    current += character;
+  }
+  if (current !== "") lines.push(current);
+  return lines;
+};
 
 const fixtureContext = (...personas: readonly PersonaSpec[]): CliContext => {
   const handlers = personas.map((persona) => ({
@@ -252,7 +284,8 @@ describe("terminal progress behavior", () => {
     expect(output).toContain("\u001B[?25l");
     expect(output).toContain("\u001B[?25h");
     expect(output).toContain("Interrupted");
-    expect(output.endsWith("\u001B[?25h")).toBe(true);
+    expect(output.indexOf("\u001B[?25h")).toBeLessThan(output.indexOf("Interrupted"));
+    expect(output.endsWith("Interrupted\n")).toBe(true);
   });
 
   it("clears successful progress and reports a rate limit once", () => {
@@ -301,6 +334,77 @@ describe("terminal progress behavior", () => {
     expect(output.replaceAll("\n", "\r\n").replaceAll("\r\n", "\n")).toBe(output);
     expect(output).not.toMatch(/[A-Za-z]:\\|\/Users\//u);
   });
+
+  it.each([
+    ["public authorization", "PUBLIC API ACCESS · STEP 1 OF 2", "settle", 60, true, false],
+    ["private authorization", "PRIVATE CONTEXT · STEP 2 OF 2", "settle", 80, false, false],
+    ["user choice", "[s] sign in once, [l] limited, [c] cancel", "settle", 100, true, true],
+    ["error", "GIT MOG STOPPED", "failure", 60, false, false],
+    ["final battle", "GIT MOG · FINAL BATTLE", "complete", 80, true, false],
+    ["Ctrl-C", "CANCELLED", "abort", 100, false, false],
+    ["timeout", "GITHUB TIMED OUT", "failure", 80, true, true],
+  ] as const)(
+    "keeps PTY %s text off the transient line",
+    (_name, persistent, action, columns, color, noMotion) => {
+      const writes: string[] = [];
+      const clock = new ManualClock();
+      const controller = new AbortController();
+      const progress = createTerminalProgress({
+        mode: "battle",
+        handles: ["alice", "bob"],
+        env: noMotion ? { GITMOG_NO_MOTION: "1" } : {},
+        isTty: true,
+        columns,
+        palette: createPalette(color),
+        cacheMode: "normal",
+        write: (value) => writes.push(value),
+        clock,
+        signal: controller.signal,
+      });
+      progress.update({ type: "command-start" });
+      clock.advance(PROGRESS_REVEAL_MS);
+      progress.update({ type: "quality-analysis-start" });
+      if (action === "settle") progress.settle();
+      else if (action === "complete") progress.update({ type: "command-complete" });
+      else if (action === "abort") controller.abort();
+      else {
+        progress.update({
+          type: "command-failed",
+          error: {
+            code: persistent.includes("TIMED OUT") ? "timeout" : "upstream_error",
+            message: "synthetic persistent failure",
+          },
+        });
+      }
+      writes.push(`${persistent}\n`);
+      progress.dispose();
+
+      const persistentLine = renderedTerminalLines(writes.join("")).find((line) =>
+        line.includes(persistent),
+      );
+      expect(persistentLine).toBe(persistent);
+      expect(persistentLine).not.toMatch(/[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]/u);
+      expect(persistentLine).not.toContain("Reviewing code quality");
+    },
+  );
+
+  it("keeps piped persistent output free of transient bytes", () => {
+    const writes: string[] = [];
+    const progress = createTerminalProgress({
+      mode: "battle",
+      handles: ["alice", "bob"],
+      env: {},
+      isTty: false,
+      columns: 80,
+      palette: createPalette(false),
+      cacheMode: "normal",
+      write: (value) => writes.push(value),
+    });
+    progress.update({ type: "command-start" });
+    progress.settle();
+    writes.push("PIPED FINAL OUTPUT\n");
+    expect(writes.join("")).toBe("PIPED FINAL OUTPUT\n");
+  });
 });
 
 describe("CLI output boundaries", () => {
@@ -336,6 +440,63 @@ describe("CLI output boundaries", () => {
       expect(progressWrites.join("")).not.toContain("PUBLIC EVIDENCE");
       expect(progressWrites.join("").endsWith("\r\u001B[2K\u001B[?25h")).toBe(true);
     }
+  });
+
+  it("clears the active quality spinner before Private Context authorization", async () => {
+    const clock = new ManualClock();
+    const transcript: string[] = [];
+    const base = fixtureContext(PERSONAS.strongMaintainer, PERSONAS.manyTinyRepos);
+    let revealed = false;
+    const result = await run(
+      ["node", "gitmog", "strongmaintainer", "sidequester", "--private-context"],
+      {
+        ...base,
+        isTty: true,
+        stderrIsTty: true,
+        stdinIsTty: true,
+        terminalColumns: 80,
+        prompt: () => Promise.resolve(""),
+        progressClock: clock,
+        writeProgress: (value) => transcript.push(value),
+        writeOutput: (value) => transcript.push(value),
+        fetchImpl: (input, init) => {
+          if (!revealed) {
+            revealed = true;
+            clock.advance(PROGRESS_REVEAL_MS);
+          }
+          return base.fetchImpl!(input, init);
+        },
+        privateContextAppConfig: PRIVATE_CONTEXT_APP_CONFIG,
+        authorizePrivateDevice: async (options) => {
+          await options.onPrompt({
+            userCode: "PRIVATE-PTY",
+            verificationUri: "https://github.com/login/device",
+            expiresAt: "2026-08-25T12:00:00.000Z",
+            intervalSeconds: 5,
+          });
+          let active = true;
+          return {
+            ok: true,
+            lease: {
+              get active() {
+                return active;
+              },
+              expiresAt: null,
+              use: async (callback) => callback("private_fixture_access_token_123456"),
+              dispose: () => {
+                active = false;
+              },
+            },
+          };
+        },
+        runPrivateContext: () => Promise.resolve({ ok: true, result: PRIVATE_CONTEXT_FIXTURE }),
+      },
+    );
+    if (result.exitCode !== 0) throw new Error(JSON.stringify(result));
+    const raw = transcript.join("");
+    expect(raw).not.toContain("Reviewing code qualityPRIVATE CONTEXT");
+    const promptLine = renderedTerminalLines(raw).find((line) => line === "PRIVATE CONTEXT");
+    expect(promptLine).toBe("PRIVATE CONTEXT");
   });
 
   it.each([

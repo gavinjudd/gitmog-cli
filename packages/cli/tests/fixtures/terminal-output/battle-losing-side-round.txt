@@ -9,7 +9,7 @@ SHIPPING BREADTH  50–25  @tagmachine · Versioned releases: 63–0 [4]
 THE READ
 @tagmachine — Tests: 25 per 100 source files in inspected trees. [5]
 @assertionpilled — Tests: 63 per 100 source files in inspected trees.
-  3 established projects, zero version tags. [6]
+  3 established projects have no version tags. [6]
 CODE QUALITY · PREVIEW
 Maintained codebase @tagmachine 81 (100%) · @assertionpilled 81 (100%)
 Attributed code @tagmachine 81 (67%) · @assertionpilled 81 (68%)

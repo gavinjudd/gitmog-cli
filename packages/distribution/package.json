@@ -1,6 +1,6 @@
 {
   "name": "gitmog",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "Deterministic public-GitHub battles with optional aggregate Private Context.",
   "license": "MIT",

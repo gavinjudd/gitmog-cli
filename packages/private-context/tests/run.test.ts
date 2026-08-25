@@ -189,7 +189,22 @@ describe("bounded private repository collection", () => {
         maintainedRepositories: 1,
         attributableRepositories: 1,
       },
+      maintainedCodebase: {
+        scope: "selected-sample",
+        classification: "informational",
+        scoreInfluence: 0,
+        publicWinnerInfluence: 0,
+        persisted: false,
+      },
     });
+    const p1 = outcome.result.receipts.find((receipt) => receipt.id === "P1");
+    const p2 = outcome.result.receipts.find((receipt) => receipt.id === "P2");
+    const p3 = outcome.result.receipts.find((receipt) => receipt.id === "P3");
+    const p4 = outcome.result.receipts.find((receipt) => receipt.id === "P4");
+    expect(p1?.claim).toBe("1 of 1 analyzed private repository contains CI configuration.");
+    expect(p2?.claim).toBe("1 selected private project shows sustained maintenance.");
+    expect(p3?.claim).toContain("Code-quality sample: 1 repo · 1 parsed file ·");
+    expect(p4?.claim).toBe("1 of 1 sampled file has user-linked commit evidence.");
     const serialized = JSON.stringify(outcome.result);
     expect(serialized).not.toContain(privateName);
     expect(serialized).not.toContain("sensitive-private-project");
@@ -254,7 +269,7 @@ describe("bounded private repository collection", () => {
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     const serialized = JSON.stringify(outcome.result);
-    expect(serialized).toContain("sampled private tests");
+    expect(serialized).toContain("sampled private test");
     expect(serialized).not.toContain("tests/add.test.ts");
   });
 

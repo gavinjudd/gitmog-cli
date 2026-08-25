@@ -93,6 +93,11 @@ describe("self-contained battle exports", () => {
     expect(text).toContain("MIXED CONTEXT");
     expect(text).toContain("PUBLIC WINNER");
     expect(text).toContain("3 of 4 analyzed private repositories contain CI configuration.");
+    expect(text).toContain(
+      "Code-quality sample: 3 repos · 10 parsed files · 61% supported coverage.",
+    );
+    expect(text).not.toContain("Maintained private code quality is 72");
+    expect(text).not.toMatch(/previewScore: \d+/u);
     expect(text).not.toContain("sensitive-private-project");
     expect(text).not.toContain("repositoryId");
     expect(text).not.toContain("sourceUrl");

@@ -4,6 +4,7 @@ import type { BattleResult } from "@gitmog/scoring";
 
 import { containsHumanClassifierIdentity } from "./classifier-visibility.js";
 import { derivePresentationVerdict, type PresentationVerdict } from "./presentation-verdict.js";
+import { privateQualitySampleText, selectedPrivateRepositoryText } from "./private-presentation.js";
 import { resolveClaimSupport } from "./support.js";
 import { terminalSafe } from "./terminal-safe.js";
 
@@ -103,7 +104,8 @@ const mixedContextDisclosure = (result: PrivateContextResult | undefined): reado
   result === undefined
     ? []
     : [
-        `Mixed context: @${terminalSafe(result.subject)} included ${String(result.repositorySelection.analyzedRepositories)} selected private repos.`,
+        `Mixed context: @${terminalSafe(result.subject)} included ${selectedPrivateRepositoryText(result)}.`,
+        `${privateQualitySampleText(result)}.`,
         "The winner uses public evidence only.",
       ];
 

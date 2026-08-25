@@ -94,7 +94,7 @@ function readPrivateContextContract() {
   }
   return {
     app,
-    resultVersion: "1.0.0-selected-private-repositories",
+    resultVersion: "1.1.0-selected-sample-presentation",
     requestVersion: "1.0.0-bounded-private-rest",
     scoreInfluence: 0,
     publicWinnerInfluence: 0,

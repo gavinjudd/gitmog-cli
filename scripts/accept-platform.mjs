@@ -19,6 +19,10 @@ import { captureNodeCli, resolveNpmEntrypoints } from "./lib/package-manager.mjs
 import { canonicalizePackageHelpInvocation } from "./lib/package-acceptance.mjs";
 
 const ESCAPE = String.fromCodePoint(27);
+const PRIVATE_PROGRESS_COLLISION = new RegExp(
+  `Reviewing code quality(?:${ESCAPE}\\[[0-9;?]*[A-Za-z])*PRIVATE CONTEXT`,
+  "u",
+);
 const removedThirdToken = ["ultra", "think"].join("");
 const removedFlags = Object.freeze([
   `--${["ora", "cle"].join("")}`,
@@ -241,7 +245,13 @@ const repositoryNames = mode === "scope"
 
 if (mode === "private-context") {
   Object.defineProperty(process.stdin, "isTTY", { configurable: true, value: true });
-  Object.defineProperty(process.stderr, "isTTY", { configurable: true, value: true });
+  if (process.env.GITMOG_FIXTURE_TTY !== "0") {
+    Object.defineProperty(process.stdout, "isTTY", { configurable: true, value: true });
+    Object.defineProperty(process.stderr, "isTTY", { configurable: true, value: true });
+    const columns = Number(process.env.GITMOG_FIXTURE_COLUMNS ?? "80");
+    Object.defineProperty(process.stdout, "columns", { configurable: true, value: columns });
+    Object.defineProperty(process.stderr, "columns", { configurable: true, value: columns });
+  }
 }
 
 globalThis.fetch = async (input, init) => {
@@ -737,6 +747,8 @@ async function main() {
         variant = "a",
         color = false,
         authenticated = false,
+        columns = 80,
+        tty = true,
         expected = 0,
       } = {},
     ) => {
@@ -751,6 +763,8 @@ async function main() {
         GITMOG_FIXTURE_BLOB_VARIANT: variant,
         GITMOG_FIXTURE_REPORT: reportPath,
         GITMOG_FIXTURE_APP_ID: privateContextConfig.appId,
+        GITMOG_FIXTURE_COLUMNS: String(columns),
+        GITMOG_FIXTURE_TTY: tty ? "1" : "0",
         NODE_OPTIONS: `--import=${pathToFileURL(fixturePreload).href}`,
       };
       if (color) delete fixtureEnvironment.NO_COLOR;
@@ -871,6 +885,11 @@ async function main() {
       privateMixedPayload.privateContext?.scoreInfluence !== 0 ||
       privateMixedPayload.privateContext?.publicWinnerInfluence !== 0 ||
       privateMixedPayload.privateContext?.persisted !== false ||
+      privateMixedPayload.privateContext?.maintainedCodebase?.scope !== "selected-sample" ||
+      privateMixedPayload.privateContext?.maintainedCodebase?.classification !== "informational" ||
+      privateMixedPayload.privateContext?.maintainedCodebase?.scoreInfluence !== 0 ||
+      privateMixedPayload.privateContext?.maintainedCodebase?.publicWinnerInfluence !== 0 ||
+      privateMixedPayload.privateContext?.maintainedCodebase?.persisted !== false ||
       JSON.stringify(publicOnlyObject(privateMixedPayload)) !==
         JSON.stringify(publicOnlyObject(publicBaselinePayload))
     ) {
@@ -908,8 +927,11 @@ async function main() {
     };
     assertPrivateSurfaceSafe(privateMixed.result.stdout, "Mixed JSON");
     assertPrivateSurfaceSafe(privateMixed.result.stderr, "Mixed JSON instructions");
-    if (!privateMixed.result.stderr.includes("PRIVATE CONTEXT SIGN-IN")) {
+    if (!privateMixed.result.stderr.includes("PRIVATE CONTEXT")) {
       fail("Packed Private Context omitted its separate permission explanation.");
+    }
+    if (privateMixed.result.stderr.includes("Reviewing code qualityPRIVATE CONTEXT")) {
+      fail("Packed Private Context authorization collided with transient progress.");
     }
     record(
       "private-context-canonical-invariance",
@@ -930,17 +952,24 @@ async function main() {
       ["share-x", ["--share", "x"]],
       ["share-discord", ["--share", "discord"]],
       ["share-linkedin", ["--share", "linkedin"]],
+      ["color", ["--color", "always"]],
       ["no-color", ["--color", "never"]],
       ["no-motion", ["--no-motion"]],
+      ["piped", []],
+      ["width-60", []],
+      ["width-80", []],
+      ["width-100", []],
     ];
     for (const [label, flags] of privateSurfaceCases) {
-      const surface = runFixture("private-context", [
-        "fixtureleft",
-        "fixtureright",
-        "--private-context",
-        "--no-cache",
-        ...flags,
-      ]);
+      const surface = runFixture(
+        "private-context",
+        ["fixtureleft", "fixtureright", "--private-context", "--no-cache", ...flags],
+        {
+          color: label === "color",
+          columns: label === "width-60" ? 60 : label === "width-100" ? 100 : 80,
+          tty: label !== "piped",
+        },
+      );
       assertPrivateSurfaceSafe(surface.result.stdout, `Mixed ${label}`);
       assertPrivateSurfaceSafe(surface.result.stderr, `Mixed ${label} instructions`);
       const required =
@@ -949,10 +978,48 @@ async function main() {
           : label.startsWith("share-")
             ? ["Mixed context:", "The winner uses public evidence only."]
             : ["PRIVATE CONTEXT", "public winner unchanged"];
+      const compact = compactRenderedText(surface.result.stdout);
       for (const text of required) {
-        if (!surface.result.stdout.includes(text)) {
+        if (!compact.includes(text)) {
           fail(`Mixed ${label} omitted required disclosure: ${text}`);
         }
+      }
+      if (!compact.includes("Code-quality sample:")) {
+        fail(`Mixed ${label} omitted selected-sample scope.`);
+      }
+      if (label !== "details" && /previewScore: \d+/.test(compact)) {
+        fail(`Mixed ${label} exposed a numeric private preview score.`);
+      }
+      if (label === "details") {
+        for (const text of [
+          "previewScore:",
+          "selected-sample",
+          "informational",
+          "scoreInfluence: 0",
+          "publicWinnerInfluence: 0",
+          "persisted: false",
+        ]) {
+          if (!compact.includes(text)) fail(`Mixed details omitted private score label: ${text}`);
+        }
+      }
+      if (label === "receipts") {
+        const privateStart = surface.result.stdout.indexOf("PRIVATE AGGREGATES");
+        if (privateStart < 0) fail("Mixed receipts omitted PRIVATE AGGREGATES.");
+        const privateBlock = surface.result.stdout.slice(privateStart);
+        const markerIds = [...surface.result.stdout.matchAll(/\[(P\d+)\]/g)].map(
+          (match) => match[1],
+        );
+        if (markerIds.length === 0) fail("Mixed receipts omitted private aggregate markers.");
+        for (const marker of markerIds) {
+          if (!privateBlock.includes(`[${marker}]`)) {
+            fail(`Visible private marker ${marker} has no rendered aggregate.`);
+          }
+        }
+      } else if (/\[P\d+\]/.test(surface.result.stdout)) {
+        fail(`Mixed ${label} exposed an unresolved private marker.`);
+      }
+      if (PRIVATE_PROGRESS_COLLISION.test(surface.result.stderr)) {
+        fail(`Mixed ${label} collided transient progress with Private Context authorization.`);
       }
     }
     const privateProfile = runFixture("private-context", [
@@ -993,7 +1060,7 @@ async function main() {
     }
     record(
       "private-context-output-matrix",
-      "profile, terminal, details, receipts, card, four shares, color, motion, HTML, and SVG disclosed and source-free",
+      "profile, terminal, details, receipts, card, four shares, 60/80/100 columns, color, no-color, no-motion, piped, HTML, and SVG disclosed and source-free",
     );
 
     for (const [left, right] of [

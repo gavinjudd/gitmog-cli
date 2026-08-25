@@ -19,6 +19,7 @@ import {
 } from "@gitmog/quality-judge";
 
 import { privateContextInstallationUrl } from "./config.js";
+import { countVerb, formatCount } from "./count-grammar.js";
 import { createPrivateArtifactScanner, privateAggregateShapeIsSafe } from "./privacy.js";
 import {
   PRIVATE_CONTEXT_MAX_REPOSITORIES,
@@ -282,6 +283,11 @@ const boundedFetch =
 const qualityReading = (reading: QualityReading): PrivateQualityReading => ({
   status: reading.status,
   previewScore: reading.previewScore,
+  scope: "selected-sample",
+  classification: "informational",
+  scoreInfluence: 0,
+  publicWinnerInfluence: 0,
+  persisted: false,
   coverage: reading.coverage,
   dimensions: reading.dimensions,
   repositories: reading.repositories,
@@ -320,6 +326,11 @@ const telemetryFor = (counters: RequestCounters): PrivateRequestTelemetry => ({
 const unavailableReading = (): PrivateQualityReading => ({
   status: "insufficient",
   previewScore: null,
+  scope: "selected-sample",
+  classification: "informational",
+  scoreInfluence: 0,
+  publicWinnerInfluence: 0,
+  persisted: false,
   coverage: 0,
   dimensions: {
     correctnessDiscipline: {
@@ -700,37 +711,40 @@ export async function runPrivateContext(
     (total, result) => total + (result?.ok === true ? result.features.testCaseCount : 0),
     0,
   );
+  const attributedFiles = inputs.filter(
+    (input) => input.attribution.status === "attributed",
+  ).length;
 
   const receipts: PrivateAggregateReceipt[] = [
     {
       id: "P1",
-      claim: `${String(repositoriesWithCi)} of ${String(inspections.length)} analyzed private repositories contain CI configuration.`,
+      claim: `${String(repositoriesWithCi)} of ${formatCount(inspections.length, "repository", "analyzed private")} ${countVerb(inspections.length, "contains")} CI configuration.`,
       metric: "ci-repositories",
       observed: repositoriesWithCi,
       total: inspections.length,
     },
     {
       id: "P2",
-      claim: `${String(sustainedRepositories)} selected private projects show sustained maintenance.`,
+      claim:
+        sustainedRepositories === 0
+          ? "No sustained-maintenance signal qualified in the selected sample."
+          : `${formatCount(sustainedRepositories, "project", "selected private")} ${countVerb(sustainedRepositories, "shows")} sustained maintenance.`,
       metric: "sustained-repositories",
       observed: sustainedRepositories,
       total: considered.length,
     },
     {
       id: "P3",
-      claim:
-        maintainedAnalysis.maintainedCodebase.previewScore === null
-          ? `${String(maintainedAnalysis.maintainedCodebase.coverage)}% of sampled maintained source was parser-supported.`
-          : `Maintained private code quality is ${String(maintainedAnalysis.maintainedCodebase.previewScore)} with ${String(maintainedAnalysis.maintainedCodebase.coverage)}% supported-source coverage.`,
+      claim: `Code-quality sample: ${formatCount(maintainedAnalysis.maintainedCodebase.repositories, "repo")} · ${formatCount(maintainedAnalysis.maintainedCodebase.files, "file", "parsed")} · ${String(maintainedAnalysis.maintainedCodebase.coverage)}% supported coverage.`,
       metric: "quality-coverage",
       observed: maintainedAnalysis.maintainedCodebase.coverage,
       total: 100,
     },
     {
       id: "P4",
-      claim: `${String(inputs.filter((input) => input.attribution.status === "attributed").length)} of ${String(inputs.length)} sampled files have user-linked commit evidence.`,
+      claim: `${String(attributedFiles)} of ${formatCount(inputs.length, "file", "sampled")} ${countVerb(attributedFiles, "has")} user-linked commit evidence.`,
       metric: "attributed-files",
-      observed: inputs.filter((input) => input.attribution.status === "attributed").length,
+      observed: attributedFiles,
       total: inputs.length,
     },
     ...(testCases === 0
@@ -738,7 +752,7 @@ export async function runPrivateContext(
       : [
           {
             id: "P5" as const,
-            claim: `${String(assertions)} assertions appear across ${String(testCases)} sampled private tests.`,
+            claim: `${formatCount(assertions, "assertion")} found across ${formatCount(testCases, "test", "sampled private")}.`,
             metric: "test-assertions" as const,
             observed: assertions,
             total: testCases,

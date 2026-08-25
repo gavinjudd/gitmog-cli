@@ -115,7 +115,7 @@ writeFileSync(
       parserAssets: ["parsers/quality-worker.mjs"],
       privateContext: {
         app: privateContextApp,
-        result: "1.0.0-selected-private-repositories",
+        result: "1.1.0-selected-sample-presentation",
         request: "1.0.0-bounded-private-rest",
       },
     },

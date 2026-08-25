@@ -1,6 +1,6 @@
 import type { QualityDimensions, QualityLanguage, QualityStatus } from "@gitmog/quality-judge";
 
-export const PRIVATE_CONTEXT_RESULT_VERSION = "1.0.0-selected-private-repositories";
+export const PRIVATE_CONTEXT_RESULT_VERSION = "1.1.0-selected-sample-presentation";
 export const PRIVATE_CONTEXT_REQUEST_VERSION = "1.0.0-bounded-private-rest";
 export const PRIVATE_CONTEXT_MAX_REPOSITORIES = 5;
 export const PRIVATE_CONTEXT_MAX_REQUESTS = 64;
@@ -33,6 +33,11 @@ export type PrivateRepositoryRelationship =
 export interface PrivateQualityReading {
   readonly status: QualityStatus;
   readonly previewScore: number | null;
+  readonly scope: "selected-sample";
+  readonly classification: "informational";
+  readonly scoreInfluence: 0;
+  readonly publicWinnerInfluence: 0;
+  readonly persisted: false;
   readonly coverage: number;
   readonly dimensions: QualityDimensions;
   readonly repositories: number;

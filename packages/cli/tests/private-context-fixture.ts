@@ -53,7 +53,7 @@ const unavailableDimensions = {
 } as const;
 
 export const PRIVATE_CONTEXT_FIXTURE: PrivateContextResult = {
-  version: "1.0.0-selected-private-repositories",
+  version: "1.1.0-selected-sample-presentation",
   mode: "selected-private-repositories",
   status: "partial",
   subject: "StrongMaintainer",
@@ -78,6 +78,11 @@ export const PRIVATE_CONTEXT_FIXTURE: PrivateContextResult = {
   maintainedCodebase: {
     status: "partial",
     previewScore: 72,
+    scope: "selected-sample",
+    classification: "informational",
+    scoreInfluence: 0,
+    publicWinnerInfluence: 0,
+    persisted: false,
     coverage: 61,
     dimensions: unavailableDimensions,
     repositories: 3,
@@ -89,6 +94,11 @@ export const PRIVATE_CONTEXT_FIXTURE: PrivateContextResult = {
   attributedCode: {
     status: "partial",
     previewScore: 68,
+    scope: "selected-sample",
+    classification: "informational",
+    scoreInfluence: 0,
+    publicWinnerInfluence: 0,
+    persisted: false,
     coverage: 52,
     dimensions: unavailableDimensions,
     repositories: 2,
@@ -121,7 +131,7 @@ export const PRIVATE_CONTEXT_FIXTURE: PrivateContextResult = {
     },
     {
       id: "P3",
-      claim: "Maintained private code quality is 72 with 61% supported-source coverage.",
+      claim: "Code-quality sample: 3 repos · 10 parsed files · 61% supported coverage.",
       metric: "quality-coverage",
       observed: 61,
       total: 100,
