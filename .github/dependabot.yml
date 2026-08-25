@@ -4,11 +4,34 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    labels: ["area:security"]
+    open-pull-requests-limit: 3
+    labels: ["dependency-maintenance"]
+    groups:
+      development-tooling:
+        applies-to: version-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      security-updates:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
-    labels: ["area:security"]
+    open-pull-requests-limit: 3
+    labels: ["dependency-maintenance"]
+    groups:
+      codeql-actions:
+        applies-to: version-updates
+        patterns: ["github/codeql-action/*"]
+        update-types: ["minor", "patch"]
+      official-actions:
+        applies-to: version-updates
+        patterns: ["actions/*"]
+        update-types: ["minor", "patch"]
+      security-updates:
+        applies-to: security-updates
+        patterns: ["*"]
