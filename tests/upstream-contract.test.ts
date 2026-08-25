@@ -88,8 +88,8 @@ describe("public upstream contract", () => {
   it("binds exact candidate acceptance and release evidence", () => {
     const metadata = releaseMetadata({
       commit: "a".repeat(40),
-      version: "0.3.0",
-      filename: "gitmog-0.3.0.tgz",
+      version: "0.3.1",
+      filename: "gitmog-0.3.1.tgz",
       bytes: 1,
       unpackedBytes: 2,
       files: ["package.json", "dist/gitmog.mjs"],

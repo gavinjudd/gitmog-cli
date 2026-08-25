@@ -1,6 +1,6 @@
 # Quality Judge
 
-Quality Judge is a separate, versioned static-analysis preview in v0.3.0. It evaluates
+Quality Judge is a separate, versioned static-analysis preview in v0.3.1. It evaluates
 two noninterchangeable readings:
 
 - **Maintained codebase:** engineering qualities in repositories a profile publicly owns or

@@ -1,6 +1,6 @@
 {
   "name": "gitmog",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Deterministic public-GitHub profile battles with a parser-backed Quality Preview.",
   "license": "MIT",

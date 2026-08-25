@@ -46,7 +46,7 @@ commit evidence associates sampled paths with that profile. Missing attribution 
 evidence.
 
 TypeScript and JavaScript use the pinned TypeScript AST parser in a resource-limited worker.
-Python, Go, and other languages are unsupported in v0.3.0 and reduce preview coverage instead of
+Python, Go, and other languages are unsupported in v0.3.1 and reduce preview coverage instead of
 quality. Target code is never cloned, installed, imported, built, tested, or executed; raw source
 is process-only and is never stored in receipts, caches, logs, or exports.
 

@@ -4,12 +4,18 @@ All notable changes are documented here. Released artifacts remain tied to immut
 
 ## Unreleased
 
+## 0.3.1 - Quality policy and request accounting
+
 - Retire the never-run external reviewer proposal and replace it with an informational-only
   Quality Judge policy plus deterministic engineering validation.
 - Make Quality Preview request telemetry current-invocation truthful and result identity
   cache-invariant.
 - Repair the CLI benchmark to reconcile canonical, quality-source, quality-attribution, allowance,
   and cache lanes separately.
+- Update the reviewed GitHub Actions pins and the Vitest, ESLint, Rolldown, and globals development
+  tools without changing runtime bundle bytes.
+- Group routine Dependabot maintenance while keeping security updates and major Actions changes
+  separately reviewable and retaining Node 24 types.
 
 ## 0.3.0 - Quality Judge Preview
 
