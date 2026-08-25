@@ -16,12 +16,14 @@ describe("deterministic count grammar", () => {
     expect(formatCount(1, noun, "selected private")).toBe(`1 selected private ${singular}`);
   });
 
-  it("agrees contains/contain and was/were at 0, 1, and 2+", () => {
+  it("agrees verbs at 0, 1, and 2+", () => {
     expect([0, 1, 2].map((count) => countVerb(count, "contains"))).toEqual([
       "contain",
       "contains",
       "contain",
     ]);
+    expect([0, 1, 2].map((count) => countVerb(count, "has"))).toEqual(["have", "has", "have"]);
+    expect([0, 1, 2].map((count) => countVerb(count, "shows"))).toEqual(["show", "shows", "show"]);
     expect([0, 1, 2].map((count) => countVerb(count, "was"))).toEqual(["were", "was", "were"]);
   });
 

@@ -711,6 +711,9 @@ export async function runPrivateContext(
     (total, result) => total + (result?.ok === true ? result.features.testCaseCount : 0),
     0,
   );
+  const attributedFiles = inputs.filter(
+    (input) => input.attribution.status === "attributed",
+  ).length;
 
   const receipts: PrivateAggregateReceipt[] = [
     {
@@ -739,9 +742,9 @@ export async function runPrivateContext(
     },
     {
       id: "P4",
-      claim: `${String(inputs.filter((input) => input.attribution.status === "attributed").length)} of ${formatCount(inputs.length, "file", "sampled")} ${countVerb(inputs.length, "has")} user-linked commit evidence.`,
+      claim: `${String(attributedFiles)} of ${formatCount(inputs.length, "file", "sampled")} ${countVerb(attributedFiles, "has")} user-linked commit evidence.`,
       metric: "attributed-files",
-      observed: inputs.filter((input) => input.attribution.status === "attributed").length,
+      observed: attributedFiles,
       total: inputs.length,
     },
     ...(testCases === 0
