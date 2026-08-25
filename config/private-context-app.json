@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "name": "Git Mog Private Context",
+  "slug": "git-mog-private-context",
+  "appId": "4711250",
+  "clientId": "Iv23liwSgKr5V8w6Qo7m",
+  "deviceFlow": true,
+  "permissions": {
+    "metadata": "read",
+    "contents": "read"
+  },
+  "installationSelectionRequired": "selected",
+  "privateKeys": 0,
+  "clientSecrets": 0
+}

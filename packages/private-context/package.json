@@ -1,13 +1,9 @@
 {
-  "name": "@gitmog/cli",
+  "name": "@gitmog/private-context",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Git Mog CLI: one command for full bounded deterministic public-GitHub analysis.",
-  "bin": {
-    "gitmog": "./bin/gitmog.mjs",
-    "git-mog": "./bin/gitmog.mjs"
-  },
+  "description": "Session-only selected-private-repository context that cannot influence the public battle.",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -17,20 +13,15 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "node ../../scripts/clean-build-output.mjs dist && tsc -p tsconfig.build.json",
-    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest run"
   },
   "dependencies": {
-    "@gitmog/battle": "workspace:*",
     "@gitmog/github": "workspace:*",
-    "@gitmog/personality": "workspace:*",
-    "@gitmog/private-context": "workspace:*",
     "@gitmog/quality-judge": "workspace:*",
-    "@gitmog/scoring": "workspace:*",
-    "@gitmog/source-analysis": "workspace:*"
+    "@gitmog/scoring": "workspace:*"
   },
   "devDependencies": {
     "@gitmog/config": "workspace:*",
