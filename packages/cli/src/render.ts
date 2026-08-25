@@ -6,7 +6,7 @@ import {
   type CodeDnaOutcome,
 } from "@gitmog/personality";
 import type { SourceAnalysisResult, StoryResult } from "@gitmog/source-analysis";
-import type { PrivateContextResult } from "@gitmog/private-context";
+import { countVerb, formatCount, type PrivateContextResult } from "@gitmog/private-context";
 import type {
   QualityFinding,
   QualityJudgePair,
@@ -24,6 +24,7 @@ import type {
 
 import { containsHumanClassifierIdentity } from "./classifier-visibility.js";
 import { PLAIN_PALETTE, stripAnsi, type Palette, type PaletteKey } from "./color.js";
+import { privateQualitySampleText, selectedPrivateRepositoryText } from "./private-presentation.js";
 import { derivePresentationVerdict, type PresentationVerdict } from "./presentation-verdict.js";
 import {
   evidenceReceipt,
@@ -752,7 +753,7 @@ const renderHeader = (
     privateContext === undefined
       ? []
       : wrapPlain(
-          `Context: @${terminalSafe(privateContext.subject)} added ${String(privateContext.repositorySelection.analyzedRepositories)} private repos · public winner unchanged`,
+          `Context: @${terminalSafe(privateContext.subject)} added ${selectedPrivateRepositoryText(privateContext, "private")} · public winner unchanged`,
           width,
         ).map((line) => palette.wrap("dim", line));
   return [
@@ -768,6 +769,7 @@ const renderPrivateContext = (
   result: PrivateContextResult,
   width: number,
   palette: Palette,
+  detailed: boolean,
 ): string[] => {
   const handle = `@${terminalSafe(result.subject)}`;
   const selection = result.repositorySelection;
@@ -781,29 +783,23 @@ const renderPrivateContext = (
         "Selected private repos were available, but not enough supported source qualified.",
         width,
       ).map((line) => palette.wrap("yellow", line)),
+      ...wrapPlain(privateQualitySampleText(result), width),
       ...wrapPlain("Private context is separate; public winner uses public evidence.", width).map(
         (line) => palette.wrap("dim", line),
       ),
     ];
   }
-  const receipt = (id: string): string => palette.wrap("dim", `[${id}]`);
   const signalLine = (
-    prefix: "+ " | "− ",
+    prefix: "+ " | "− " | "  ",
     text: string,
-    id: string,
-    positive: boolean,
-  ): readonly string[] =>
-    wrapPlain(`${text} [${id}]`, width, prefix).map((line, index) => {
-      const styled = palette.wrap(positive ? "green" : "red", line);
-      return index === 0 ? styled.replace(`[${id}]`, receipt(id)) : styled;
-    });
+    style: PaletteKey,
+  ): readonly string[] => wrapPlain(text, width, prefix).map((line) => palette.wrap(style, line));
   const ci = result.receipts.find((entry) => entry.metric === "ci-repositories");
   const sustained = result.receipts.find((entry) => entry.metric === "sustained-repositories");
-  const quality = result.maintainedCodebase.previewScore;
   const repositorySummary =
     selection.analyzedRepositories < selection.installedPrivateRepositories
-      ? `${String(selection.analyzedRepositories)} of ${String(selection.installedPrivateRepositories)} selected private repositories analyzed`
-      : `${String(selection.installedPrivateRepositories)} selected private repos`;
+      ? `${String(selection.analyzedRepositories)} of ${formatCount(selection.installedPrivateRepositories, "repository", "selected private")} analyzed`
+      : formatCount(selection.installedPrivateRepositories, "repo", "selected private");
   const lines = [
     `${section("PRIVATE CONTEXT", palette)} · ${palette.wrap("cyan", handle)}`,
     ...wrapPlain(
@@ -812,23 +808,32 @@ const renderPrivateContext = (
     ),
   ];
   if (ci !== undefined)
-    lines.push(...signalLine(ci.observed > 0 ? "+ " : "− ", ci.claim, ci.id, ci.observed > 0));
-  if (sustained !== undefined)
+    lines.push(
+      ...signalLine(ci.observed > 0 ? "+ " : "− ", ci.claim, ci.observed > 0 ? "green" : "red"),
+    );
+  if (sustained !== undefined) {
     lines.push(
       ...signalLine(
-        sustained.observed > 0 ? "+ " : "− ",
+        sustained.observed > 0 ? "+ " : "  ",
         sustained.claim,
-        sustained.id,
-        sustained.observed > 0,
+        sustained.observed > 0 ? "green" : "dim",
       ),
     );
-  if (quality !== null) {
-    lines.push(
-      ...wrapPlain(
-        `Code quality ${String(quality)} · ${String(result.maintainedCodebase.coverage)}% supported source [P3]`,
-        width,
-      ).map((line) => line.replace("[P3]", receipt("P3"))),
-    );
+  }
+  lines.push(...wrapPlain(privateQualitySampleText(result), width));
+  if (detailed) {
+    for (const [label, reading] of [
+      ["Maintained", result.maintainedCodebase],
+      ["Attributed", result.attributedCode],
+    ] as const) {
+      if (reading.previewScore === null) continue;
+      lines.push(
+        ...wrapPlain(
+          `${label} previewScore: ${String(reading.previewScore)} · ${reading.scope} · ${reading.classification} · scoreInfluence: ${String(reading.scoreInfluence)} · publicWinnerInfluence: ${String(reading.publicWinnerInfluence)} · persisted: ${String(reading.persisted)}`,
+          width,
+        ).map((line) => palette.wrap("dim", line)),
+      );
+    }
   }
   lines.push(
     ...wrapPlain("Private context is separate; public winner uses public evidence.", width).map(
@@ -836,6 +841,20 @@ const renderPrivateContext = (
     ),
   );
   return lines;
+};
+
+const renderPrivateAggregates = (
+  result: PrivateContextResult,
+  width: number,
+  palette: Palette,
+): string[] => {
+  if (result.receipts.length === 0) return [];
+  return [
+    section("PRIVATE AGGREGATES", palette),
+    ...result.receipts.flatMap((entry) =>
+      wrapStyledPrefix(`[${entry.id}] `, entry.claim, width, palette, "dim"),
+    ),
+  ];
 };
 
 const renderRounds = (
@@ -997,7 +1016,7 @@ const plainAuraWeakness = (profile: ProfileScorecard): HumanWeakness | null => {
       };
     case "release_avoider":
       return {
-        text: `${String(diagnostics.substantialRepositories)} established projects, zero version tags.`,
+        text: `${formatCount(diagnostics.substantialRepositories, "project", "established")} ${countVerb(diagnostics.substantialRepositories, "has")} no version tags.`,
         receiptText: `Versioned releases — ${String(diagnostics.substantialRepositories)} established projects, 0 tags`,
       };
     case "forklift_operator":
@@ -1070,7 +1089,10 @@ const plainEvidenceText = (item: EvidenceItem, profile: ProfileScorecard): strin
       : "Tests outnumber source files in inspected trees.";
   }
   if (item.metric === "craft.testing.exists" && item.value !== undefined) {
-    return `Repositories containing tests: ${String(item.value).replace("/", " of ")} inspected projects.`;
+    const count = /^(\d+)\/(\d+)$/u.exec(String(item.value))?.[1];
+    return count === undefined
+      ? "Test-project coverage is unavailable."
+      : `Tests appear in ${formatCount(Number(count), "project", "inspected")}.`;
   }
   if (item.metric === "ship.breadth.released") {
     return `${String(profile.diagnostics.releaseCount)} versioned releases.`;
@@ -1561,7 +1583,10 @@ export function renderBattle(
       qualityBlock,
       ...(options.privateContext === undefined
         ? []
-        : [renderPrivateContext(options.privateContext, width, palette)]),
+        : [renderPrivateContext(options.privateContext, width, palette, options.details === true)]),
+      ...(options.privateContext === undefined || options.receipts !== true
+        ? []
+        : [renderPrivateAggregates(options.privateContext, width, palette)]),
       codeDna,
       ...(detailed ? [evidence] : []),
       qualityReceipts,
@@ -1755,7 +1780,7 @@ export function renderProfile(
       : [
           palette.wrap(
             "dim",
-            `Context: @${terminalSafe(options.privateContext.subject)} added ${String(options.privateContext.repositorySelection.analyzedRepositories)} private repos · public score unchanged`,
+            `Context: @${terminalSafe(options.privateContext.subject)} added ${selectedPrivateRepositoryText(options.privateContext, "private")} · public score unchanged`,
           ),
         ]),
   ];
@@ -1781,7 +1806,10 @@ export function renderProfile(
         : [renderQualityProfile(profile.username, quality, width, palette, detailed)]),
       ...(options.privateContext === undefined
         ? []
-        : [renderPrivateContext(options.privateContext, width, palette)]),
+        : [renderPrivateContext(options.privateContext, width, palette, options.details === true)]),
+      ...(options.privateContext === undefined || options.receipts !== true
+        ? []
+        : [renderPrivateAggregates(options.privateContext, width, palette)]),
       ...(detailed ? [renderProfileCodeDna(source, width, palette, true)] : []),
       ...(detailed ? [evidence] : []),
       ...(quality === null || !detailed
@@ -1886,9 +1914,10 @@ export function renderCard(
       ? []
       : [
           ...cardRows(
-            `MIXED CONTEXT · @${terminalSafe(options.privateContext.subject)} +${String(options.privateContext.repositorySelection.analyzedRepositories)} PRIVATE`,
+            `MIXED CONTEXT · @${terminalSafe(options.privateContext.subject)} +${selectedPrivateRepositoryText(options.privateContext)}`,
             width,
           ),
+          ...cardRows(privateQualitySampleText(options.privateContext), width),
           ...cardRows("PUBLIC WINNER · PUBLIC EVIDENCE", width),
         ]),
     ...(claim.length === 0 ? [] : [divider, ...claim, ...evidence]),

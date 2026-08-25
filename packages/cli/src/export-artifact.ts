@@ -19,6 +19,7 @@ import type { QualityJudgePair, QualityReading } from "@gitmog/quality-judge";
 import type { BattleResult, BattleRound, EvidenceItem, Side } from "@gitmog/scoring";
 
 import { derivePresentationVerdict, type PresentationVerdict } from "./presentation-verdict.js";
+import { privateQualitySampleText } from "./private-presentation.js";
 import { terminalSafe } from "./terminal-safe.js";
 
 export const EXPORT_SCHEMA_VERSION = "1.0.0-self-contained";
@@ -258,7 +259,14 @@ const exportDocument = (input: RenderBattleExportInput): ExportDocument => {
                 ? [
                     "Selected private repos were available, but not enough supported source qualified.",
                   ]
-                : input.privateContext.receipts.slice(0, 3).map((receipt) => receipt.claim),
+                : [
+                    ...input.privateContext.receipts
+                      .filter((receipt) =>
+                        ["ci-repositories", "sustained-repositories"].includes(receipt.metric),
+                      )
+                      .map((receipt) => receipt.claim),
+                    `${privateQualitySampleText(input.privateContext)}.`,
+                  ],
           },
   };
 };

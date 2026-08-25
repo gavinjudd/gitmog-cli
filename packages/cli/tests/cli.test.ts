@@ -9,8 +9,11 @@ import {
   PERSONAS,
   type PersonaSpec,
 } from "@gitmog/test-fixtures/github-personas";
+import { battleFixture } from "@gitmog/test-fixtures/battle-result";
+import type { CodeDnaOutcome } from "@gitmog/personality";
+import type { ProfileScorecard } from "@gitmog/scoring";
 import { describe, expect, it } from "vitest";
-import type { PrivateContextAppConfig } from "@gitmog/private-context";
+import type { PrivateContextAppConfig, PrivateContextResult } from "@gitmog/private-context";
 
 import { advancedUsage, qualityPreflightMessage, run, usage, type CliContext } from "../src/cli.js";
 import { createPalette, stripAnsi } from "../src/color.js";
@@ -79,6 +82,40 @@ const contextFor = (...personas: readonly PersonaSpec[]): CliContext => {
   };
 };
 const battleContext = () => contextFor(PERSONAS.strongMaintainer, PERSONAS.manyTinyRepos);
+const privateContextFor = (
+  result: PrivateContextResult = PRIVATE_CONTEXT_FIXTURE,
+  overrides: Partial<CliContext> = {},
+): CliContext => ({
+  ...battleContext(),
+  isTty: true,
+  stdinIsTty: true,
+  prompt: () => Promise.resolve(""),
+  privateContextAppConfig: PRIVATE_APP_FIXTURE,
+  authorizePrivateDevice: () => {
+    let active = true;
+    return Promise.resolve({
+      ok: true,
+      lease: {
+        get active() {
+          return active;
+        },
+        expiresAt: null,
+        use: async (callback) => {
+          try {
+            return await callback("private_fixture_access_token_123456");
+          } finally {
+            active = false;
+          }
+        },
+        dispose: () => {
+          active = false;
+        },
+      },
+    });
+  },
+  runPrivateContext: () => Promise.resolve({ ok: true, result }),
+  ...overrides,
+});
 let invocationLane = Promise.resolve();
 const invoke = (context: CliContext, ...args: readonly string[]) => {
   const execution = invocationLane.then(() => run(["node", "gitmog", ...args], context));
@@ -129,6 +166,50 @@ describe("public grammar", () => {
     for (const reason of ["request-budget-limited", "supported-language-limited", "mixed"]) {
       expect(qualityPreflightMessage(plan(reason))).not.toContain("for complete coverage");
     }
+  });
+
+  it("states public test and version-tag counts as a readable computed profile sentence", () => {
+    const fixture = battleFixture().left;
+    const testEvidence = {
+      ...fixture.evidence[0]!,
+      value: "5/7",
+      title: "alice tests 5 of 7 inspected repositories",
+    };
+    const releaseEvidence = {
+      ...fixture.evidence[1]!,
+      id: "ship.breadth.released:ratio",
+      category: "ship.breadth",
+      metric: "ship.breadth.released",
+      title: "alice has no version tags",
+      value: 0,
+    };
+    const profile = {
+      ...fixture,
+      evidence: [testEvidence, releaseEvidence],
+      positiveEvidence: [testEvidence],
+      negativeEvidence: [],
+      diagnostics: { ...fixture.diagnostics, substantialRepositories: 3 },
+      auraLeak: {
+        version: "1.0.0-aura-leak",
+        id: "release_avoider",
+        name: "RELEASE AVOIDER",
+        severity: "critical",
+        evidenceIds: [releaseEvidence.id],
+        qualifyingSignals: ["3 established projects have no version tags"],
+      },
+    } as ProfileScorecard;
+    const source: CodeDnaOutcome = {
+      status: "insufficient",
+      version: "synthetic",
+      reason: "not required for public grammar",
+      samples: [],
+      limitations: [],
+    };
+    const output = renderProfile(profile, source);
+    expect(output.replace(/\s+/gu, " ")).toContain(
+      "Tests appear in 5 inspected projects. 3 established projects have no version tags.",
+    );
+    expect(output).not.toContain("Repositories containing tests:");
   });
 
   it("makes every common help form friend-first and local", async () => {
@@ -449,7 +530,7 @@ describe("public grammar", () => {
     expect(liveOutput.join("\n")).toContain(
       "Signed in for public API capacity. Private repositories are still excluded.",
     );
-    expect(liveOutput.join("\n")).toContain("PRIVATE CONTEXT SIGN-IN");
+    expect(liveOutput.join("\n")).toContain("PRIVATE CONTEXT");
     expect(liveOutput.join("\n")).toContain(
       "It cannot write, administer, read secrets, or execute repository code.",
     );
@@ -470,6 +551,231 @@ describe("public grammar", () => {
     expect(privateAuthorizations).toBe(privateAuthorizationsBeforeOverride);
     expect(privateRuns).toBe(privateRunsBeforeOverride);
     expect(override.stdout).not.toContain("PRIVATE CONTEXT");
+  });
+
+  it("closes private aggregate support and labels selected-sample quality on every surface", async () => {
+    const context = privateContextFor();
+    const [normal, details, receipts, card, json, ...shares] = await Promise.all([
+      invoke(context, "strongmaintainer", "sidequester", "--private-context"),
+      invoke(context, "strongmaintainer", "sidequester", "--private-context", "--details"),
+      invoke(context, "strongmaintainer", "sidequester", "--private-context", "--receipts"),
+      invoke(context, "strongmaintainer", "sidequester", "--private-context", "--card"),
+      invoke(context, "strongmaintainer", "sidequester", "--private-context", "--json"),
+      ...(["plain", "x", "discord", "linkedin"] as const).map((preset) =>
+        invoke(context, "strongmaintainer", "sidequester", "--private-context", "--share", preset),
+      ),
+    ]);
+
+    expect(normal.stdout).toContain(
+      "3 of 4 analyzed private repositories contain CI configuration.",
+    );
+    expect(normal.stdout).toContain("2 selected private projects show sustained maintenance.");
+    expect(normal.stdout).toContain(
+      "Code-quality sample: 3 repos · 10 parsed files · 61% supported coverage",
+    );
+    expect(normal.stdout).not.toMatch(/\[P\d+\]/u);
+    expect(normal.stdout).not.toContain("Code quality 72");
+    expect(normal.stdout).not.toContain("Maintained private code quality is 72");
+
+    expect(details.stdout).toContain("Maintained previewScore: 72");
+    expect(details.stdout).toContain("Attributed previewScore: 68");
+    const compactDetails = details.stdout.replace(/\s+/gu, " ");
+    for (const label of [
+      "selected-sample",
+      "informational",
+      "scoreInfluence: 0",
+      "publicWinnerInfluence: 0",
+      "persisted: false",
+    ]) {
+      expect(compactDetails).toContain(label);
+    }
+
+    expect(receipts.stdout).toContain("PRIVATE AGGREGATES");
+    expect(receipts.stdout).toContain("[P1]");
+    expect(receipts.stdout).toContain("[P4]");
+    expect(receipts.stdout).not.toMatch(/previewScore: \d+/u);
+    const privateAggregateBlock =
+      (receipts.stdout.split("PRIVATE AGGREGATES")[1] ?? "").split("\n\n")[0] ?? "";
+    const visiblePrivateMarkers = [...receipts.stdout.matchAll(/\[(P\d+)\]/gu)].map(
+      (match) => match[1],
+    );
+    expect(visiblePrivateMarkers.length).toBeGreaterThan(0);
+    for (const marker of visiblePrivateMarkers) {
+      expect(privateAggregateBlock).toContain(`[${marker}]`);
+    }
+    for (const prohibited of [
+      "repositoryId",
+      "installationId",
+      "sourceUrl",
+      "commitSha",
+      "blobSha",
+      "https://",
+    ]) {
+      expect(privateAggregateBlock).not.toContain(prohibited);
+    }
+
+    for (const surface of [card, ...shares]) {
+      const compact = surface.stdout.replace(/[│\n]/gu, " ").replace(/\s+/gu, " ");
+      expect(compact).toContain("Code-quality sample:");
+      expect(compact).toContain("61% supported coverage");
+      expect(compact).not.toContain("Maintained private code quality is 72");
+      expect(compact).not.toMatch(/previewScore: \d+/u);
+    }
+    expect(shares[1]?.stdout.length).toBeLessThanOrEqual(X_CHARACTER_LIMIT);
+
+    expect(JSON.parse(json.stdout)).toMatchObject({
+      privateContext: {
+        scoreInfluence: 0,
+        publicWinnerInfluence: 0,
+        persisted: false,
+        maintainedCodebase: {
+          previewScore: 72,
+          scope: "selected-sample",
+          classification: "informational",
+          scoreInfluence: 0,
+          publicWinnerInfluence: 0,
+          persisted: false,
+        },
+      },
+    });
+  });
+
+  it("uses singular private counts and neutral zero-signal language", async () => {
+    const singular: PrivateContextResult = {
+      ...PRIVATE_CONTEXT_FIXTURE,
+      repositorySelection: {
+        installedPrivateRepositories: 1,
+        consideredRepositories: 1,
+        analyzedRepositories: 1,
+        maintainedRepositories: 1,
+        attributableRepositories: 1,
+      },
+      maintainedCodebase: {
+        ...PRIVATE_CONTEXT_FIXTURE.maintainedCodebase,
+        repositories: 1,
+        files: 1,
+      },
+      receipts: PRIVATE_CONTEXT_FIXTURE.receipts.map((entry) =>
+        entry.metric === "ci-repositories"
+          ? {
+              ...entry,
+              claim: "1 of 1 analyzed private repository contains CI configuration.",
+              observed: 1,
+              total: 1,
+            }
+          : entry.metric === "sustained-repositories"
+            ? {
+                ...entry,
+                claim: "No sustained-maintenance signal qualified in the selected sample.",
+                observed: 0,
+                total: 1,
+              }
+            : entry,
+      ),
+    };
+    const output = await invoke(
+      privateContextFor(singular),
+      "strongmaintainer",
+      "sidequester",
+      "--private-context",
+      "--receipts",
+    );
+    expect(output.stdout).toContain("1 selected private repo");
+    expect(output.stdout).toContain(
+      "1 of 1 analyzed private repository contains CI configuration.",
+    );
+    expect(output.stdout).toContain(
+      "No sustained-maintenance signal qualified in the selected sample.",
+    );
+    expect(output.stdout).not.toContain("− 0 selected private projects");
+    expect(output.stdout).not.toContain("1 private repos");
+  });
+
+  it("announces explicit public and private authorization as separate steps", async () => {
+    const liveOutput: string[] = [];
+    let promptAnswer = "s";
+    let publicAuthorized = false;
+    const base = privateContextFor(PRIVATE_CONTEXT_FIXTURE, {
+      skipBudgetPreflight: false,
+      writeOutput: (value) => liveOutput.push(value),
+      prompt: () => Promise.resolve(promptAnswer),
+      readAllowance: () =>
+        Promise.resolve({
+          ok: true,
+          allowance: {
+            authenticated: publicAuthorized,
+            limit: publicAuthorized ? 5_000 : 60,
+            remaining: publicAuthorized ? 5_000 : 20,
+            resetAt: "2026-08-25T12:00:00.000Z",
+            rateLimitClass: "primary",
+            retryAfterSeconds: null,
+            source: "endpoint",
+          },
+        }),
+      authorizeDevice: async (options) => {
+        await options.onPrompt({
+          userCode: "PUBLIC-1",
+          verificationUri: "https://github.com/login/device",
+          expiresAt: "2026-08-25T12:00:00.000Z",
+          intervalSeconds: 5,
+        });
+        publicAuthorized = true;
+        return {
+          ok: true,
+          token: "public_fixture_capacity_token_123456",
+          tokenType: "bearer",
+          scopes: [],
+        };
+      },
+      authorizePrivateDevice: async (options) => {
+        await options.onPrompt({
+          userCode: "PRIVATE-2",
+          verificationUri: "https://github.com/login/device",
+          expiresAt: "2026-08-25T12:00:00.000Z",
+          intervalSeconds: 5,
+        });
+        let active = true;
+        return {
+          ok: true,
+          lease: {
+            get active() {
+              return active;
+            },
+            expiresAt: null,
+            use: async (callback) => callback("private_fixture_access_token_123456"),
+            dispose: () => {
+              active = false;
+            },
+          },
+        };
+      },
+    });
+
+    const result = await invoke(base, "strongmaintainer", "sidequester", "--private-context");
+    expect(result.exitCode).toBe(0);
+    const transcript = liveOutput.join("\n");
+    expect(transcript).toContain("PUBLIC API ACCESS · STEP 1 OF 2");
+    expect(transcript).toContain("This authorization increases public API capacity.");
+    expect(transcript).toContain("Private repositories remain excluded.");
+    expect(transcript).toContain("PRIVATE CONTEXT · STEP 2 OF 2");
+    expect(transcript).toContain("Read-only access applies only to repositories selected");
+    expect(transcript).toContain("The token is memory-only for this run.");
+
+    promptAnswer = "l";
+    publicAuthorized = false;
+    liveOutput.length = 0;
+    const boundedPlan = await invoke(
+      {
+        ...base,
+        authorizeDevice: () => Promise.resolve({ ok: false, error: "access_denied" }),
+      },
+      "strongmaintainer",
+      "sidequester",
+      "--private-context",
+    );
+    expect(boundedPlan.exitCode).toBe(0);
+    expect(liveOutput.join("\n")).toContain("PRIVATE CONTEXT");
+    expect(liveOutput.join("\n")).not.toContain("STEP 2 OF 2");
   });
 
   it("routes no arguments to friendly help with zero GitHub calls", async () => {
