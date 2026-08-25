@@ -42,7 +42,7 @@ jobs:
           check-latest: false
           package-manager-cache: false
       - run: node scripts/bootstrap.mjs --ci
-      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/candidate" --tag v0.3.0 --expected-sha "${{ github.sha }}"
+      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/candidate" --tag v0.3.1 --expected-sha "${{ github.sha }}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ci-packed-runtime-${{ github.sha }}
@@ -72,7 +72,7 @@ jobs:
         with:
           name: ci-packed-runtime-${{ github.sha }}
           path: candidate
-      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.3.0.tgz node-${{ matrix.node }}.json
+      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.3.1.tgz node-${{ matrix.node }}.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: node-runtime-${{ matrix.node }}
@@ -128,7 +128,7 @@ jobs:
         with:
           name: ci-packed-runtime-${{ github.sha }}
           path: candidate
-      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.3.0.tgz architecture-${{ matrix.slug }}.json
+      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.3.1.tgz architecture-${{ matrix.slug }}.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: architecture-report-${{ matrix.slug }}
@@ -187,8 +187,8 @@ jobs:
           check-latest: false
           package-manager-cache: false
       - run: node scripts/bootstrap.mjs --ci
-      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-a" --tag v0.3.0 --expected-sha "${{ github.sha }}"
-      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-b" --tag v0.3.0 --expected-sha "${{ github.sha }}"
+      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-a" --tag v0.3.1 --expected-sha "${{ github.sha }}"
+      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-b" --tag v0.3.1 --expected-sha "${{ github.sha }}"
       - run: diff --recursive --brief "${{ runner.temp }}/repro-a" "${{ runner.temp }}/repro-b"
 
   dependency-review:
