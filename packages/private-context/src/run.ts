@@ -547,7 +547,12 @@ export async function runPrivateContext(
       : { count: 0, latestAt: null };
     if (releases.count > 0) releaseRepositories.add(repository.summary.fullName);
     for (const entry of tree.entries) {
-      sensitiveValues.push(entry.path, entry.sha);
+      // Git cannot retain an empty directory, so every source-bearing directory
+      // remains covered by a descendant blob or submodule path. Scanning a
+      // tree-only label such as `tests` falsely collides with fixed aggregate
+      // vocabulary without detecting a private-data flow.
+      if (entry.type !== "tree") sensitiveValues.push(entry.path);
+      sensitiveValues.push(entry.sha);
     }
     sensitiveValues.push(revision.commitSha, revision.treeSha);
     usableRepositories.push(repository.summary);
