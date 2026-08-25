@@ -1089,7 +1089,10 @@ const plainEvidenceText = (item: EvidenceItem, profile: ProfileScorecard): strin
       : "Tests outnumber source files in inspected trees.";
   }
   if (item.metric === "craft.testing.exists" && item.value !== undefined) {
-    const count = /^(\d+)\/(\d+)$/u.exec(String(item.value))?.[1];
+    const renderedValue = String(item.value);
+    const count = /^\d+$/u.test(renderedValue)
+      ? renderedValue
+      : /^(\d+)\/(\d+)$/u.exec(renderedValue)?.[1];
     return count === undefined
       ? "Test-project coverage is unavailable."
       : `Tests appear in ${formatCount(Number(count), "project", "inspected")}.`;

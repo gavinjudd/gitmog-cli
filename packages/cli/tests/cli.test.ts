@@ -170,11 +170,6 @@ describe("public grammar", () => {
 
   it("states public test and version-tag counts as a readable computed profile sentence", () => {
     const fixture = battleFixture().left;
-    const testEvidence = {
-      ...fixture.evidence[0]!,
-      value: "5/7",
-      title: "alice tests 5 of 7 inspected repositories",
-    };
     const releaseEvidence = {
       ...fixture.evidence[1]!,
       id: "ship.breadth.released:ratio",
@@ -183,21 +178,6 @@ describe("public grammar", () => {
       title: "alice has no version tags",
       value: 0,
     };
-    const profile = {
-      ...fixture,
-      evidence: [testEvidence, releaseEvidence],
-      positiveEvidence: [testEvidence],
-      negativeEvidence: [],
-      diagnostics: { ...fixture.diagnostics, substantialRepositories: 3 },
-      auraLeak: {
-        version: "1.0.0-aura-leak",
-        id: "release_avoider",
-        name: "RELEASE AVOIDER",
-        severity: "critical",
-        evidenceIds: [releaseEvidence.id],
-        qualifyingSignals: ["3 established projects have no version tags"],
-      },
-    } as ProfileScorecard;
     const source: CodeDnaOutcome = {
       status: "insufficient",
       version: "synthetic",
@@ -205,11 +185,33 @@ describe("public grammar", () => {
       samples: [],
       limitations: [],
     };
-    const output = renderProfile(profile, source);
-    expect(output.replace(/\s+/gu, " ")).toContain(
-      "Tests appear in 5 inspected projects. 3 established projects have no version tags.",
-    );
-    expect(output).not.toContain("Repositories containing tests:");
+    for (const value of [5, "5/7"] as const) {
+      const testEvidence = {
+        ...fixture.evidence[0]!,
+        value,
+        title: "alice tests 5 of 7 inspected repositories",
+      };
+      const profile = {
+        ...fixture,
+        evidence: [testEvidence, releaseEvidence],
+        positiveEvidence: [testEvidence],
+        negativeEvidence: [],
+        diagnostics: { ...fixture.diagnostics, substantialRepositories: 3 },
+        auraLeak: {
+          version: "1.0.0-aura-leak",
+          id: "release_avoider",
+          name: "RELEASE AVOIDER",
+          severity: "critical",
+          evidenceIds: [releaseEvidence.id],
+          qualifyingSignals: ["3 established projects have no version tags"],
+        },
+      } as ProfileScorecard;
+      const output = renderProfile(profile, source);
+      expect(output.replace(/\s+/gu, " ")).toContain(
+        "Tests appear in 5 inspected projects. 3 established projects have no version tags.",
+      );
+      expect(output).not.toContain("Repositories containing tests:");
+    }
   });
 
   it("makes every common help form friend-first and local", async () => {
