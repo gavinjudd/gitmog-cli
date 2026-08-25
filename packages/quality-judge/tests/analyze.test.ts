@@ -43,6 +43,7 @@ describe("Quality Judge preview", () => {
     ]);
     expect(result.activation).toBe("preview-only");
     expect(result.scoreInfluence).toBe(0);
+    expect(result.limitationReason).toBe("unknown");
     expect(result.maintainedCodebase.status).toBe("ready");
     expect(result.attributedCode.attributionStatus).toBe("ready");
     expect(result.attributedCode.previewScore).not.toBeNull();
@@ -137,6 +138,7 @@ describe("Quality Judge preview", () => {
     expect(comments.maintainedCodebase.dimensions.testQuality.previewScore).toBeLessThanOrEqual(35);
     expect(comments.maintainedCodebase.coverage).toBeLessThan(100);
     expect(comments.limitations.some((entry) => entry.code === "unsupported-language")).toBe(true);
+    expect(comments.limitationReason).toBe("supported-language-limited");
   });
 
   it("scopes supported mutations to their applicable dimensions", () => {

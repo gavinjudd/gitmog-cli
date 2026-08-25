@@ -308,6 +308,7 @@ const stableQualityResultValidationCode = (value: unknown): string | null => {
       "status",
       "activation",
       "scoreInfluence",
+      "limitationReason",
       "maintainedCodebase",
       "attributedCode",
       "requestPlan",
@@ -320,6 +321,17 @@ const stableQualityResultValidationCode = (value: unknown): string | null => {
   if (value.version !== QUALITY_JUDGE_RESULT_VERSION) return "result-version";
   if (!["ready", "partial", "insufficient"].includes(String(value.status))) return "status";
   if (value.activation !== "preview-only" || value.scoreInfluence !== 0) return "activation";
+  if (
+    ![
+      "request-budget-limited",
+      "supported-language-limited",
+      "eligible-source-limited",
+      "attribution-limited",
+      "mixed",
+      "unknown",
+    ].includes(String(value.limitationReason))
+  )
+    return "limitation-reason";
   if (!isReading(value.maintainedCodebase, false)) return "maintained-reading";
   if (!isReading(value.attributedCode, true)) return "attributed-reading";
   if (!isRequestPlan(value.requestPlan)) return "request-plan";
@@ -353,6 +365,7 @@ const stableResultFor = (value: QualityJudgeResult): StableQualityJudgeResult =>
   status: value.status,
   activation: value.activation,
   scoreInfluence: value.scoreInfluence,
+  limitationReason: value.limitationReason,
   maintainedCodebase: value.maintainedCodebase,
   attributedCode: value.attributedCode,
   requestPlan: value.requestPlan,
@@ -369,6 +382,7 @@ const withRequestTelemetry = (
   status: value.status,
   activation: value.activation,
   scoreInfluence: value.scoreInfluence,
+  limitationReason: value.limitationReason,
   maintainedCodebase: value.maintainedCodebase,
   attributedCode: value.attributedCode,
   requestPlan: value.requestPlan,
@@ -397,6 +411,7 @@ export function qualityResultValidationCode(value: unknown): string | null {
       "status",
       "activation",
       "scoreInfluence",
+      "limitationReason",
       "maintainedCodebase",
       "attributedCode",
       "requestPlan",

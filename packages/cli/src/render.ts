@@ -6,6 +6,7 @@ import {
   type CodeDnaOutcome,
 } from "@gitmog/personality";
 import type { SourceAnalysisResult, StoryResult } from "@gitmog/source-analysis";
+import type { PrivateContextResult } from "@gitmog/private-context";
 import type {
   QualityFinding,
   QualityJudgePair,
@@ -41,7 +42,7 @@ const DEFAULT_ROUND_LABELS: Readonly<Record<string, string>> = Object.freeze({
   "ship.frequency": "ACTIVITY",
   "ship.substance": "SHIPPING",
   "ship.discipline": "COMMIT QUALITY",
-  "ship.breadth": "COLLABORATION",
+  "ship.breadth": "SHIPPING BREADTH",
   "craft.testing": "TESTS",
   "craft.maintainability": "MAINTAINABILITY",
   "craft.tooling": "TOOLING",
@@ -119,6 +120,7 @@ export interface RenderOptions {
   readonly details?: boolean | undefined;
   readonly columns?: number | undefined;
   readonly qualityPreview?: QualityJudgeResult | QualityJudgePair | undefined;
+  readonly privateContext?: PrivateContextResult | undefined;
 }
 
 const isQualityPair = (value: QualityJudgeResult | QualityJudgePair): value is QualityJudgePair =>
@@ -198,6 +200,29 @@ const renderQualityPair = (
   palette: Palette,
   detailed: boolean,
 ): string[] => {
+  if (
+    quality.left.maintainedCodebase.previewScore === null &&
+    quality.right.maintainedCodebase.previewScore === null &&
+    quality.left.limitationReason === quality.right.limitationReason
+  ) {
+    const explanation: Readonly<Record<QualityJudgeResult["limitationReason"], string>> = {
+      "request-budget-limited":
+        "GitHub request capacity limited Code Quality Preview for both profiles.",
+      "supported-language-limited": "Not enough TypeScript/JavaScript source for either profile.",
+      "eligible-source-limited":
+        "Not enough eligible TypeScript/JavaScript source for either profile.",
+      "attribution-limited": "Not enough user-linked source for either attributed-code reading.",
+      mixed: "Request capacity and supported-source limits affected both profiles.",
+      unknown: "Not enough supported source for either profile.",
+    };
+    return [
+      section("CODE QUALITY · PREVIEW", palette),
+      ...wrapPlain(explanation[quality.left.limitationReason], width).map((line) =>
+        palette.wrap("yellow", line),
+      ),
+      palette.wrap("dim", "Separate from the battle score."),
+    ];
+  }
   const maintained = `Maintained codebase  @${terminalSafe(battle.left.username)} ${qualityScoreText(quality.left.maintainedCodebase)} · @${terminalSafe(battle.right.username)} ${qualityScoreText(quality.right.maintainedCodebase)}`;
   const attributed = `Attributed code      @${terminalSafe(battle.left.username)} ${qualityScoreText(quality.left.attributedCode)} · @${terminalSafe(battle.right.username)} ${qualityScoreText(quality.right.attributedCode)}`;
   const lines = [section("CODE QUALITY · PREVIEW", palette)];
@@ -330,21 +355,34 @@ interface MarkerRegistry {
 
 const createMarkerRegistry = (): MarkerRegistry => {
   const entries: MarkerEntry[] = [];
-  const markerByKey = new Map<string, number>();
+  const markerByFact = new Map<string, number>();
+  const markerBySummary = new Map<string, number>();
   return {
     entries,
     add: (receipts, summary) => {
       if (receipts === null || receipts.length === 0) return null;
-      const unique = [...new Map(receipts.map((receipt) => [receipt.key, receipt])).values()];
-      const key = `${summary}\u0000${unique
-        .map((receipt) => receipt.key)
-        .toSorted()
-        .join("|")}`;
-      const existing = markerByKey.get(key);
+      const factKeyFor = (receipt: ClaimSupportReceipt): string =>
+        JSON.stringify({
+          side: receipt.side,
+          kind: receipt.kind,
+          category: receipt.category ?? null,
+          metric: receipt.metric ?? null,
+          value: receipt.value ?? null,
+          reference: receipt.reference,
+          compactText: receipt.compactText,
+          sourceUrl: receipt.sourceUrl,
+        });
+      const unique = [
+        ...new Map(receipts.map((receipt) => [factKeyFor(receipt), receipt])).values(),
+      ];
+      const factKey = unique.map(factKeyFor).toSorted().join("|");
+      const safeSummary = terminalSafe(summary).replace(/\s+/gu, " ").trim();
+      const existing = markerByFact.get(factKey) ?? markerBySummary.get(safeSummary);
       if (existing !== undefined) return existing;
       const marker = entries.length + 1;
-      markerByKey.set(key, marker);
-      entries.push({ marker, receipts: unique, summary: terminalSafe(summary) });
+      markerByFact.set(factKey, marker);
+      markerBySummary.set(safeSummary, marker);
+      entries.push({ marker, receipts: unique, summary: safeSummary });
       return marker;
     },
   };
@@ -478,9 +516,9 @@ const PAIRED_SIGNAL_LABELS: Readonly<Record<string, string>> = Object.freeze({
   "ship.breadth.continuity": "Project upkeep",
   "ship.breadth.external": "External contributions",
   "ship.breadth.released": "Versioned releases",
-  "craft.testing.workflow": "Automated tests",
-  "craft.testing.exists": "Automated tests",
-  "craft.testing.breadth": "Test files",
+  "craft.testing.workflow": "CI-backed testing",
+  "craft.testing.exists": "Repositories containing tests",
+  "craft.testing.breadth": "Test-file density",
   "craft.maintainability.fileSize": "Largest source file",
   "craft.tooling.automation": "Project automation",
   "craft.tooling.ci": "Automated checks",
@@ -544,7 +582,7 @@ const pairedSignalValue = (
     return `${String(value)}%`;
   }
   if (metric === "craft.maintainability.fileSize") return `${String(value)} KB`;
-  if (metric === "craft.testing.workflow" || metric === "craft.tooling.ci") {
+  if (metric === "craft.tooling.ci") {
     return ratioPercent(value) ?? String(value);
   }
   if (metric === "craft.testing.breadth" && typeof value === "number") {
@@ -586,6 +624,7 @@ const roundSupport = (round: BattleRound, battle: BattleResult): RoundSupport | 
     const left = evidenceForMetric(battle.left, metric);
     const right = evidenceForMetric(battle.right, metric);
     if (left === null || right === null) continue;
+    if (left.category !== round.categoryId || right.category !== round.categoryId) continue;
     const label =
       PAIRED_SIGNAL_LABELS[metric] ??
       battle.left.metrics.find((candidate) => candidate.id === metric)?.label ??
@@ -608,12 +647,14 @@ const roundSupport = (round: BattleRound, battle: BattleResult): RoundSupport | 
 
   if (equalPair !== null) return equalPair;
 
+  const leftCandidate = evidenceById(battle.left, round.leftEvidenceId);
+  const rightCandidate = evidenceById(battle.right, round.rightEvidenceId);
   const left =
-    evidenceById(battle.left, round.leftEvidenceId) ??
+    (leftCandidate?.category === round.categoryId ? leftCandidate : null) ??
     battle.left.evidence.find((item) => item.category === round.categoryId) ??
     null;
   const right =
-    evidenceById(battle.right, round.rightEvidenceId) ??
+    (rightCandidate?.category === round.categoryId ? rightCandidate : null) ??
     battle.right.evidence.find((item) => item.category === round.categoryId) ??
     null;
   const parts = [
@@ -665,6 +706,7 @@ const renderHeader = (
   width: number,
   palette: Palette,
   detailed: boolean,
+  privateContext?: PrivateContextResult,
 ): string[] => {
   const winningSide = battle.winner === "left" || battle.winner === "right" ? battle.winner : null;
   const losingSide = winningSide === "left" ? "right" : "left";
@@ -706,7 +748,88 @@ const renderHeader = (
           palette.wrap("dim", line),
         )
       : [];
-  return [section("GIT MOG", palette), ...resultLines, ...coverageLines, ...canonicalLines];
+  const privateDisclosure =
+    privateContext === undefined
+      ? []
+      : wrapPlain(
+          `Context: @${terminalSafe(privateContext.subject)} added ${String(privateContext.repositorySelection.analyzedRepositories)} private repos · public winner unchanged`,
+          width,
+        ).map((line) => palette.wrap("dim", line));
+  return [
+    section("GIT MOG", palette),
+    ...resultLines,
+    ...coverageLines,
+    ...privateDisclosure,
+    ...canonicalLines,
+  ];
+};
+
+const renderPrivateContext = (
+  result: PrivateContextResult,
+  width: number,
+  palette: Palette,
+): string[] => {
+  const handle = `@${terminalSafe(result.subject)}`;
+  const selection = result.repositorySelection;
+  if (
+    result.status === "insufficient" ||
+    (result.maintainedCodebase.previewScore === null && result.receipts.length === 0)
+  ) {
+    return [
+      `${section("PRIVATE CONTEXT", palette)} · ${palette.wrap("cyan", handle)}`,
+      ...wrapPlain(
+        "Selected private repos were available, but not enough supported source qualified.",
+        width,
+      ).map((line) => palette.wrap("yellow", line)),
+      palette.wrap("dim", "Private context is separate from the public battle."),
+    ];
+  }
+  const receipt = (id: string): string => palette.wrap("dim", `[${id}]`);
+  const signalLine = (
+    prefix: "+ " | "− ",
+    text: string,
+    id: string,
+    positive: boolean,
+  ): readonly string[] =>
+    wrapPlain(`${text} [${id}]`, width, prefix).map((line, index) => {
+      const styled = palette.wrap(positive ? "green" : "red", line);
+      return index === 0 ? styled.replace(`[${id}]`, receipt(id)) : styled;
+    });
+  const ci = result.receipts.find((entry) => entry.metric === "ci-repositories");
+  const sustained = result.receipts.find((entry) => entry.metric === "sustained-repositories");
+  const quality = result.maintainedCodebase.previewScore;
+  const repositorySummary =
+    selection.analyzedRepositories < selection.installedPrivateRepositories
+      ? `${String(selection.analyzedRepositories)} of ${String(selection.installedPrivateRepositories)} selected private repositories analyzed`
+      : `${String(selection.installedPrivateRepositories)} selected private repos`;
+  const lines = [
+    `${section("PRIVATE CONTEXT", palette)} · ${palette.wrap("cyan", handle)}`,
+    ...wrapPlain(
+      `${repositorySummary} · ${String(selection.maintainedRepositories)} maintained · ${String(selection.attributableRepositories)} attributable`,
+      width,
+    ),
+  ];
+  if (ci !== undefined)
+    lines.push(...signalLine(ci.observed > 0 ? "+ " : "− ", ci.claim, ci.id, ci.observed > 0));
+  if (sustained !== undefined)
+    lines.push(
+      ...signalLine(
+        sustained.observed > 0 ? "+ " : "− ",
+        sustained.claim,
+        sustained.id,
+        sustained.observed > 0,
+      ),
+    );
+  if (quality !== null) {
+    lines.push(
+      ...wrapPlain(
+        `Code quality ${String(quality)} · ${String(result.maintainedCodebase.coverage)}% supported source [P3]`,
+        width,
+      ).map((line) => line.replace("[P3]", receipt("P3"))),
+    );
+  }
+  lines.push(palette.wrap("dim", "Private context is separate from the public battle."));
+  return lines;
 };
 
 const renderRounds = (
@@ -796,7 +919,14 @@ const renderRounds = (
           );
       }),
     );
-    const support = supportForLine(round.line, battle);
+    const unfilteredSupport = supportForLine(round.line, battle);
+    const support =
+      unfilteredSupport !== null &&
+      unfilteredSupport.every(
+        (receipt) => receipt.kind !== "evidence" || receipt.category === round.categoryId,
+      )
+        ? unfilteredSupport
+        : null;
     if (support !== null) {
       lines.push(
         ...claimLines(
@@ -934,7 +1064,7 @@ const plainEvidenceText = (item: EvidenceItem, profile: ProfileScorecard): strin
       : "Tests outnumber source files in inspected trees.";
   }
   if (item.metric === "craft.testing.exists" && item.value !== undefined) {
-    return `Automated tests appear in ${String(item.value).replace("/", " of ")} inspected projects.`;
+    return `Repositories containing tests: ${String(item.value).replace("/", " of ")} inspected projects.`;
   }
   if (item.metric === "ship.breadth.released") {
     return `${String(profile.diagnostics.releaseCount)} versioned releases.`;
@@ -1418,11 +1548,14 @@ export function renderBattle(
         );
   return joinBlocks(
     [
-      renderHeader(battle, presentation, width, palette, detailed),
+      renderHeader(battle, presentation, width, palette, detailed, options.privateContext),
       primary,
       rounds,
       players,
       qualityBlock,
+      ...(options.privateContext === undefined
+        ? []
+        : [renderPrivateContext(options.privateContext, width, palette)]),
       codeDna,
       ...(detailed ? [evidence] : []),
       qualityReceipts,
@@ -1611,6 +1744,14 @@ export function renderProfile(
     palette.wrap("cyan", `@${terminalSafe(profile.username)}`),
     `Score: ${palette.wrap("white", String(profile.overallScore))}`,
     palette.wrap("dim", `Coverage: ${String(profile.confidence.measuredWeight)}%`),
+    ...(options.privateContext === undefined
+      ? []
+      : [
+          palette.wrap(
+            "dim",
+            `Context: @${terminalSafe(options.privateContext.subject)} added ${String(options.privateContext.repositorySelection.analyzedRepositories)} private repos · public score unchanged`,
+          ),
+        ]),
   ];
   const actionOptions = [
     ...(detailed ? [] : ["--details"]),
@@ -1632,6 +1773,9 @@ export function renderProfile(
       ...(quality === null
         ? []
         : [renderQualityProfile(profile.username, quality, width, palette, detailed)]),
+      ...(options.privateContext === undefined
+        ? []
+        : [renderPrivateContext(options.privateContext, width, palette)]),
       ...(detailed ? [renderProfileCodeDna(source, width, palette, true)] : []),
       ...(detailed ? [evidence] : []),
       ...(quality === null || !detailed
@@ -1707,7 +1851,21 @@ export function renderCard(
     quality.left.maintainedCodebase.previewScore !== null &&
     quality.right.maintainedCodebase.previewScore !== null
       ? `PREVIEW · code quality ${String(quality.left.maintainedCodebase.previewScore)}–${String(quality.right.maintainedCodebase.previewScore)} · not used in winner`
-      : null;
+      : quality !== null &&
+          quality.left.maintainedCodebase.previewScore === null &&
+          quality.right.maintainedCodebase.previewScore === null &&
+          quality.left.limitationReason === quality.right.limitationReason
+        ? quality.left.limitationReason === "supported-language-limited" ||
+          quality.left.limitationReason === "eligible-source-limited"
+          ? "PREVIEW · not enough TypeScript/JavaScript source for either profile"
+          : quality.left.limitationReason === "request-budget-limited"
+            ? "PREVIEW · GitHub request capacity limited both profiles"
+            : quality.left.limitationReason === "attribution-limited"
+              ? "PREVIEW · not enough user-linked source for either profile"
+              : quality.left.limitationReason === "mixed"
+                ? "PREVIEW · request capacity and supported-source limits"
+                : "PREVIEW · not enough supported source for either profile"
+        : null;
   return [
     "",
     border,
@@ -1718,6 +1876,15 @@ export function renderCard(
       width,
     ),
     ...(qualityLine === null ? [] : cardRows(qualityLine, width)),
+    ...(options.privateContext === undefined
+      ? []
+      : [
+          ...cardRows(
+            `MIXED CONTEXT · @${terminalSafe(options.privateContext.subject)} +${String(options.privateContext.repositorySelection.analyzedRepositories)} PRIVATE`,
+            width,
+          ),
+          ...cardRows("PUBLIC WINNER · PUBLIC EVIDENCE", width),
+        ]),
     ...(claim.length === 0 ? [] : [divider, ...claim, ...evidence]),
     close,
     "",

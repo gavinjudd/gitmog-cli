@@ -8,6 +8,7 @@ export interface ClaimSupportReceipt {
   readonly id: string;
   readonly side: Side;
   readonly kind: "evidence" | "sample";
+  readonly category?: string | undefined;
   readonly metric?: string | undefined;
   readonly value?: number | string | undefined;
   /** Short human label for compact numbered evidence. Never an internal schema id. */
@@ -40,6 +41,7 @@ export const evidenceReceipt = (side: Side, item: EvidenceItem): ClaimSupportRec
   id: item.id,
   side,
   kind: "evidence",
+  category: item.category,
   metric: item.metric,
   ...(item.value === undefined ? {} : { value: item.value }),
   label: terminalSafe(item.title),

@@ -25,9 +25,11 @@ export {
   QUALITY_MAX_SOURCE_REQUESTS_PER_PROFILE,
   QUALITY_MAX_TEST_FILES_PER_REPOSITORY,
   QUALITY_MINIMUM_USEFUL_REQUEST_OPPORTUNITY,
+  analyzeQualityParseResults,
   qualityCacheIdentity,
 } from "./analyze.js";
 export { analyzeQualitySourceFilesIsolated } from "./isolated-analyze.js";
+export { parseQualitySourcesIsolated, type IsolatedParserOptions } from "./isolate.js";
 export {
   QUALITY_MAX_AST_NODES,
   QUALITY_MAX_DECODED_BYTES_PER_FILE,

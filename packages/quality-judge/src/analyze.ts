@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 
-import { digest } from "@gitmog/github";
+import { digest, type QualityLimitationReason } from "@gitmog/github";
 
 import {
   QUALITY_ATTRIBUTION_VERSION,
@@ -61,6 +61,37 @@ export interface AnalyzeOptions {
 }
 
 const clamp = (value: number): number => Math.max(0, Math.min(100, Math.round(value)));
+
+const limitationReasonFor = (
+  limitations: readonly QualityLimitation[],
+  requestPlan: QualityRequestPlan,
+  maintained: QualityReading,
+  attributed: AttributedQualityReading,
+): QualityLimitationReason => {
+  const reasons = new Set<Exclude<QualityLimitationReason, "mixed" | "unknown">>();
+  const codes = new Set(limitations.map((limitation) => limitation.code));
+  const requestCapacityLimited =
+    (codes.has("source-budget") &&
+      requestPlan.sourceRequestCap < QUALITY_MAX_SOURCE_REQUESTS_PER_PROFILE) ||
+    (codes.has("attribution-budget") &&
+      requestPlan.attributionRequestCap < QUALITY_MAX_ATTRIBUTION_REQUESTS_PER_PROFILE);
+  if (requestCapacityLimited) reasons.add("request-budget-limited");
+  if (codes.has("unsupported-language")) reasons.add("supported-language-limited");
+  if (
+    codes.has("source-unavailable") ||
+    (codes.has("insufficient-source") &&
+      maintained.files === 0 &&
+      !codes.has("unsupported-language"))
+  )
+    reasons.add("eligible-source-limited");
+  if (
+    codes.has("insufficient-attribution") &&
+    attributed.attributionStatus !== "ready" &&
+    maintained.files > 0
+  )
+    reasons.add("attribution-limited");
+  return reasons.size > 1 ? "mixed" : ([...reasons][0] ?? "unknown");
+};
 const ratio = (part: number, whole: number): number => (whole <= 0 ? 0 : part / whole);
 const sum = (files: readonly ParsedFile[], key: keyof ParsedQualityFeatures): number =>
   files.reduce((total, file) => {
@@ -581,11 +612,18 @@ export function analyzeQualityParseResults(
       left.detail.localeCompare(right.detail) ||
       left.files - right.files,
   );
+  const limitationReason = limitationReasonFor(
+    orderedLimitations,
+    requestPlan,
+    maintained.reading,
+    attributedReading,
+  );
   return {
     version: QUALITY_JUDGE_RESULT_VERSION,
     status: maintained.reading.status,
     activation: "preview-only",
     scoreInfluence: 0,
+    limitationReason,
     maintainedCodebase: maintained.reading,
     attributedCode: attributedReading,
     requestPlan,

@@ -11,6 +11,6 @@ Attributed code 81 (100%)
 @partialtree — 0 high-complexity funcs · alpha/migrate.ts:1 [PQ1]
 Separate from the battle score.
 RECEIPTS
-[1] @partialtree — Test files 25 per 100 source files; Project structure
+[1] @partialtree — Test-file density 25 per 100 source files; Project structure
 More: --details · --receipts
 Next: gitmog partialtree <handle>

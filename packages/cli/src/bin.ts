@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
 
+import { PRIVATE_CONTEXT_APP_CONFIG } from "@gitmog/private-context";
+
 import { resolveInvocationName, run } from "./cli.js";
 
 for (const stream of [process.stdout, process.stderr]) {
@@ -26,11 +28,13 @@ try {
     env: process.env,
     isTty: process.stdout.isTTY === true,
     stderrIsTty: process.stderr.isTTY === true,
+    stdinIsTty: process.stdin.isTTY === true,
     terminalColumns: process.stderr.columns ?? process.stdout.columns ?? 80,
-    writeOutput: (value) => process.stdout.write(value),
+    privateContextAppConfig: PRIVATE_CONTEXT_APP_CONFIG,
+    writeOutput: (value) => process.stderr.write(value),
     prompt: async (question) => {
       const { createInterface } = await import("node:readline/promises");
-      const prompt = createInterface({ input: process.stdin, output: process.stdout });
+      const prompt = createInterface({ input: process.stdin, output: process.stderr });
       try {
         return await prompt.question(question, { signal: interruption.signal });
       } finally {

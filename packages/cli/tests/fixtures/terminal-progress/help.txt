@@ -22,6 +22,8 @@ Common options:
   --receipts   Every supporting receipt
   --export     Self-contained .html or .svg battle
   --no-quality Disable the automatic code-quality preview
+  --private-context  Add selected private repositories separately
+  --public-only      Suppress every private prompt and endpoint
 
 Coverage is the share of the public scorecard Git Mog could measure.
 If GitHub's anonymous limit is low, Git Mog may offer one-time sign-in.

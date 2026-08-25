@@ -8,34 +8,33 @@ Canonical verdict: NUCLEAR REPO GAP
 ALL SCORED ROUNDS
   1. SHIP DISCIPLINE
      @strongmaintainer 100 ↔ @sidequester 0 · @strongmaintainer leads
-     strongmaintainer owns SHIP DISCIPLINE. 100-point tooling gap. [2]
+     Score difference: 100 points.
   2. TEST AURA
      @strongmaintainer 97.5 ↔ @sidequester 0 · @strongmaintainer leads
-     100% tested and 100% wired to CI. [3]
+     100% tested and 100% wired to CI. [2]
   3. COMMIT MANNERS
      @strongmaintainer 93.6 ↔ @sidequester 9.3 · @strongmaintainer leads
-     Main branch behaviour: 5% repairs, pushed 0 days ago. [4]
+     Main branch behaviour: 5% repairs, pushed 0 days ago. [3]
   4. OSS CLOUT
      @strongmaintainer 85.3 ↔ @sidequester 25 · @strongmaintainer leads
-     strongmaintainer owns OSS CLOUT by 60.3. Releases and external
-     repositories. [5]
+     Score difference: 60 points.
   5. GRINDSET
      @strongmaintainer 87.9 ↔ @sidequester 55.3 · @strongmaintainer leads
-     GRINDSET, strongmaintainer. Won the activity round by 32.6 points. [6]
+     Score difference: 33 points.
   6. SHIP AURA
      @strongmaintainer 95.7 ↔ @sidequester 67.1 · @strongmaintainer leads
-     strongmaintainer owns SHIP AURA. 28.6-point substance gap. [7]
+     Score difference: 29 points.
   7. REPO ETIQUETTE
      @strongmaintainer 90 ↔ @sidequester 70 · @strongmaintainer leads
-     strongmaintainer owns REPO ETIQUETTE. 20-point hygiene gap. [8]
+     Score difference: 20 points.
   8. STRUCTURE AURA
      @strongmaintainer 100 ↔ @sidequester 100 · tie
-     Dead level. Mutual aura in this round. [9]
+     Score difference: 0 points.
 
 THE READ
-@strongmaintainer — PUBLIC EVIDENCE [10]
+@strongmaintainer — PUBLIC EVIDENCE [4]
 + 15 releases published. Ships to users, not just to main.
-@sidequester — PUBLIC EVIDENCE [11]
+@sidequester — PUBLIC EVIDENCE [5]
 + All 3 selected repositories were readable end to end.
 − 64% of sampled commit messages are one word or shorter.
 
@@ -71,20 +70,11 @@ SOURCE ANALYSIS · READY
 
 RECEIPTS
 [1] Versioned releases — 15 vs 0
-[2] SHIP DISCIPLINE — strongmaintainer owns SHIP DISCIPLINE. 100-point tooling
-    gap.
-[3] TEST AURA — 100% tested and 100% wired to CI.
-[4] COMMIT MANNERS — Main branch behaviour: 5% repairs, pushed 0 days ago.
-[5] OSS CLOUT — strongmaintainer owns OSS CLOUT by 60.3. Releases and external
-    repositories.
-[6] GRINDSET — GRINDSET, strongmaintainer. Won the activity round by 32.6
-    points.
-[7] SHIP AURA — strongmaintainer owns SHIP AURA. 28.6-point substance gap.
-[8] REPO ETIQUETTE — strongmaintainer owns REPO ETIQUETTE. 20-point hygiene gap.
-[9] STRUCTURE AURA — Dead level. Mutual aura in this round.
-[10] @strongmaintainer — Versioned releases 15
-[11] @sidequester — Automated tests 0/3; Commit messages — 64% are one word or
-     shorter
+[2] TEST AURA — 100% tested and 100% wired to CI.
+[3] COMMIT MANNERS — Main branch behaviour: 5% repairs, pushed 0 days ago.
+[4] @strongmaintainer — Versioned releases 15
+[5] @sidequester — Repositories containing tests 0/3; Commit messages — 64% are
+    one word or shorter
 
 QUALITY RECEIPTS
 [LQ1] high-complexity-function — 0 ·

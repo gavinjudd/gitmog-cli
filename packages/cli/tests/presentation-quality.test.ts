@@ -4,6 +4,7 @@ import {
   PERSONAS,
   type PersonaSpec,
 } from "@gitmog/test-fixtures/github-personas";
+import type { QualityReading } from "@gitmog/quality-judge";
 import { describe, expect, it } from "vitest";
 
 import { run, type CliContext } from "../src/cli.js";
@@ -11,6 +12,7 @@ import { stripAnsi } from "../src/color.js";
 import { renderBattle, renderCard, renderProfile } from "../src/render.js";
 import { renderShare } from "../src/share.js";
 import { ACTIVE_HUMAN_CLASSIFIER_LABELS, classifierLabelsIn } from "./classifier-labels.js";
+import { PRIVATE_CONTEXT_FIXTURE } from "./private-context-fixture.js";
 
 const HUMAN_TAXONOMY_MARKERS = ["AURA LEAK", "MOGSONA:", "CODE DNA"] as const;
 
@@ -20,7 +22,6 @@ const BANNED_DEFAULT_COPY = [
   "classifier",
   "source opportunity",
   "annualized qualifying commits",
-  "CI-backed testing",
   "sustained original project",
   "qualifying commits per year, estimated",
   "Code DNA describes only the files sampled",
@@ -260,10 +261,250 @@ describe("human-readable presentation contract", () => {
     expect(result.stdout).toContain("TESTS");
     expect(result.stdout).toContain("COMMIT QUALITY");
     expect(result.stdout).toContain("Project automation: 3/3–0/3");
-    expect(result.stdout).toContain("Automated tests: 100%–0%");
+    expect(result.stdout).toContain("CI-backed testing: 3/3–0/3");
     expect(result.stdout).not.toContain("SHIP AURA");
     expect(result.stdout).not.toContain("GRINDSET");
     expect(result.stdout).not.toContain("TEST AURA");
+  });
+
+  it("distinguishes CI-backed testing from repositories that merely contain tests", async () => {
+    const testFilesWithoutCi = {
+      ...PERSONAS.strongMaintainer,
+      login: "testfileswithoutci",
+      trees: Object.fromEntries(
+        Object.entries(PERSONAS.strongMaintainer.trees ?? {}).map(([repository, paths]) => [
+          repository,
+          paths.filter((path) => !path.startsWith(".github/workflows/")),
+        ]),
+      ),
+    };
+    const result = await invoke(
+      contextFor(PERSONAS.strongMaintainer, testFilesWithoutCi),
+      "strongmaintainer",
+      "testfileswithoutci",
+      "--json",
+    );
+    const payload = JSON.parse(result.stdout) as {
+      battle: {
+        left: { evidence: readonly { metric: string; value?: number | string }[] };
+        right: { evidence: readonly { metric: string; value?: number | string }[] };
+      };
+    };
+    const value = (side: "left" | "right", metric: string): number | string | undefined =>
+      payload.battle[side].evidence.find((entry) => entry.metric === metric)?.value;
+    expect(value("left", "craft.testing.workflow")).toBe("3/3");
+    expect(value("right", "craft.testing.workflow")).toBe("0/3");
+    expect(value("right", "craft.testing.exists")).toBe("3/3");
+    const human = await invoke(
+      contextFor(PERSONAS.strongMaintainer, testFilesWithoutCi),
+      "strongmaintainer",
+      "testfileswithoutci",
+    );
+    expect(human.stdout).toContain("CI-backed testing: 3/3–0/3");
+    expect(human.stdout).not.toContain("Automated tests: 100%–0%");
+  });
+
+  it("omits cross-category round support while preserving every public score", async () => {
+    const service = await import("@gitmog/battle");
+    const result = await service.runBattle({
+      left: "strongmaintainer",
+      right: "sidequester",
+      fetchImpl: battleContext().fetchImpl,
+      cache: null,
+      now: () => FIXTURE_NOW_MS,
+    });
+    if (!result.ok) throw new Error(result.error.code);
+    const roundIndex = result.battle.rounds.findIndex(
+      (round) => round.categoryId === "craft.testing",
+    );
+    const round = result.battle.rounds[roundIndex];
+    const release = result.battle.left.evidence.find(
+      (entry) => entry.metric === "ship.breadth.released",
+    );
+    if (round === undefined || release === undefined) throw new Error("fixture support missing");
+    const crossCategoryText = "Versioned releases are not TESTS evidence.";
+    const battle = {
+      ...result.battle,
+      rounds: result.battle.rounds.map((entry, index) =>
+        index === roundIndex
+          ? {
+              ...entry,
+              line: {
+                ...entry.line,
+                text: crossCategoryText,
+                evidenceIds: [release.id],
+              },
+            }
+          : entry,
+      ),
+    };
+    const output = renderBattle(battle, result.sourceAnalysis, result.story, { details: true });
+    expect(output).not.toContain(crossCategoryText);
+    expect(output).toContain("Score difference:");
+    expect(battle.left.overallScore).toBe(result.battle.left.overallScore);
+    expect(battle.right.overallScore).toBe(result.battle.right.overallScore);
+    expect(battle.winner).toBe(result.battle.winner);
+  });
+
+  it("reuses one visible receipt for legacy ids carrying the same factual support", async () => {
+    const service = await import("@gitmog/battle");
+    const result = await service.runBattle({
+      left: "strongmaintainer",
+      right: "sidequester",
+      fetchImpl: battleContext().fetchImpl,
+      cache: null,
+      now: () => FIXTURE_NOW_MS,
+    });
+    if (!result.ok) throw new Error(result.error.code);
+    const original = result.battle.left.evidence.find(
+      (entry) => entry.metric === "ship.breadth.released",
+    );
+    const originalRight = result.battle.right.evidence.find(
+      (entry) => entry.metric === "ship.breadth.released",
+    );
+    if (original === undefined || originalRight === undefined)
+      throw new Error("fixture release support missing");
+    const duplicate = { ...original, id: "legacy-duplicate-release-id" };
+    const duplicateRight = { ...originalRight, id: "legacy-duplicate-release-id" };
+    const battle = {
+      ...result.battle,
+      left: { ...result.battle.left, evidence: [...result.battle.left.evidence, duplicate] },
+      right: {
+        ...result.battle.right,
+        evidence: [...result.battle.right.evidence, duplicateRight],
+      },
+      finishingMove: {
+        ...result.battle.finishingMove,
+        text: "Versioned releases close this public comparison.",
+        evidenceIds: [original.id],
+      },
+      rounds: result.battle.rounds.map((round) =>
+        round.categoryId === "ship.breadth"
+          ? {
+              ...round,
+              line: {
+                ...round.line,
+                text: "The release record is visible public evidence.",
+                evidenceIds: [duplicate.id],
+              },
+            }
+          : round,
+      ),
+    };
+    const output = renderBattle(battle, result.sourceAnalysis, result.story, { details: true });
+    expect(output).toContain("Versioned releases close this public comparison. [1]");
+    expect(output).toContain("The release record is visible public evidence. [1]");
+    expect(output.match(/^\[1\] Versioned releases/gmu)).toHaveLength(1);
+    expect(output).not.toContain("legacy-duplicate-release-id");
+  });
+
+  it("collapses a shared supported-language limitation without hiding different reasons", async () => {
+    const service = await import("@gitmog/battle");
+    const result = await service.runBattle({
+      left: "strongmaintainer",
+      right: "sidequester",
+      fetchImpl: battleContext().fetchImpl,
+      cache: null,
+      now: () => FIXTURE_NOW_MS,
+    });
+    if (!result.ok) throw new Error(result.error.code);
+    const insufficientReading = <T extends QualityReading>(reading: T) => ({
+      ...reading,
+      status: "insufficient" as const,
+      previewScore: null,
+      coverage: 0,
+      strengths: [],
+      weaknesses: [],
+    });
+    const quality = {
+      ...result.qualityPreview,
+      left: {
+        ...result.qualityPreview.left,
+        limitationReason: "supported-language-limited" as const,
+        maintainedCodebase: insufficientReading(result.qualityPreview.left.maintainedCodebase),
+        attributedCode: insufficientReading(result.qualityPreview.left.attributedCode),
+      },
+      right: {
+        ...result.qualityPreview.right,
+        limitationReason: "supported-language-limited" as const,
+        maintainedCodebase: insufficientReading(result.qualityPreview.right.maintainedCodebase),
+        attributedCode: insufficientReading(result.qualityPreview.right.attributedCode),
+      },
+    };
+    const collapsed = renderBattle(result.battle, result.sourceAnalysis, result.story, {
+      qualityPreview: quality,
+    });
+    expect(collapsed).toContain(
+      "CODE QUALITY · PREVIEW\nNot enough TypeScript/JavaScript source for either profile.\nSeparate from the battle score.",
+    );
+    expect(collapsed).not.toContain("limited parser-supported evidence");
+
+    const different = {
+      ...quality,
+      right: { ...quality.right, limitationReason: "request-budget-limited" as const },
+    };
+    const sideSpecific = renderBattle(result.battle, result.sourceAnalysis, result.story, {
+      qualityPreview: different,
+    });
+    expect(sideSpecific).toContain("@strongmaintainer — limited parser-supported evidence.");
+    expect(sideSpecific).toContain("@sidequester — limited parser-supported evidence.");
+  });
+
+  it("discloses mixed context on terminal, card, and every share without private details", async () => {
+    const service = await import("@gitmog/battle");
+    const result = await service.runBattle({
+      left: "strongmaintainer",
+      right: "sidequester",
+      fetchImpl: battleContext().fetchImpl,
+      cache: null,
+      now: () => FIXTURE_NOW_MS,
+    });
+    if (!result.ok) throw new Error(result.error.code);
+    const terminal = renderBattle(result.battle, result.sourceAnalysis, result.story, {
+      columns: 80,
+      privateContext: PRIVATE_CONTEXT_FIXTURE,
+    });
+    const surfaces = [
+      terminal,
+      renderCard(result.battle, result.sourceAnalysis, result.story, {
+        privateContext: PRIVATE_CONTEXT_FIXTURE,
+      }),
+      ...(["plain", "x", "discord", "linkedin"] as const).map((preset) =>
+        renderShare(
+          result.battle,
+          preset,
+          result.sourceAnalysis,
+          result.story,
+          PRIVATE_CONTEXT_FIXTURE,
+        ),
+      ),
+    ];
+    expect(terminal.split("\n")[3]).toContain("public winner unchanged");
+    expect(terminal).toContain("PRIVATE CONTEXT · @StrongMaintainer");
+    for (const surface of surfaces) {
+      expect(surface).toMatch(/MIXED CONTEXT|Mixed context|Context:/u);
+      expect(surface.toLowerCase()).toMatch(/public winner|winner uses public evidence/u);
+      expect(surface).not.toContain("sensitive-private-project");
+      expect(surface).not.toContain("secret/private/path.ts");
+      expect(surface).not.toContain("github.com/fixture");
+    }
+    const x = surfaces[3] as string;
+    expect(Array.from(x).length).toBeLessThanOrEqual(280);
+
+    for (const columns of [60, 80, 100] as const) {
+      const output = renderBattle(result.battle, result.sourceAnalysis, result.story, {
+        columns,
+        privateContext: PRIVATE_CONTEXT_FIXTURE,
+      });
+      const outputLines = output.trim().split("\n");
+      const privateStart = outputLines.indexOf("PRIVATE CONTEXT · @StrongMaintainer");
+      const privateEnd = outputLines.indexOf("RECEIPTS", privateStart);
+      expect(privateStart).toBeGreaterThanOrEqual(0);
+      expect(privateEnd).toBeGreaterThan(privateStart);
+      const lines = outputLines.slice(privateStart, privateEnd);
+      expect(lines.length).toBeLessThanOrEqual(columns === 60 ? 10 : 6);
+      expect(lines.every((line) => Array.from(line).length <= columns)).toBe(true);
+    }
   });
 
   it("renders one compact read per profile and a factual classifier-selected weakness", async () => {

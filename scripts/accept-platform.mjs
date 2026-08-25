@@ -46,6 +46,9 @@ const unsafeCacheKeys = new Set([
   "prototype",
   "__proto__",
 ]);
+const privateContextConfig = JSON.parse(
+  readFileSync(resolve(import.meta.dirname, "../config/private-context-app.json"), "utf8"),
+);
 
 const humanTaxonomyPhrases = Object.freeze([
   "AURA LEAK",
@@ -179,8 +182,14 @@ const mode = process.env.GITMOG_FIXTURE_MODE ?? "default";
 const phase = process.env.GITMOG_FIXTURE_PHASE ?? "success";
 const variant = process.env.GITMOG_FIXTURE_BLOB_VARIANT ?? "a";
 const reportPath = process.env.GITMOG_FIXTURE_REPORT ?? "";
+const privateAppId = Number(process.env.GITMOG_FIXTURE_APP_ID ?? "0");
 const calls = [];
 let blobCalls = 0;
+let privateEndpointAuthorized = 0;
+let privateTokenReachedPublicEndpoint = 0;
+let publicTokenReachedPrivateEndpoint = 0;
+let deviceRequestFields = [];
+let tokenRequestFields = [];
 const shaFor = (value) => createHash("sha1").update(value).digest("hex");
 
 const response = (body, status = 200, remaining = 50) =>
@@ -230,16 +239,105 @@ const repositoryNames = mode === "scope"
     ? Array.from({ length: 100 }, (_, index) => "repo-" + String(index).padStart(3, "0"))
     : ["repo"];
 
-globalThis.fetch = async (input) => {
-  const href = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+if (mode === "private-context") {
+  Object.defineProperty(process.stdin, "isTTY", { configurable: true, value: true });
+  Object.defineProperty(process.stderr, "isTTY", { configurable: true, value: true });
+}
+
+globalThis.fetch = async (input, init) => {
+  const request = new Request(input, init);
+  const href = request.url;
   const url = new URL(href);
   calls.push(url.pathname + url.search);
+  const authorization = request.headers.get("authorization") ?? "";
+  const isPrivateEndpoint =
+    url.pathname === "/user" ||
+    url.pathname.startsWith("/user/installations") ||
+    url.pathname.includes("/private-marker-repository/");
+  if (mode === "private-context" && isPrivateEndpoint) {
+    if (authorization === "Bearer synthetic_private_token_never_rendered") {
+      privateEndpointAuthorized += 1;
+    } else if (authorization !== "") {
+      publicTokenReachedPrivateEndpoint += 1;
+    }
+  } else if (authorization === "Bearer synthetic_private_token_never_rendered") {
+    privateTokenReachedPublicEndpoint += 1;
+  }
   if (mode === "timeout" && url.pathname !== "/rate_limit") {
     const error = new Error("synthetic timeout");
     error.name = "TimeoutError";
     throw error;
   }
   if (phase === "fail-all") return response({ message: "fixture fetch forbidden" }, 500);
+
+  if (mode === "private-context" && url.origin === "https://github.com") {
+    if (url.pathname === "/login/device/code") {
+      deviceRequestFields = [...new URLSearchParams(await request.clone().text()).keys()].sort();
+      return response({
+        device_code: "synthetic-device-code-never-rendered",
+        user_code: "SAFE-CODE",
+        verification_uri: "https://github.com/login/device",
+        expires_in: 600,
+        interval: 1,
+      });
+    }
+    if (url.pathname === "/login/oauth/access_token") {
+      tokenRequestFields = [...new URLSearchParams(await request.clone().text()).keys()].sort();
+      return response({
+        access_token: "synthetic_private_token_never_rendered",
+        token_type: "bearer",
+        scope: "",
+        expires_in: 600,
+        refresh_token: "synthetic_refresh_token_never_rendered",
+      });
+    }
+  }
+
+  if (mode === "private-context" && url.pathname === "/user") {
+    return response({ login: "FixtureLeft" });
+  }
+  if (mode === "private-context" && url.pathname === "/user/installations") {
+    return response({
+      total_count: 1,
+      installations: [{
+        id: 77,
+        app_id: privateAppId,
+        repository_selection: "selected",
+        permissions: { metadata: "read", contents: "read" },
+      }],
+    });
+  }
+  if (mode === "private-context" && url.pathname === "/user/installations/77/repositories") {
+    return response({
+      total_count: 1,
+      repositories: [{
+        id: 990077,
+        name: "private-marker-repository",
+        full_name: "FixtureLeft/private-marker-repository",
+        owner: { login: "FixtureLeft", type: "User" },
+        private: true,
+        visibility: "private",
+        archived: false,
+        disabled: false,
+        fork: false,
+        is_template: false,
+        mirror_url: null,
+        size: 400,
+        stargazers_count: 0,
+        forks_count: 0,
+        open_issues_count: 0,
+        language: "TypeScript",
+        topics: [],
+        homepage: null,
+        license: { spdx_id: "MIT" },
+        default_branch: "main",
+        created_at: "2024-01-01T00:00:00.000Z",
+        updated_at: "2026-08-20T00:00:00.000Z",
+        pushed_at: "2026-08-20T00:00:00.000Z",
+        permissions: { admin: true, maintain: true, push: true, pull: true },
+      }],
+    });
+  }
 
   if (url.pathname === "/rate_limit") {
     return response({
@@ -324,6 +422,35 @@ globalThis.fetch = async (input) => {
   const login = decodeURIComponent(repositoryMatch[1]);
   const repository = decodeURIComponent(repositoryMatch[2]);
   const endpoint = repositoryMatch[3];
+  if (mode === "private-context" && repository === "private-marker-repository") {
+    const privateTreeSha = shaFor("private-marker-tree");
+    const privateBlobSha = shaFor("private-marker-blob");
+    if (endpoint === "commits/main") {
+      return response({ sha: shaFor("private-marker-commit"), commit: { tree: { sha: privateTreeSha } } });
+    }
+    if (endpoint === "git/trees/" + privateTreeSha) {
+      return response({
+        sha: privateTreeSha,
+        truncated: false,
+        tree: [{
+          path: "src/private-marker-path.ts",
+          mode: "100644",
+          type: "blob",
+          sha: privateBlobSha,
+          size: 4000,
+        }],
+      });
+    }
+    if (endpoint === "git/blobs/" + privateBlobSha) {
+      blobCalls += 1;
+      const source = "export function privateMarkerSource(value: string) { return value.trim(); }\n".repeat(24);
+      return response({ sha: privateBlobSha, encoding: "base64", content: Buffer.from(source).toString("base64") });
+    }
+    if (endpoint === "releases") return response([{ id: 1, tag_name: "v1.0.0" }]);
+    if (endpoint === "commits" && url.searchParams.has("author")) {
+      return response([{ sha: shaFor("private-marker-attribution"), author: { login: "FixtureLeft" } }]);
+    }
+  }
   if (endpoint === "languages") return response({ TypeScript: 40000 });
   if (endpoint === "releases") return response([]);
   if (endpoint === "commits") {
@@ -388,7 +515,17 @@ globalThis.fetch = async (input) => {
 
 process.on("exit", () => {
   if (reportPath !== "") {
-    appendFileSync(reportPath, JSON.stringify({ mode, phase, calls, blobCalls }) + "\n", "utf8");
+    appendFileSync(reportPath, JSON.stringify({
+      mode,
+      phase,
+      calls,
+      blobCalls,
+      privateEndpointAuthorized,
+      privateTokenReachedPublicEndpoint,
+      publicTokenReachedPrivateEndpoint,
+      deviceRequestFields,
+      tokenRequestFields,
+    }) + "\n", "utf8");
   }
 });
 `;
@@ -613,6 +750,7 @@ async function main() {
         GITMOG_FIXTURE_PHASE: phase,
         GITMOG_FIXTURE_BLOB_VARIANT: variant,
         GITMOG_FIXTURE_REPORT: reportPath,
+        GITMOG_FIXTURE_APP_ID: privateContextConfig.appId,
         NODE_OPTIONS: `--import=${pathToFileURL(fixturePreload).href}`,
       };
       if (color) delete fixtureEnvironment.NO_COLOR;
@@ -697,6 +835,167 @@ async function main() {
       "fixture-cache-commands",
       "info and idempotent clear are JSON-only, zero-call, 25 MiB, raw-source-free",
     );
+
+    const privateCache = join(scratch, "fixture-private-context-cache");
+    const privateNpmFingerprintBefore = directoryFingerprint(npmCacheDirectory);
+    const publicBaseline = runFixture(
+      "private-context",
+      ["fixtureleft", "fixtureright", "--public-only", "--json"],
+      { cacheDirectory: privateCache },
+    );
+    const publicBaselinePayload = parseJson(
+      publicBaseline.result,
+      "private-context-public-baseline",
+    );
+    const privateCacheFingerprintBefore = directoryFingerprint(privateCache);
+    const privateMixed = runFixture(
+      "private-context",
+      ["fixtureleft", "fixtureright", "--private-context", "--json", "--no-cache"],
+      { cacheDirectory: privateCache },
+    );
+    const privateMixedPayload = parseJson(privateMixed.result, "private-context-mixed-json");
+    const privateCacheFingerprintAfter = directoryFingerprint(privateCache);
+    const privateNpmFingerprintAfter = directoryFingerprint(npmCacheDirectory);
+    const publicOnlyObject = (value) => {
+      const {
+        evidenceMode: _evidenceMode,
+        privateContext: _privateContext,
+        privateContextError: _privateContextError,
+        ...publicValue
+      } = value;
+      return publicValue;
+    };
+    if (
+      publicBaselinePayload.evidenceMode !== "public-only" ||
+      privateMixedPayload.evidenceMode !== "public-with-private-context" ||
+      privateMixedPayload.privateContext?.scoreInfluence !== 0 ||
+      privateMixedPayload.privateContext?.publicWinnerInfluence !== 0 ||
+      privateMixedPayload.privateContext?.persisted !== false ||
+      JSON.stringify(publicOnlyObject(privateMixedPayload)) !==
+        JSON.stringify(publicOnlyObject(publicBaselinePayload))
+    ) {
+      fail("Packed Private Context changed the canonical public result.");
+    }
+    if (
+      privateCacheFingerprintBefore !== privateCacheFingerprintAfter ||
+      privateNpmFingerprintBefore !== privateNpmFingerprintAfter
+    ) {
+      fail("Packed Private Context changed a persistent Git Mog or npm cache.");
+    }
+    if (
+      privateMixed.report.privateEndpointAuthorized < 7 ||
+      privateMixed.report.privateTokenReachedPublicEndpoint !== 0 ||
+      privateMixed.report.publicTokenReachedPrivateEndpoint !== 0 ||
+      JSON.stringify(privateMixed.report.deviceRequestFields) !== JSON.stringify(["client_id"]) ||
+      JSON.stringify(privateMixed.report.tokenRequestFields) !==
+        JSON.stringify(["client_id", "device_code", "grant_type"])
+    ) {
+      fail("Packed Private Context crossed its token or device-flow boundary.");
+    }
+    const privateMarkers = [
+      "private-marker-repository",
+      "private-marker-path",
+      "privateMarkerSource",
+      "990077",
+      "synthetic_private_token_never_rendered",
+      "synthetic_refresh_token_never_rendered",
+      "synthetic-device-code-never-rendered",
+    ];
+    const assertPrivateSurfaceSafe = (value, label) => {
+      for (const marker of privateMarkers) {
+        if (value.includes(marker)) fail(`${label} exposed a private fixture marker.`);
+      }
+    };
+    assertPrivateSurfaceSafe(privateMixed.result.stdout, "Mixed JSON");
+    assertPrivateSurfaceSafe(privateMixed.result.stderr, "Mixed JSON instructions");
+    if (!privateMixed.result.stderr.includes("PRIVATE CONTEXT SIGN-IN")) {
+      fail("Packed Private Context omitted its separate permission explanation.");
+    }
+    record(
+      "private-context-canonical-invariance",
+      "byte-identical public object; score, winner, rounds, verdict, coverage, evidence, and battle key isolated",
+    );
+    record(
+      "private-context-auth-boundary",
+      "client ID only; exact polling fields; private token excluded from public endpoints",
+    );
+    record("private-context-cache-invariance", "Git Mog and npm cache fingerprints unchanged");
+
+    const privateSurfaceCases = [
+      ["terminal", []],
+      ["details", ["--details"]],
+      ["receipts", ["--receipts"]],
+      ["card", ["--card"]],
+      ["share-plain", ["--share", "plain"]],
+      ["share-x", ["--share", "x"]],
+      ["share-discord", ["--share", "discord"]],
+      ["share-linkedin", ["--share", "linkedin"]],
+      ["no-color", ["--color", "never"]],
+      ["no-motion", ["--no-motion"]],
+    ];
+    for (const [label, flags] of privateSurfaceCases) {
+      const surface = runFixture("private-context", [
+        "fixtureleft",
+        "fixtureright",
+        "--private-context",
+        "--no-cache",
+        ...flags,
+      ]);
+      assertPrivateSurfaceSafe(surface.result.stdout, `Mixed ${label}`);
+      assertPrivateSurfaceSafe(surface.result.stderr, `Mixed ${label} instructions`);
+      const required =
+        label === "card"
+          ? ["MIXED CONTEXT", "PUBLIC WINNER"]
+          : label.startsWith("share-")
+            ? ["Mixed context:", "The winner uses public evidence only."]
+            : ["PRIVATE CONTEXT", "public winner unchanged"];
+      for (const text of required) {
+        if (!surface.result.stdout.includes(text)) {
+          fail(`Mixed ${label} omitted required disclosure: ${text}`);
+        }
+      }
+    }
+    const privateProfile = runFixture("private-context", [
+      "fixtureleft",
+      "--private-context",
+      "--json",
+      "--no-cache",
+    ]);
+    const privateProfilePayload = parseJson(privateProfile.result, "private-context-profile-json");
+    if (
+      privateProfilePayload.evidenceMode !== "public-with-private-context" ||
+      privateProfilePayload.privateContext?.subject !== "FixtureLeft"
+    ) {
+      fail("Packed Private Context profile mode omitted its aggregate result.");
+    }
+    assertPrivateSurfaceSafe(privateProfile.result.stdout, "Mixed profile JSON");
+    const privateHtml = join(scratch, "private exports with spaces", "battle.html");
+    const privateSvg = join(scratch, "private exports with spaces", "battle.svg");
+    for (const [format, destination] of [
+      ["HTML", privateHtml],
+      ["SVG", privateSvg],
+    ]) {
+      const exported = runFixture("private-context", [
+        "fixtureleft",
+        "fixtureright",
+        "--private-context",
+        "--no-cache",
+        "--export",
+        destination,
+      ]);
+      const bytes = readFileSync(destination, "utf8");
+      assertPrivateSurfaceSafe(exported.result.stdout, `Mixed ${format} export report`);
+      assertPrivateSurfaceSafe(exported.result.stderr, `Mixed ${format} export instructions`);
+      assertPrivateSurfaceSafe(bytes, `Mixed ${format} export`);
+      if (!bytes.includes("MIXED CONTEXT") || !bytes.includes("PUBLIC WINNER")) {
+        fail(`Mixed ${format} export omitted its disclosure panel.`);
+      }
+    }
+    record(
+      "private-context-output-matrix",
+      "profile, terminal, details, receipts, card, four shares, color, motion, HTML, and SVG disclosed and source-free",
+    );
+
     for (const [left, right] of [
       ["torvalds", "gvanrossum"],
       ["karpathy", "geohot"],
@@ -1436,7 +1735,6 @@ async function main() {
       "exact collection limits",
       "qualifying commits per year, estimated",
       "annualized qualifying commits",
-      "CI-backed testing",
       "sustained original project",
       "source opportunity",
       "classifier",

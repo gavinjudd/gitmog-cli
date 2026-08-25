@@ -98,6 +98,7 @@ export {
   buildGithubRequestPlan,
   readGithubCoreAllowance,
   type AuthenticationState,
+  type QualityLimitationReason,
   type BudgetDisposition,
   type BuildRequestPlanInput,
   type GithubAllowanceResult,
