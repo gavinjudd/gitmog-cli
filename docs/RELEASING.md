@@ -28,5 +28,5 @@ Before publication, require synthetic privacy/invariance gates, one selected-rep
 acceptance in disposable home/cache state, byte-identical public baseline hashes, unchanged cache
 fingerprints, six-architecture acceptance, Node 22/24/26 acceptance, and two byte-identical builds.
 No private identifier, live capture, token, device code, or source may enter a release asset. The
-GitHub App installation remains selected-repository only; v0.4.0 publication requires its exact
-release-specific approval phrase.
+GitHub App installation remains selected-repository only; v0.4.1 publication requires the exact
+release-specific approval phrase in its release packet.

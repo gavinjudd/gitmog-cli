@@ -4,6 +4,18 @@ All notable changes are documented here. Released artifacts remain tied to immut
 
 ## Unreleased
 
+## 0.4.1 - Private Context receipt closure and terminal polish
+
+- Make ordinary Private Context claims self-supporting and add a source-free, separately labeled
+  `PRIVATE AGGREGATES` section under `--receipts`.
+- Replace ordinary numeric private quality presentation with exact selected-sample repository,
+  parsed-file, and supported-coverage counts while retaining the informational preview score in
+  `--details` and structured JSON.
+- Clear transient progress before every persistent terminal boundary and distinguish public API
+  capacity authorization from selected-repository Private Context authorization.
+- Centralize count grammar, use neutral zero-signal maintenance language, and improve public test
+  and version-tag sentences without changing evidence, scoring, or winner selection.
+
 ## 0.4.0 - Optional Private Context and evidence clarity
 
 - Keep public-only as the default and add `--private-context` through a separate read-only GitHub

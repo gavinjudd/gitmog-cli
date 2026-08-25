@@ -53,9 +53,11 @@ derived features, quality results, receipts, and request plans are never written
 Context has no persistent cache, and `--cache-info` / `--clear-cache` operate only on public data.
 
 Normal output, JSON, cards, shares, HTML/SVG exports, errors, logs, CI artifacts, and release assets
-receive only source-free aggregate counts and `P1`, `P2`, ... receipts. Repository names, owners,
-paths, URLs, IDs, source excerpts, commit IDs/messages, email, organization names, and installation
-IDs are prohibited.
+receive only source-free aggregate counts. Default terminal output uses complete aggregate claims
+without unresolved markers. `--receipts` adds a separately labeled `PRIVATE AGGREGATES` section
+whose `P1`, `P2`, ... entries remain distinct from publicly checkable receipts. Repository names,
+owners, paths, URLs, IDs, source excerpts, commit IDs/messages, email, organization names, and
+installation IDs are prohibited.
 
 ## Maintained versus attributed
 
@@ -71,3 +73,8 @@ attribution-only. Insufficient attribution is neutral.
 Private Context measures only the selected repositories and supported source that qualified within
 these bounds. It does not measure all private work, does not produce a private winner, and is not
 independently checkable by viewers.
+
+Ordinary human surfaces show the bounded code-quality sample as repository count, parsed-file
+count, and supported coverage rather than a numeric private preview score. `--details` and
+structured JSON retain that score and label it `selected-sample`, `informational`,
+`scoreInfluence: 0`, `publicWinnerInfluence: 0`, and `persisted: false`.
