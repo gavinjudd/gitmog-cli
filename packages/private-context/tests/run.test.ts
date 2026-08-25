@@ -63,10 +63,16 @@ const repository = (
 
 const selectedFixture = (
   repositories: readonly Record<string, unknown>[],
-  options: { readonly linkedAuthor?: boolean; readonly treePath?: string } = {},
+  options: {
+    readonly linkedAuthor?: boolean;
+    readonly source?: string;
+    readonly treeDirectory?: string;
+    readonly treePath?: string;
+  } = {},
 ) => {
   const requests: Request[] = [];
-  const source = "export function add(a: number, b: number): number { return a + b; }\n";
+  const source =
+    options.source ?? "export function add(a: number, b: number): number { return a + b; }\n";
   const fetchImpl: typeof fetch = (input, init) => {
     const request = new Request(input, init);
     requests.push(request);
@@ -95,6 +101,16 @@ const selectedFixture = (
           sha: sha("b"),
           truncated: false,
           tree: [
+            ...(options.treeDirectory === undefined
+              ? []
+              : [
+                  {
+                    path: options.treeDirectory,
+                    mode: "040000",
+                    type: "tree",
+                    sha: sha("f"),
+                  },
+                ]),
             {
               path: options.treePath ?? "src/add.ts",
               mode: "100644",
@@ -219,6 +235,27 @@ describe("bounded private repository collection", () => {
     expect(serialized).not.toContain("\\u001b");
     expect(serialized).not.toContain("private commit message");
     expect(serialized).not.toContain("private-project");
+  });
+
+  it("does not confuse a conventional tree-only tests label with aggregate test wording", async () => {
+    const fixture = selectedFixture([repository("FixtureUser/private-project")], {
+      source:
+        'export const add = (a: number, b: number): number => a + b;\ntest("adds", () => expect(add(1, 2)).toBe(3));\n',
+      treeDirectory: "tests",
+      treePath: "tests/add.test.ts",
+    });
+    const outcome = await runPrivateContext({
+      handles: ["FixtureUser", "Opponent"],
+      token: "private_fixture_access_token_123456",
+      config,
+      fetchImpl: fixture.fetchImpl,
+      now: () => Date.parse("2026-08-25T00:00:00.000Z"),
+    });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    const serialized = JSON.stringify(outcome.result);
+    expect(serialized).toContain("sampled private tests");
+    expect(serialized).not.toContain("tests/add.test.ts");
   });
 
   it("rejects all-repository installations before listing or reading a repository", async () => {
