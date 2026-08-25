@@ -47,6 +47,8 @@ export type TerminalProgressEvent =
 export interface TerminalProgress {
   readonly enabled: boolean;
   readonly update: (event: TerminalProgressEvent) => void;
+  /** Ends and clears the transient renderer before any persistent output boundary. */
+  readonly settle: () => void;
   readonly dispose: () => void;
 }
 
@@ -93,6 +95,7 @@ export function renderProgressHeader(input: {
 const noopProgress: TerminalProgress = Object.freeze({
   enabled: false,
   update: () => undefined,
+  settle: () => undefined,
   dispose: () => undefined,
 });
 
@@ -162,10 +165,10 @@ export function createTerminalProgress(options: TerminalProgressOptions): Termin
     clearTimer(revealTimer);
     clearTimer(frameTimer);
     if (revealed) clearLine();
+    restoreCursor();
     if (revealed && failureText !== undefined) {
       safeWrite(`${options.palette.wrap("yellow", "!")} ${terminalSafe(failureText)}\n`);
     }
-    restoreCursor();
     options.signal?.removeEventListener("abort", interrupt);
   };
   const interrupt = (): void => finish("Interrupted");
@@ -214,6 +217,7 @@ export function createTerminalProgress(options: TerminalProgressOptions): Termin
   return {
     enabled: true,
     update,
+    settle: () => finish(),
     dispose: () => {
       clearTimer(revealTimer);
       clearTimer(frameTimer);

@@ -381,6 +381,7 @@ export const qualityPreflightMessage = (plan: GithubRequestPlan["quality"]): str
 
 const authorizeOnce = async (
   context: CliContext,
+  privateContextFollows = false,
 ): Promise<
   { readonly ok: true; readonly token: string } | { readonly ok: false; readonly message: string }
 > => {
@@ -391,7 +392,10 @@ const authorizeOnce = async (
     onPrompt: (prompt) => {
       context.writeOutput?.(
         [
-          "SIGN IN TO GITHUB FOR THIS RUN",
+          privateContextFollows ? "PUBLIC API ACCESS · STEP 1 OF 2" : "PUBLIC API ACCESS",
+          "",
+          "This authorization increases public API capacity.",
+          "Private repositories remain excluded.",
           "",
           `Open: ${prompt.verificationUri}`,
           `Code: ${prompt.userCode}`,
@@ -440,6 +444,7 @@ const collectPrivateContext = async (
   handles: readonly [string] | readonly [string, string],
   publicToken: string | undefined,
   context: CliContext,
+  followsPublicAuthorization: boolean,
 ): Promise<{ readonly result?: PrivateContextResult; readonly error?: PrivateContextError }> => {
   const validated = validatePrivateContextAppConfig(context.privateContextAppConfig);
   if (!validated.ok) {
@@ -459,13 +464,12 @@ const collectPrivateContext = async (
     onPrompt: (prompt) => {
       context.writeOutput?.(
         [
-          "PRIVATE CONTEXT SIGN-IN",
+          followsPublicAuthorization ? "PRIVATE CONTEXT · STEP 2 OF 2" : "PRIVATE CONTEXT",
           "",
-          "Git Mog will request read-only metadata and contents access for the private",
-          "repositories selected in the GitHub App installation.",
+          "Read-only access applies only to repositories selected in the GitHub App installation.",
           "",
           "It cannot write, administer, read secrets, or execute repository code.",
-          "The token stays in memory for this run.",
+          "The token is memory-only for this run.",
           "",
           `Open: ${prompt.verificationUri}`,
           `Code: ${prompt.userCode}`,
@@ -742,6 +746,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
   }
   const publicOnly = values["public-only"] === true || values.anonymous === true;
   let privateContextRequested = values["private-context"] === true;
+  const explicitPrivateContextRequested = privateContextRequested;
   if (
     privateContextRequested &&
     (values["no-prompt"] === true || context.prompt === undefined || context.stdinIsTty === false)
@@ -882,7 +887,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
   if (context.skipBudgetPreflight !== true) {
     let authenticationState: AuthenticationState = invocationAuthenticationState;
     if (values["sign-in"] === true) {
-      const authorized = await authorizeOnce(context);
+      const authorized = await authorizeOnce(context, explicitPrivateContextRequested);
       if (!authorized.ok) {
         return {
           exitCode: 1,
@@ -950,7 +955,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         .trim()
         .toLowerCase();
       if (answer === "s" || answer === "sign in" || answer === "sign-in") {
-        const authorized = await authorizeOnce(context);
+        const authorized = await authorizeOnce(context, explicitPrivateContextRequested);
         if (!authorized.ok) {
           return {
             exitCode: 1,
@@ -1039,7 +1044,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         .trim()
         .toLowerCase();
       if (answer === "s" || answer === "sign in" || answer === "sign-in") {
-        const authorized = await authorizeOnce(context);
+        const authorized = await authorizeOnce(context, explicitPrivateContextRequested);
         if (authorized.ok) {
           invocationToken = authorized.token;
           authenticationState = "device";
@@ -1167,8 +1172,14 @@ export async function run(argv: readonly string[], context: CliContext): Promise
           invocationAuthenticationState,
         );
       }
+      if (privateContextRequested) progress.settle();
       const privateOutcome = privateContextRequested
-        ? await collectPrivateContext(positionals as [string], invocationToken, context)
+        ? await collectPrivateContext(
+            positionals as [string],
+            invocationToken,
+            context,
+            explicitPrivateContextRequested && publicSignInJustSucceeded,
+          )
         : {};
       const privateContext = privateOutcome.result;
       const stdout =
@@ -1191,7 +1202,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
           : renderProfile(result.profile, result.sourceAnalysis, {
               palette,
               columns: context.terminalColumns,
-              details: values.details === true || values.receipts === true,
+              details: values.details === true,
               receipts: values.receipts === true,
               ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
               ...(privateContext === undefined ? {} : { privateContext }),
@@ -1249,8 +1260,14 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         invocationAuthenticationState,
       );
     }
+    if (privateContextRequested) progress.settle();
     const privateOutcome = privateContextRequested
-      ? await collectPrivateContext(positionals as [string, string], invocationToken, context)
+      ? await collectPrivateContext(
+          positionals as [string, string],
+          invocationToken,
+          context,
+          explicitPrivateContextRequested && publicSignInJustSucceeded,
+        )
       : {};
     const privateContext = privateOutcome.result;
     if (privateOutcome.error !== undefined && exportDestination !== null) {
@@ -1340,7 +1357,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         : renderBattle(result.battle, result.sourceAnalysis, result.story, {
             palette,
             columns: context.terminalColumns,
-            details: values.details === true || values.receipts === true,
+            details: values.details === true,
             receipts: values.receipts === true,
             ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
             ...(privateContext === undefined ? {} : { privateContext }),
