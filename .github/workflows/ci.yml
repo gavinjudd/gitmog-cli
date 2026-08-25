@@ -27,6 +27,24 @@ jobs:
       - run: node scripts/bootstrap.mjs --ci
       - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs verify
 
+  private-context:
+    name: private context contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          check-latest: false
+          package-manager-cache: false
+      - run: node scripts/bootstrap.mjs --ci
+      - run: node scripts/turbo.mjs run test --filter=@gitmog/private-context --filter=@gitmog/cli
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs private-context:policy:check
+      - run: node .gitmog/tooling/pnpm/node_modules/pnpm/bin/pnpm.cjs security:check
+
   packed-artifact:
     name: packed artifact
     needs: verify
@@ -42,7 +60,7 @@ jobs:
           check-latest: false
           package-manager-cache: false
       - run: node scripts/bootstrap.mjs --ci
-      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/candidate" --tag v0.3.1 --expected-sha "${{ github.sha }}"
+      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/candidate" --tag v0.4.0 --expected-sha "${{ github.sha }}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ci-packed-runtime-${{ github.sha }}
@@ -72,7 +90,7 @@ jobs:
         with:
           name: ci-packed-runtime-${{ github.sha }}
           path: candidate
-      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.3.1.tgz node-${{ matrix.node }}.json
+      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.4.0.tgz node-${{ matrix.node }}.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: node-runtime-${{ matrix.node }}
@@ -128,7 +146,7 @@ jobs:
         with:
           name: ci-packed-runtime-${{ github.sha }}
           path: candidate
-      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.3.1.tgz architecture-${{ matrix.slug }}.json
+      - run: node scripts/ci-accept-artifact.mjs candidate/gitmog-0.4.0.tgz architecture-${{ matrix.slug }}.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: architecture-report-${{ matrix.slug }}
@@ -187,8 +205,8 @@ jobs:
           check-latest: false
           package-manager-cache: false
       - run: node scripts/bootstrap.mjs --ci
-      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-a" --tag v0.3.1 --expected-sha "${{ github.sha }}"
-      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-b" --tag v0.3.1 --expected-sha "${{ github.sha }}"
+      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-a" --tag v0.4.0 --expected-sha "${{ github.sha }}"
+      - run: node scripts/build-release-artifact.mjs --output "${{ runner.temp }}/repro-b" --tag v0.4.0 --expected-sha "${{ github.sha }}"
       - run: diff --recursive --brief "${{ runner.temp }}/repro-a" "${{ runner.temp }}/repro-b"
 
   dependency-review:

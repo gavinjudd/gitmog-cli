@@ -1,14 +1,25 @@
+import { existsSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 
 import { parseHandles, runBattle, runProfile, type BattleError } from "@gitmog/battle";
 import {
   authorizeGithubDevice,
+  GithubHttpClient,
   normalizeGithubLogin,
   type AuthenticationState,
   type GithubAllowanceResult,
   type GithubRequestPlan,
 } from "@gitmog/github";
+import {
+  authorizePrivateGithubDevice,
+  mixedPrivateArtifactIsSafe,
+  runPrivateContext,
+  validatePrivateContextAppConfig,
+  type PrivateContextAppConfig,
+  type PrivateContextError,
+  type PrivateContextResult,
+} from "@gitmog/private-context";
 import { createFileCodeDnaCache, createFileDerivedFeatureCache } from "@gitmog/source-analysis";
 import { createFileQualityResultCache } from "@gitmog/quality-judge";
 import { parseRoastMode } from "@gitmog/scoring";
@@ -17,6 +28,7 @@ import { createPalette, parseColorMode, shouldUseColor } from "./color.js";
 import { PLAIN_PALETTE } from "./color.js";
 import {
   clearCache,
+  CACHE_MARKER_NAME,
   enforceCacheCeiling,
   inspectCache,
   prepareCacheRoot,
@@ -45,6 +57,7 @@ export interface CliContext {
   readonly isTty?: boolean | undefined;
   /** Progress has a separate stderr boundary and never falls back to stdout. */
   readonly stderrIsTty?: boolean | undefined;
+  readonly stdinIsTty?: boolean | undefined;
   readonly terminalColumns?: number | undefined;
   readonly writeProgress?: ((value: string) => void) | undefined;
   readonly progressClock?: ProgressClock | undefined;
@@ -59,6 +72,9 @@ export interface CliContext {
       }) => Promise<GithubAllowanceResult>)
     | undefined;
   readonly authorizeDevice?: typeof authorizeGithubDevice | undefined;
+  readonly authorizePrivateDevice?: typeof authorizePrivateGithubDevice | undefined;
+  readonly runPrivateContext?: typeof runPrivateContext | undefined;
+  readonly privateContextAppConfig?: PrivateContextAppConfig | undefined;
   readonly home?: string | undefined;
   readonly cwd?: string | undefined;
   readonly platform?: string | undefined;
@@ -109,6 +125,8 @@ export function usage(invokedAs = "gitmog"): string {
     "  --receipts   Every supporting receipt",
     "  --export     Self-contained .html or .svg battle",
     "  --no-quality Disable the automatic code-quality preview",
+    "  --private-context  Add selected private repositories separately",
+    "  --public-only      Suppress every private prompt and endpoint",
     "",
     "Coverage is the share of the public scorecard Git Mog could measure.",
     "If GitHub's anonymous limit is low, Git Mog may offer one-time sign-in.",
@@ -138,12 +156,14 @@ export function advancedUsage(invokedAs = "gitmog"): string {
     "  --roast clean|spicy|unhinged",
     "  --color auto|always|never",
     "  --no-motion                  Static progress updates",
-    "  --quality                    Require a complete preview; sign in once if needed",
+    "  --quality                    Require the full request tier; fail closed if unavailable",
     "  --no-quality                 Disable Code Quality Preview",
     "",
     "GitHub and cache:",
     "  --sign-in                    One-time GitHub sign-in for this run",
     "  --anonymous                  Never prompt; allow an honest limited read",
+    "  --private-context            Add selected private repositories separately",
+    "  --public-only                Suppress every private prompt and endpoint",
     "  --no-prompt                  Return instead of prompting",
     "  --refresh                    Refresh stable cached evidence",
     "  --no-cache                   Read and write no Git Mog cache",
@@ -180,6 +200,8 @@ const OPTIONS = {
   "no-quality": { type: "boolean" },
   "cache-info": { type: "boolean" },
   "clear-cache": { type: "boolean" },
+  "private-context": { type: "boolean" },
+  "public-only": { type: "boolean" },
   export: { type: "string" },
 } as const;
 
@@ -210,6 +232,7 @@ const renderCacheInfo = (info: CacheInspection): string =>
     `Newest valid entry: ${info.newestValidEntryAt ?? "none"}`,
     `Removed during inspection: ${String(info.expiredOrCorruptEntriesRemoved)} expired/corrupt`,
     "Raw source is never stored.",
+    "Private Context source and results are never stored.",
     "npm's cache is separate and is not controlled by Git Mog.",
     "",
   ].join("\n");
@@ -236,6 +259,31 @@ export type JsonErrorCode =
   | "export_failed"
   | "usage";
 
+const privateContextFailure = (
+  error: PrivateContextError,
+  jsonRequested: boolean,
+  publicStdout = "",
+): CliResult =>
+  jsonRequested
+    ? {
+        exitCode: 1,
+        stdout: `${JSON.stringify({ error: { ...error, retryable: false } }, null, 2)}\n`,
+        stderr: "",
+      }
+    : {
+        exitCode: 1,
+        stdout: publicStdout,
+        stderr: `${
+          error.code === "private_context_identity_mismatch"
+            ? "PRIVATE CONTEXT NOT AVAILABLE"
+            : error.code === "private_context_installation_required"
+              ? "PRIVATE CONTEXT · OPTIONAL"
+              : error.code === "private_context_selected_repositories_required"
+                ? "PRIVATE CONTEXT REQUIRES SELECTED REPOSITORIES"
+                : "PRIVATE CONTEXT NOT AVAILABLE"
+        }\n\n${error.signedInAs === undefined ? "" : `Signed in as @${error.signedInAs}.\n`}${error.message}${error.installationUrl === undefined ? "" : `\n\nOpen:\n${error.installationUrl}\n\nReturn here after installation.`}\n`,
+      };
+
 const jsonFailure = (
   code: JsonErrorCode,
   message: string,
@@ -246,6 +294,14 @@ const jsonFailure = (
   stdout: `${JSON.stringify({ error: { code, message, retryable } }, null, 2)}\n`,
   stderr: "",
 });
+
+const mixedJson = (value: unknown, privateContext?: PrivateContextResult): string => {
+  const rendered = `${JSON.stringify(value, null, 2)}\n`;
+  if (privateContext !== undefined && !mixedPrivateArtifactIsSafe(rendered, privateContext)) {
+    throw new Error("Mixed-context JSON failed its privacy boundary.");
+  }
+  return rendered;
+};
 
 const invalid = (message: string, invokedAs: string, jsonRequested = false): CliResult =>
   jsonRequested
@@ -307,6 +363,22 @@ const budgetFailure = (
   };
 };
 
+export const qualityPreflightMessage = (plan: GithubRequestPlan["quality"]): string => {
+  switch (plan.limitationReason) {
+    case "request-budget-limited":
+      return "More GitHub requests may improve Code Quality Preview.\nComplete coverage also depends on supported TypeScript/JavaScript source.";
+    case "mixed":
+      return "More GitHub requests may help, but supported-source coverage will still be limited.";
+    case "supported-language-limited":
+    case "eligible-source-limited":
+      return "Code Quality Preview is limited by supported source, not GitHub request capacity. Sign-in will not change this result.";
+    case "attribution-limited":
+      return "Code Quality Preview is limited by user-linked attribution, not GitHub request capacity.";
+    default:
+      return "Code Quality Preview coverage is limited; the current evidence does not show that sign-in would improve it.";
+  }
+};
+
 const authorizeOnce = async (
   context: CliContext,
 ): Promise<
@@ -346,6 +418,91 @@ const authorizeOnce = async (
     return { ok: false, message: "GitHub returned permissions Git Mog did not request." };
   }
   return { ok: true, token: result.token };
+};
+
+const authenticatedPublicLogin = async (
+  token: string,
+  context: CliContext,
+): Promise<string | null> => {
+  const client = new GithubHttpClient({
+    token,
+    ...(context.fetchImpl === undefined ? {} : { fetchImpl: context.fetchImpl }),
+    maxRequests: 1,
+    userAgent: "gitmog-public-capacity-identity",
+  });
+  const response = await client.get<unknown>("/user");
+  if (!response.ok || typeof response.data !== "object" || response.data === null) return null;
+  const login = (response.data as { readonly login?: unknown }).login;
+  return typeof login === "string" ? normalizeGithubLogin(login) : null;
+};
+
+const collectPrivateContext = async (
+  handles: readonly [string] | readonly [string, string],
+  publicToken: string | undefined,
+  context: CliContext,
+): Promise<{ readonly result?: PrivateContextResult; readonly error?: PrivateContextError }> => {
+  const validated = validatePrivateContextAppConfig(context.privateContextAppConfig);
+  if (!validated.ok) {
+    return {
+      error: {
+        code: "private_context_configuration_invalid",
+        message: "This build does not contain a valid Private Context GitHub App contract.",
+      },
+    };
+  }
+  const authorize = context.authorizePrivateDevice ?? authorizePrivateGithubDevice;
+  const authorized = await authorize({
+    config: validated.config,
+    ...(publicToken === undefined ? {} : { forbiddenTokens: [publicToken] }),
+    ...(context.fetchImpl === undefined ? {} : { fetchImpl: context.fetchImpl }),
+    ...(context.signal === undefined ? {} : { signal: context.signal }),
+    onPrompt: (prompt) => {
+      context.writeOutput?.(
+        [
+          "PRIVATE CONTEXT SIGN-IN",
+          "",
+          "Git Mog will request read-only metadata and contents access for the private",
+          "repositories selected in the GitHub App installation.",
+          "",
+          "It cannot write, administer, read secrets, or execute repository code.",
+          "The token stays in memory for this run.",
+          "",
+          `Open: ${prompt.verificationUri}`,
+          `Code: ${prompt.userCode}`,
+          "",
+        ].join("\n"),
+      );
+    },
+  });
+  if (!authorized.ok) {
+    const code =
+      authorized.error === "conflicting_token_boundary"
+        ? "private_context_conflicting_token_boundaries"
+        : authorized.error === "access_denied"
+          ? "private_context_auth_denied"
+          : authorized.error === "expired"
+            ? "private_context_auth_expired"
+            : "private_context_auth_failed";
+    return {
+      error: {
+        code,
+        message: "Private Context authorization did not complete. The public result is unchanged.",
+      },
+    };
+  }
+  const privateRunner = context.runPrivateContext ?? runPrivateContext;
+  const outcome = await authorized.lease.use((token) =>
+    privateRunner({
+      handles,
+      token,
+      config: validated.config,
+      ...(context.fetchImpl === undefined ? {} : { fetchImpl: context.fetchImpl }),
+      ...(context.signal === undefined ? {} : { signal: context.signal }),
+      ...(context.now === undefined ? {} : { now: context.now }),
+    }),
+  );
+  authorized.lease.dispose();
+  return outcome.ok ? { result: outcome.result } : { error: outcome.error };
 };
 
 const machineErrorCode = (error: BattleError): JsonErrorCode =>
@@ -482,6 +639,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
             `Path: ${cleared.value.path}`,
             `Removed: ${String(cleared.value.bytesRemoved)} bytes across ${String(cleared.value.filesRemoved)} files`,
             "npm's cache was not touched.",
+            "Private Context stores no cache and had nothing to clear.",
             "",
           ].join("\n"),
           stderr: "",
@@ -568,6 +726,34 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       values.json === true,
     );
   }
+  if (values["private-context"] === true && values.anonymous === true) {
+    return invalid(
+      "--private-context cannot be combined with --anonymous; anonymous runs are public-only.",
+      context.invokedAs,
+      values.json === true,
+    );
+  }
+  if (values["private-context"] === true && values["public-only"] === true) {
+    return invalid(
+      "--private-context cannot be combined with --public-only.",
+      context.invokedAs,
+      values.json === true,
+    );
+  }
+  const publicOnly = values["public-only"] === true || values.anonymous === true;
+  let privateContextRequested = values["private-context"] === true;
+  if (
+    privateContextRequested &&
+    (values["no-prompt"] === true || context.prompt === undefined || context.stdinIsTty === false)
+  ) {
+    return privateContextFailure(
+      {
+        code: "private_context_auth_required",
+        message: "Private Context requires an interactive, session-only GitHub App sign-in.",
+      },
+      values.json === true,
+    );
+  }
   if (values.quality === true && values["no-quality"] === true) {
     return invalid(
       "--quality cannot be combined with --no-quality.",
@@ -640,45 +826,59 @@ export async function run(argv: readonly string[], context: CliContext): Promise
   const noCache = values["no-cache"] === true;
   const useFilesystem = context.useFilesystem !== false;
   const rootOptions = cacheRootOptions(context);
-  const preparedCache =
-    !noCache && useFilesystem ? prepareCacheRoot(rootOptions) : ({ ok: false } as const);
-  const persistentCache = !noCache && useFilesystem && preparedCache.ok;
-  const cacheDirectory = preparedCache.ok ? preparedCache.value : rootOptions.directory;
+  const canOfferSecondaryPrivateContext =
+    !publicOnly &&
+    values.anonymous !== true &&
+    values["no-prompt"] !== true &&
+    values.json !== true &&
+    context.prompt !== undefined &&
+    context.stdinIsTty !== false;
+  const cacheMarkerExists = existsSync(join(rootOptions.directory, CACHE_MARKER_NAME));
+  const deferNewCacheRoot =
+    !noCache &&
+    useFilesystem &&
+    !cacheMarkerExists &&
+    (privateContextRequested || canOfferSecondaryPrivateContext);
+  let cacheDirectory = rootOptions.directory;
   const afterCacheWrite = (): void => {
     enforceCacheCeiling({ ...rootOptions, directory: cacheDirectory });
   };
-  const snapshotCache = !persistentCache
-    ? null
-    : createFileSnapshotCache({
-        directory: join(cacheDirectory, "snapshots"),
-        afterWrite: afterCacheWrite,
-      });
-  const sourceCache = !persistentCache
-    ? null
-    : createFileCodeDnaCache({
-        directory: join(cacheDirectory, "analysis"),
-        afterWrite: afterCacheWrite,
-      });
-  const derivedCache = !persistentCache
-    ? null
-    : createFileDerivedFeatureCache({
-        directory: join(cacheDirectory, "features"),
-        afterWrite: afterCacheWrite,
-      });
-  const qualityCache = !persistentCache
-    ? null
-    : createFileQualityResultCache({
-        directory: join(cacheDirectory, "quality"),
-        afterWrite: afterCacheWrite,
-      });
-  const cachePolicy = {
+  let snapshotCache: ReturnType<typeof createFileSnapshotCache> | null = null;
+  let sourceCache: ReturnType<typeof createFileCodeDnaCache> | null = null;
+  let derivedCache: ReturnType<typeof createFileDerivedFeatureCache> | null = null;
+  let qualityCache: ReturnType<typeof createFileQualityResultCache> | null = null;
+  const initializePersistentCache = (): void => {
+    if (noCache || !useFilesystem || snapshotCache !== null) return;
+    const prepared = prepareCacheRoot(rootOptions);
+    if (!prepared.ok) return;
+    cacheDirectory = prepared.value;
+    snapshotCache = createFileSnapshotCache({
+      directory: join(cacheDirectory, "snapshots"),
+      afterWrite: afterCacheWrite,
+    });
+    sourceCache = createFileCodeDnaCache({
+      directory: join(cacheDirectory, "analysis"),
+      afterWrite: afterCacheWrite,
+    });
+    derivedCache = createFileDerivedFeatureCache({
+      directory: join(cacheDirectory, "features"),
+      afterWrite: afterCacheWrite,
+    });
+    qualityCache = createFileQualityResultCache({
+      directory: join(cacheDirectory, "quality"),
+      afterWrite: afterCacheWrite,
+    });
+  };
+  if (!deferNewCacheRoot) initializePersistentCache();
+  let cachePolicy: { read: boolean; write: boolean } = {
     read: !noCache && values.refresh !== true,
-    write: !noCache,
-  } as const;
+    write: !noCache && !privateContextRequested,
+  };
   let invocationToken = explicitToken.token;
   let invocationAuthenticationState: AuthenticationState =
     invocationToken === undefined ? "anonymous" : "explicit";
   let requestPlan: GithubRequestPlan | null = null;
+  let publicSignInJustSucceeded = false;
   if (context.skipBudgetPreflight !== true) {
     let authenticationState: AuthenticationState = invocationAuthenticationState;
     if (values["sign-in"] === true) {
@@ -693,6 +893,10 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       invocationToken = authorized.token;
       authenticationState = "device";
       invocationAuthenticationState = "device";
+      publicSignInJustSucceeded = true;
+      context.writeOutput?.(
+        "Signed in for public API capacity. Private repositories are still excluded.\n",
+      );
     }
 
     const makePlan = async () =>
@@ -757,6 +961,10 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         invocationToken = authorized.token;
         authenticationState = "device";
         invocationAuthenticationState = "device";
+        publicSignInJustSucceeded = true;
+        context.writeOutput?.(
+          "Signed in for public API capacity. Private repositories are still excluded.\n",
+        );
         planned = await makePlan();
         if (!planned.ok) {
           return budgetFailure(
@@ -810,6 +1018,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
     if (
       qualityEnabledForRun &&
       requestPlan.quality.disposition !== "complete" &&
+      requestPlan.quality.signInMayImprove &&
       invocationToken === undefined &&
       values.anonymous !== true &&
       values["no-prompt"] !== true &&
@@ -825,9 +1034,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
           ? "[s] sign in once, [l] run the bounded preview, [w] continue without quality"
           : "[s] sign in once, [w] continue without quality";
       const answer = (
-        await context.prompt(
-          `Code Quality Preview needs more public GitHub requests for complete coverage.\n${choices}: `,
-        )
+        await context.prompt(`${qualityPreflightMessage(requestPlan.quality)}\n${choices}: `)
       )
         .trim()
         .toLowerCase();
@@ -837,6 +1044,10 @@ export async function run(argv: readonly string[], context: CliContext): Promise
           invocationToken = authorized.token;
           authenticationState = "device";
           invocationAuthenticationState = "device";
+          publicSignInJustSucceeded = true;
+          context.writeOutput?.(
+            "Signed in for public API capacity. Private repositories are still excluded.\n",
+          );
           const qualityPlanned = await makePlan();
           if (qualityPlanned.ok) requestPlan = qualityPlanned.plan;
           else qualityEnabledForRun = false;
@@ -860,10 +1071,42 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         requestPlan.quality.disposition === "blocked"
           ? "github_limit_reached"
           : "github_budget_limited",
-        "A complete Code Quality Preview is not available within GitHub's current public request allowance. No collection began.",
+        `${qualityPreflightMessage(requestPlan.quality)} No collection began.`,
         context.timeZone,
       );
     }
+  }
+  if (
+    publicSignInJustSucceeded &&
+    invocationToken !== undefined &&
+    !publicOnly &&
+    !privateContextRequested &&
+    values["no-prompt"] !== true &&
+    values.json !== true &&
+    context.prompt !== undefined &&
+    context.stdinIsTty !== false
+  ) {
+    const login = await authenticatedPublicLogin(invocationToken, context);
+    const matches =
+      login === null
+        ? []
+        : positionals.filter((handle) => handle.toLowerCase() === login.toLowerCase());
+    if (login !== null && matches.length === 1) {
+      const answer = (
+        await context.prompt(
+          `Private repos are excluded by default.\nAdd selected private repos for @${login}?\n\n[n] public only  [p] private context: `,
+        )
+      )
+        .trim()
+        .toLowerCase();
+      privateContextRequested =
+        answer === "p" || answer === "private" || answer === "private context";
+    }
+  }
+  if (privateContextRequested) {
+    cachePolicy = { ...cachePolicy, write: false };
+  } else if (deferNewCacheRoot) {
+    initializePersistentCache();
   }
   const fetchOptions = {
     ...(invocationToken === undefined ? {} : { token: invocationToken }),
@@ -924,18 +1167,41 @@ export async function run(argv: readonly string[], context: CliContext): Promise
           invocationAuthenticationState,
         );
       }
+      const privateOutcome = privateContextRequested
+        ? await collectPrivateContext(positionals as [string], invocationToken, context)
+        : {};
+      const privateContext = privateOutcome.result;
       const stdout =
         values.json === true
-          ? `${JSON.stringify({ profile: withoutScanType(result.profile), sourceAnalysis: result.sourceAnalysis, ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}), requestBudget: result.requestBudget }, null, 2)}\n`
+          ? mixedJson(
+              {
+                evidenceMode:
+                  privateContext === undefined ? "public-only" : "public-with-private-context",
+                profile: withoutScanType(result.profile),
+                sourceAnalysis: result.sourceAnalysis,
+                ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
+                requestBudget: result.requestBudget,
+                ...(privateContext === undefined ? {} : { privateContext }),
+                ...(privateOutcome.error === undefined
+                  ? {}
+                  : { privateContextError: privateOutcome.error }),
+              },
+              privateContext,
+            )
           : renderProfile(result.profile, result.sourceAnalysis, {
               palette,
               columns: context.terminalColumns,
               details: values.details === true || values.receipts === true,
               receipts: values.receipts === true,
               ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
+              ...(privateContext === undefined ? {} : { privateContext }),
             });
       progress.update({ type: "command-complete" });
-      return { exitCode: 0, stdout, stderr: "" };
+      return privateOutcome.error === undefined
+        ? { exitCode: 0, stdout, stderr: "" }
+        : values.json === true
+          ? { exitCode: 1, stdout, stderr: "" }
+          : privateContextFailure(privateOutcome.error, false, stdout);
     }
 
     const result = await runBattle({
@@ -983,12 +1249,21 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         invocationAuthenticationState,
       );
     }
+    const privateOutcome = privateContextRequested
+      ? await collectPrivateContext(positionals as [string, string], invocationToken, context)
+      : {};
+    const privateContext = privateOutcome.result;
+    if (privateOutcome.error !== undefined && exportDestination !== null) {
+      progress.update({ type: "command-complete" });
+      return privateContextFailure(privateOutcome.error, values.json === true);
+    }
     if (exportDestination !== null) {
       const exported = writeBattleExport({
         battle: result.battle,
         source: result.sourceAnalysis,
         story: result.story,
         ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
+        ...(privateContext === undefined ? {} : { privateContext }),
         version: context.version,
         format: exportDestination.format,
         destination: exportDestination.path,
@@ -1007,7 +1282,15 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       return values.json === true
         ? {
             exitCode: 0,
-            stdout: `${JSON.stringify({ export: exported.value }, null, 2)}\n`,
+            stdout: mixedJson(
+              {
+                evidenceMode:
+                  privateContext === undefined ? "public-only" : "public-with-private-context",
+                export: exported.value,
+                ...(privateContext === undefined ? {} : { privateContext }),
+              },
+              privateContext,
+            ),
             stderr: "",
           }
         : {
@@ -1019,18 +1302,32 @@ export async function run(argv: readonly string[], context: CliContext): Promise
     if (values.json === true) {
       progress.update({ type: "command-complete" });
       return {
-        exitCode: 0,
-        stdout: `${JSON.stringify({ battle: battleJson(result), presentationVerdict: derivePresentationVerdict(result.battle, result.sourceAnalysis), sourceAnalysis: result.sourceAnalysis, story: result.story, ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}) }, null, 2)}\n`,
+        exitCode: privateOutcome.error === undefined ? 0 : 1,
+        stdout: mixedJson(
+          {
+            evidenceMode:
+              privateContext === undefined ? "public-only" : "public-with-private-context",
+            battle: battleJson(result),
+            presentationVerdict: derivePresentationVerdict(result.battle, result.sourceAnalysis),
+            sourceAnalysis: result.sourceAnalysis,
+            story: result.story,
+            ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
+            ...(privateContext === undefined ? {} : { privateContext }),
+            ...(privateOutcome.error === undefined
+              ? {}
+              : { privateContextError: privateOutcome.error }),
+          },
+          privateContext,
+        ),
         stderr: "",
       };
     }
     if (share !== null) {
       progress.update({ type: "command-complete" });
-      return {
-        exitCode: 0,
-        stdout: `${renderShare(result.battle, share, result.sourceAnalysis, result.story)}\n`,
-        stderr: "",
-      };
+      const shareStdout = `${renderShare(result.battle, share, result.sourceAnalysis, result.story, privateContext)}\n`;
+      return privateOutcome.error === undefined
+        ? { exitCode: 0, stdout: shareStdout, stderr: "" }
+        : privateContextFailure(privateOutcome.error, false, shareStdout);
     }
     const stdout =
       values.card === true
@@ -1038,6 +1335,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
             palette: PLAIN_PALETTE,
             columns: context.terminalColumns,
             ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
+            ...(privateContext === undefined ? {} : { privateContext }),
           })
         : renderBattle(result.battle, result.sourceAnalysis, result.story, {
             palette,
@@ -1045,9 +1343,12 @@ export async function run(argv: readonly string[], context: CliContext): Promise
             details: values.details === true || values.receipts === true,
             receipts: values.receipts === true,
             ...(qualityEnabledForRun ? { qualityPreview: result.qualityPreview } : {}),
+            ...(privateContext === undefined ? {} : { privateContext }),
           });
     progress.update({ type: "command-complete" });
-    return { exitCode: 0, stdout, stderr: "" };
+    return privateOutcome.error === undefined
+      ? { exitCode: 0, stdout, stderr: "" }
+      : privateContextFailure(privateOutcome.error, false, stdout);
   } catch {
     const error: BattleError = {
       code: "internal_error",

@@ -9,6 +9,7 @@ node scripts/turbo.mjs run test --filter=@gitmog/cli
 pnpm test
 pnpm build
 pnpm package:acceptance
+pnpm private-context:policy:check
 pnpm verify
 ```
 
@@ -18,3 +19,10 @@ both bins and supported surfaces. Quality fixtures and the informational-only po
 independent commands so parser behavior, policy, and package acceptance are checked separately.
 The required [CLI benchmark](BENCHMARKS.md) gates deterministic request reconciliation while
 recording hosted-runner timing as informational evidence.
+
+Private Context tests are offline and synthetic. They cover device polling and denial, empty scope,
+one-use token lifetime, selected-installation enforcement, identity binding, personal versus
+organization maintenance, author-linked attribution, request/parser bounds, aggregate receipt
+closure, complete output scanning, zero persistence, public-result byte invariance, and 60/80/100
+column mixed-context surfaces. Public CI receives no GitHub App token and names no private
+repository.

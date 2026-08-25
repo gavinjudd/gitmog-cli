@@ -1,6 +1,6 @@
 # Quality Judge
 
-Quality Judge is a separate, versioned static-analysis preview in v0.3.1. It evaluates
+Quality Judge is a separate, versioned static-analysis preview in v0.4.0. It evaluates
 two noninterchangeable readings:
 
 - **Maintained codebase:** engineering qualities in repositories a profile publicly owns or
@@ -37,6 +37,12 @@ permits. Authenticated analysis uses the complete 21-source plus 12-attribution 
 permits. Cache hits may save calls but never promote a profile to a larger tier, and opponent or
 repository ordering cannot change its tier. Planned opportunity and current-invocation telemetry
 are reported separately; a whole-result cache hit reports zero current HTTP calls.
+
+The request planner separately reports planned additional calls, supported-language opportunity,
+eligible-file opportunity, attribution opportunity, and a typed limitation reason. Sign-in is
+offered only when more requests can materially improve the reading; it cannot overcome absent or
+exhausted TypeScript/JavaScript source. Private Context reuses the same parser bounds but returns a
+separate source-free aggregate reading and never enters the public Quality Preview object.
 
 The separate 29-point instrument normalizes only across available dimensions and reports the
 result as `previewScore` with coverage. It never enters the reserved canonical scorecard points.

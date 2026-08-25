@@ -48,6 +48,7 @@ const runtimeDirectories = [
   "cli",
   "github",
   "personality",
+  "private-context",
   "quality-judge",
   "scoring",
   "source-analysis",

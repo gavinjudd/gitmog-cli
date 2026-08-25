@@ -22,15 +22,77 @@ const miss: RequestPlanCacheState = {
   analysisHit: false,
   qualityHit: false,
   maximumSourceRequests: 4,
+  supportedSourceOpportunity: null,
+  eligibleFileOpportunity: null,
+  attributionOpportunity: null,
+  cachedQualityLimitationReason: null,
 };
 const warm: RequestPlanCacheState = {
   snapshotHit: true,
   analysisHit: true,
   qualityHit: true,
   maximumSourceRequests: 1,
+  supportedSourceOpportunity: true,
+  eligibleFileOpportunity: true,
+  attributionOpportunity: true,
+  cachedQualityLimitationReason: null,
 };
 
 describe("buildGithubRequestPlan", () => {
+  it("separates budget, supported-language, eligible-source, and mixed quality limits", () => {
+    const planFor = (profile: RequestPlanCacheState) =>
+      buildGithubRequestPlan({
+        authenticationState: "anonymous",
+        profiles: [profile],
+        allowance: allowance(20),
+      }).quality;
+    expect(
+      planFor({
+        ...miss,
+        eligibleFileOpportunity: false,
+        supportedSourceOpportunity: false,
+        attributionOpportunity: false,
+      }),
+    ).toMatchObject({
+      limitationReason: "eligible-source-limited",
+      signInMayImprove: false,
+      eligibleFileOpportunity: false,
+      supportedSourceOpportunity: false,
+    });
+    expect(
+      planFor({
+        ...miss,
+        eligibleFileOpportunity: true,
+        supportedSourceOpportunity: false,
+        attributionOpportunity: false,
+      }),
+    ).toMatchObject({
+      limitationReason: "supported-language-limited",
+      signInMayImprove: false,
+    });
+    expect(
+      planFor({
+        ...miss,
+        eligibleFileOpportunity: true,
+        supportedSourceOpportunity: true,
+        attributionOpportunity: true,
+      }),
+    ).toMatchObject({
+      limitationReason: "request-budget-limited",
+      signInMayImprove: true,
+      plannedAdditionalCalls: 0,
+    });
+    expect(
+      planFor({
+        ...miss,
+        eligibleFileOpportunity: true,
+        supportedSourceOpportunity: true,
+        attributionOpportunity: true,
+        cachedQualityLimitationReason: "supported-language-limited",
+      }),
+    ).toMatchObject({ limitationReason: "mixed", signInMayImprove: true });
+  });
+
   it.each([
     [33, "complete", [16, 16]],
     [32, "complete", [16, 16]],

@@ -1,12 +1,14 @@
-export const QUALITY_JUDGE_RESULT_VERSION = "0.3.1-preview.2";
+import type { QualityLimitationReason } from "@gitmog/github";
+
+export const QUALITY_JUDGE_RESULT_VERSION = "0.4.0-preview.1";
 export const QUALITY_PARSER_CONTRACT_VERSION = "1.0.0-typescript-ast";
 export const QUALITY_SOURCE_SELECTION_VERSION = "1.0.0-stratified-public-source";
 export const QUALITY_ATTRIBUTION_VERSION = "1.0.0-public-path-commits";
 export const QUALITY_DIMENSION_FORMULA_VERSION = "1.0.0-preview-29-point";
 export const QUALITY_VALIDATION_CONTRACT_VERSION = "1.0.0-engineering-validation";
 export const QUALITY_PRESENTATION_VERSION = "1.0.0-six-line-preview";
-export const QUALITY_CACHE_VERSION = "1.1.0-stable-result-core";
-export const QUALITY_REQUEST_PLAN_VERSION = "1.0.0-bounded-opportunity";
+export const QUALITY_CACHE_VERSION = "1.2.0-typed-limitation-reason";
+export const QUALITY_REQUEST_PLAN_VERSION = "1.1.0-typed-limitation-reason";
 export const QUALITY_REQUEST_TELEMETRY_VERSION = "1.0.0-current-invocation";
 
 export const QUALITY_DIMENSION_IDS = Object.freeze([
@@ -128,6 +130,7 @@ export interface QualityJudgeResult {
   readonly status: QualityStatus;
   readonly activation: "preview-only";
   readonly scoreInfluence: 0;
+  readonly limitationReason: QualityLimitationReason;
   readonly maintainedCodebase: QualityReading;
   readonly attributedCode: AttributedQualityReading;
   readonly requestPlan: QualityRequestPlan;

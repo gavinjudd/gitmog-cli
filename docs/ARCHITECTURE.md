@@ -8,7 +8,8 @@ personality -> github + analyzers
 source-analysis -> github + analyzers + personality + scoring
 battle -> github + personality + scoring + source-analysis
 quality-judge -> github (safe digests and immutable source identities only)
-cli -> battle and presentation dependencies
+private-context -> github + quality-judge + scoring types
+cli -> battle + private-context and presentation dependencies
 distribution -> bundled CLI
 ```
 
@@ -18,6 +19,12 @@ them. The package is bundled into `dist/gitmog.mjs`; workspace imports and devel
 not survive into the tarball. Quality Judge attaches only after the canonical battle has been
 built. Canonical scoring, winner selection, battle-key construction, and scorecard serialization
 have no dependency path into Quality Judge.
+
+`packages/private-context` is another one-way additive boundary. It never imports into scoring,
+battle, public request planning, public collection, public source analysis, or Quality Judge's
+public result. The CLI completes the canonical public object first, then may attach an aggregate
+Private Context object. An invariant helper compares the canonical public serialization before
+and after attachment byte for byte.
 
 The TypeScript/JavaScript parser is a separate allowlisted worker asset. The main process sends
 bounded source to that worker, receives only derived features or structured failures, and

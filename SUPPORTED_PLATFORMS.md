@@ -5,3 +5,7 @@ builds use Node 24.19.0. Public CI exercises the same exact packed artifact on s
 Ubuntu 24.04 x64 and ARM64, Windows 2025 x64, Windows 11 ARM64, macOS 15 ARM64, and macOS 15
 Intel lanes. A platform is claimed for a release only after that acceptance passes. The v0.2.2 historical
 claim remains native Apple Silicon macOS and Windows x64.
+
+Private Context uses the same pure-Node package and parser worker on each supported lane. Platform
+acceptance is synthetic and offline; public CI never receives a GitHub App token or private
+repository identifier. Live selected-repository acceptance is a separate release-candidate gate.

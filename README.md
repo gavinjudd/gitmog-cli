@@ -10,6 +10,27 @@ It is not a hiring score and does not claim to measure private work, intelligenc
 engineering ability. Every scored claim has public evidence. Target repositories are never
 cloned or executed, and raw source is never persisted.
 
+## Optional Private Context
+
+Public-only remains the default. `--private-context` can add a separate aggregate reading from
+private repositories deliberately selected during installation of the read-only Git Mog Private
+Context GitHub App:
+
+```sh
+npx -y gitmog alice bob --private-context
+```
+
+The authenticated login must match one participant. All-repository installations are refused.
+The app has only metadata read and contents read permission, with no private key, client secret,
+webhook, write, admin, organization, or account access. Its device token is memory-only; raw source
+is process-only; no private cache exists; names and paths never enter results. Target code is never
+executed. Private Context cannot change the public score or winner, and every mixed surface says
+who added context and that the PUBLIC WINNER uses public evidence.
+
+Use `--public-only` to suppress every private prompt and endpoint. `--anonymous` implies
+public-only. See [docs/PRIVATE_CONTEXT.md](docs/PRIVATE_CONTEXT.md) for exact bounds, revocation,
+organization approval, and maintained-versus-attributed behavior.
+
 ## Public development upstream
 
 This repository is the authoritative editable source for the shipped CLI runtime beginning
@@ -46,7 +67,7 @@ commit evidence associates sampled paths with that profile. Missing attribution 
 evidence.
 
 TypeScript and JavaScript use the pinned TypeScript AST parser in a resource-limited worker.
-Python, Go, and other languages are unsupported in v0.3.1 and reduce preview coverage instead of
+Python, Go, and other languages are unsupported in v0.4.0 and reduce preview coverage instead of
 quality. Target code is never cloned, installed, imported, built, tested, or executed; raw source
 is process-only and is never stored in receipts, caches, logs, or exports.
 

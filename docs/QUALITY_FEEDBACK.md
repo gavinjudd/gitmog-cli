@@ -13,5 +13,8 @@ immutable commit, safe path, receipt ID, or limitation ID may be supplied as con
 copy target source into the issue or fixture. Never submit credentials, private source, personal
 information, generated dependencies, or an executable target project.
 
+Use the [Code Quality feedback Discussion category](https://github.com/gavinjudd/gitmog-cli/discussions/categories/code-quality-feedback)
+for false positives, false negatives, supported-language gaps, and Code Quality Preview behavior.
+
 Accepted fixtures join the engineering-validation suite. They can refine the separate preview but
 cannot change the canonical score, winner, verdict, battle identity, or `scoreInfluence: 0` policy.

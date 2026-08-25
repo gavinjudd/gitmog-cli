@@ -1,8 +1,8 @@
 {
   "name": "gitmog",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "type": "module",
-  "description": "Deterministic public-GitHub profile battles with a parser-backed Quality Preview.",
+  "description": "Deterministic public-GitHub battles with optional aggregate Private Context.",
   "license": "MIT",
   "repository": {
     "type": "git",

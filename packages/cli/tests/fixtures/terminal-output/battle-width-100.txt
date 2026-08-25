@@ -4,7 +4,7 @@ Coverage: @strongmaintainer 59% · @sidequester 54%
 » strongmaintainer tests 100% of the inspected work. sidequester tests 0% and hopes. [1]
 THE FIGHT
 TOOLING         100–0  @strongmaintainer · Project automation: 3/3–0/3 [2]
-TESTS           98–0  @strongmaintainer · Automated tests: 100%–0% [3]
+TESTS           98–0  @strongmaintainer · CI-backed testing: 3/3–0/3 [3]
 COMMIT QUALITY  94–9  @strongmaintainer · Revert rate: 0%–9.1% [4]
 THE READ
 @strongmaintainer — Tests: 25 per 100 source files in inspected trees. [5]
@@ -16,11 +16,11 @@ Attributed code @strongmaintainer 81 (67%) · @sidequester 89 (100%)
 @sidequester — 0 high-complexity funcs · project-0/index.js:1 [RQ1]
 Separate from the battle score.
 RECEIPTS
-[1] Automated tests — 3/3 vs 0/3
+[1] Repositories containing tests — 3/3 vs 0/3
 [2] Project automation — 3/3 vs 0/3
-[3] Automated tests — 100% vs 0%
+[3] CI-backed testing — 3/3 vs 0/3
 [4] Revert rate — 0% vs 9.1%
-[5] @strongmaintainer — Test files 25 per 100 source files
+[5] @strongmaintainer — Test-file density 25 per 100 source files
 [6] @sidequester — Last public update 0d ago; Commit messages — 64% are one word or shorter
 More: --details · --receipts · --share x
 Rematch: gitmog strongmaintainer sidequester

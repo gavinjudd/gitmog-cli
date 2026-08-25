@@ -27,6 +27,7 @@
     "@gitmog/battle": "workspace:*",
     "@gitmog/github": "workspace:*",
     "@gitmog/personality": "workspace:*",
+    "@gitmog/private-context": "workspace:*",
     "@gitmog/quality-judge": "workspace:*",
     "@gitmog/scoring": "workspace:*",
     "@gitmog/source-analysis": "workspace:*"

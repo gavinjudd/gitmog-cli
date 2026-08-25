@@ -87,6 +87,27 @@ uses no client secret, and keeps the resulting token in process memory only for 
 invocation. It neither requests nor receives private-repository, organization, write,
 admin, gist, or workflow permission.
 
+Private Context is a separate trust boundary. It uses a distinct public GitHub App with device
+flow, repository metadata read, contents read, no other permission, no webhook, no private key,
+and no client secret. Its user access token is held in a one-use in-memory lease and cannot enter
+the public request planner, collector, snapshots, source/quality caches, battle key, evidence
+identity, or request telemetry. Any refresh token returned by GitHub is discarded. The app token
+never enters process arguments, environment files, Keychain, npm configuration, logs, JSON,
+exports, or caches.
+
+The app installation must report `repository_selection = selected`; all-repository installations
+are refused before repository listing. The authenticated login must match exactly one participant.
+Private collection uses bounded REST metadata, immutable trees/blobs, releases, and GitHub-linked
+path commits only. It never requests issues, pull requests, Discussions, Actions, logs, secrets,
+environments, deployments, collaborators, members, billing, administration, or webhooks.
+
+Private source uses the existing parser boundary with stricter collection sensitivity: at most five
+selected repositories, 18 files, 20 KiB decoded per file, 300 KiB per profile, 64 requests per
+invocation, 12 per repository, and 12 attribution requests. Source, repository names/owners,
+paths, URLs, IDs, SHAs, commit messages, derived features, receipts, and private request plans are
+process-only. No persistent private cache exists. Only source-free aggregate counts and separate
+`P` receipts may cross into output; every mixed artifact passes the private-output scanner.
+
 Tokenless analysis remains bounded to 16 requests per profile and 32 per battle. A typed,
 cache-aware request plan checks the current allowance before expensive collection and makes
 no profile or source requests when no honest result fits. Request counters reflect actual

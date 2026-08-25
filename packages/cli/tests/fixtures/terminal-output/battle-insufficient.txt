@@ -4,20 +4,15 @@ Coverage: @ghostmode 26% · @lowpublictwo 26%
 » 0 points apart. Mutual aura. Shake hands and go back to main. [1]
 THE FIGHT
 UPKEEP   60–60  tie · Project structure: 60%–60% [2]
-TESTS    0–0  tie · Automated tests: 0%–0% [3]
+TESTS    0–0  tie · CI-backed testing: 0/1–0/1 [3]
 TOOLING  0–0  tie · Project automation: 0/1–0/1 [4]
 CODE QUALITY · PREVIEW
-Maintained codebase @ghostmode — not enough supported source · @lowpublictwo —
-not enough supported source
-Attributed code @ghostmode — not enough supported source · @lowpublictwo — not
-enough supported source
-@ghostmode — limited parser-supported evidence.
-@lowpublictwo — limited parser-supported evidence.
+Not enough eligible TypeScript/JavaScript source for either profile.
 Separate from the battle score.
 RECEIPTS
-[1] Automated tests — 0/1 vs 0/1
+[1] Repositories containing tests — 0/1 vs 0/1
 [2] Project structure — 60% vs 60%
-[3] Automated tests — 0% vs 0%
+[3] CI-backed testing — 0/1 vs 0/1
 [4] Project automation — 0/1 vs 0/1
 More: --details · --receipts · --share x
 Rematch: gitmog ghostmode lowpublictwo

@@ -1,5 +1,14 @@
 # Roadmap
 
+## v0.4.0 — Optional Private Context
+
+- keep PUBLIC BATTLE scoring and the PUBLIC WINNER public-only and byte-invariant;
+- add selected private repositories through a separate minimal-permission GitHub App;
+- expose only source-free aggregate context for the matching authenticated participant;
+- correct request-limit wording, TESTS labels, round support, duplicate receipts, and insufficient
+  Quality Preview output;
+- retain `scoreInfluence: 0`, zero runtime dependencies, and no target execution.
+
 ## v0.3.1 — Quality policy and maintenance
 
 - retire the unused external reviewer proposal without activating Quality Judge scoring;

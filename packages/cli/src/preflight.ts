@@ -1,4 +1,6 @@
 import {
+  isEligibleSourcePath,
+  supportedQualityPath,
   MAXIMUM_SOURCE_REQUESTS_PER_PROFILE,
   REQUEST_BUDGETS,
   buildGithubRequestPlan,
@@ -90,6 +92,10 @@ const cacheStateFor = (
       analysisHit: false,
       qualityHit: false,
       maximumSourceRequests: MAXIMUM_SOURCE_REQUESTS_PER_PROFILE,
+      supportedSourceOpportunity: null,
+      eligibleFileOpportunity: null,
+      attributionOpportunity: null,
+      cachedQualityLimitationReason: null,
     };
   }
   const key = snapshotCacheKey({
@@ -104,6 +110,10 @@ const cacheStateFor = (
       analysisHit: false,
       qualityHit: false,
       maximumSourceRequests: MAXIMUM_SOURCE_REQUESTS_PER_PROFILE,
+      supportedSourceOpportunity: null,
+      eligibleFileOpportunity: null,
+      attributionOpportunity: null,
+      cachedQualityLimitationReason: null,
     };
   }
   const opportunity = resolveSourceOpportunityScope(snapshot);
@@ -118,11 +128,22 @@ const cacheStateFor = (
     attributionRequestCap: authenticationState === "anonymous" ? 0 : 12,
   });
   const quality: QualityJudgeResult | undefined = caches.quality?.get(qualityKey);
+  const eligiblePaths = snapshot.inspections.flatMap(
+    (inspection) =>
+      inspection.tree?.filter(
+        (entry) => entry.type === "blob" && isEligibleSourcePath(entry.path),
+      ) ?? [],
+  );
+  const supportedPaths = eligiblePaths.filter((entry) => supportedQualityPath(entry.path));
   return {
     snapshotHit: true,
     analysisHit: analysis !== undefined,
     qualityHit: quality !== undefined,
     maximumSourceRequests: opportunity.sourceRequestAllowance,
+    supportedSourceOpportunity: supportedPaths.length > 0,
+    eligibleFileOpportunity: eligiblePaths.length > 0,
+    attributionOpportunity: supportedPaths.length > 0,
+    cachedQualityLimitationReason: quality?.limitationReason ?? null,
   };
 };
 

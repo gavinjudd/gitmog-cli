@@ -25,6 +25,7 @@ for (const script of [
   "build",
   "quality:fixtures",
   "quality:policy:check",
+  "private-context:policy:check",
   "quality:benchmark:check",
   "benchmark:check",
   "community:check",

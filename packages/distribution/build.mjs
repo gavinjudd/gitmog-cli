@@ -10,6 +10,9 @@ const output = resolve(packageDirectory, "dist/gitmog.mjs");
 const parserInput = resolve(packageDirectory, "../quality-judge/dist/parser-worker.js");
 const parserOutput = resolve(packageDirectory, "dist/parsers/quality-worker.mjs");
 const manifest = JSON.parse(readFileSync(resolve(packageDirectory, "package.json"), "utf8"));
+const privateContextApp = JSON.parse(
+  readFileSync(resolve(packageDirectory, "../../config/private-context-app.json"), "utf8"),
+);
 
 rmSync(resolve(packageDirectory, "dist"), { recursive: true, force: true });
 mkdirSync(dirname(output), { recursive: true });
@@ -110,6 +113,11 @@ writeFileSync(
       version: manifest.version,
       entry: "gitmog.mjs",
       parserAssets: ["parsers/quality-worker.mjs"],
+      privateContext: {
+        app: privateContextApp,
+        result: "1.0.0-selected-private-repositories",
+        request: "1.0.0-bounded-private-rest",
+      },
     },
     null,
     2,

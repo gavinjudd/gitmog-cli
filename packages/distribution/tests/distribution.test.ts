@@ -10,6 +10,9 @@ const repositoryDirectory = resolve(packageDirectory, "../..");
 const qualityVersions = JSON.parse(
   readFileSync(resolve(repositoryDirectory, "config/quality-versions.json"), "utf8"),
 ) as { readonly result: string; readonly parserContract: string };
+const privateContextApp = JSON.parse(
+  readFileSync(resolve(repositoryDirectory, "config/private-context-app.json"), "utf8"),
+) as { readonly appId: string; readonly clientId: string; readonly slug: string };
 const manifest = JSON.parse(readFileSync(resolve(packageDirectory, "package.json"), "utf8")) as {
   readonly name: string;
   readonly version: string;
@@ -29,7 +32,7 @@ const binPath = resolve(packageDirectory, "bin/gitmog.mjs");
 describe("standalone npm distribution", () => {
   it("has the public identity, release metadata, accepted engines and both bins", () => {
     expect(manifest.name).toBe("gitmog");
-    expect(manifest.version).toBe("0.3.1");
+    expect(manifest.version).toBe("0.4.0");
     expect(manifest.license).toBe("MIT");
     expect(manifest.repository).toEqual({
       type: "git",
@@ -75,6 +78,11 @@ describe("standalone npm distribution", () => {
     expect(bundle).toContain("default-full-snapshot:2");
     expect(bundle).toContain(qualityVersions.result);
     expect(bundle).toContain(qualityVersions.parserContract);
+    expect(bundle).toContain(privateContextApp.appId);
+    expect(bundle).toContain(privateContextApp.clientId);
+    expect(bundle).toContain(privateContextApp.slug);
+    expect(bundle).toContain("1.0.0-selected-private-repositories");
+    expect(bundle).toContain("1.0.0-bounded-private-rest");
     expect(bundle).toContain("parsers/quality-worker.mjs");
     expect(parserBundle).toContain(qualityVersions.parserContract);
     expect(parserBundle).not.toContain("sourceMappingURL=");

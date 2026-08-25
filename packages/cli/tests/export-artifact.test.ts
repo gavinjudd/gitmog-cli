@@ -29,6 +29,7 @@ import {
   resolveExportDestination,
   writeBattleExport,
 } from "../src/export-artifact.js";
+import { PRIVATE_CONTEXT_FIXTURE } from "./private-context-fixture.js";
 
 let battle: BattleResult;
 let source: SourceAnalysisResult;
@@ -78,6 +79,23 @@ describe("self-contained battle exports", () => {
     expect(text).not.toContain("C:\\Users\\");
     expect(text).not.toContain("snapshotKey");
     expect(text).not.toContain("battleKey");
+  });
+
+  it.each(["html", "svg"] as const)("adds a safe aggregate mixed-context panel to %s", (format) => {
+    const text = renderBattleExport({
+      battle,
+      source,
+      story,
+      version: "0.4.0",
+      format,
+      privateContext: PRIVATE_CONTEXT_FIXTURE,
+    }).toString("utf8");
+    expect(text).toContain("MIXED CONTEXT");
+    expect(text).toContain("PUBLIC WINNER");
+    expect(text).toContain("3 of 4 analyzed private repositories contain CI configuration.");
+    expect(text).not.toContain("sensitive-private-project");
+    expect(text).not.toContain("repositoryId");
+    expect(text).not.toContain("sourceUrl");
   });
 
   it("includes semantic HTML, print rules, CSP, three comparisons, and four to six receipts", () => {

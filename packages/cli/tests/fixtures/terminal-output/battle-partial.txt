@@ -3,9 +3,9 @@ GIT MOG
 Coverage: @strongmaintainer 59% · @partialtree 59%
 » 15 releases at 3.0 a project. Somebody tags things. [1]
 THE FIGHT
-COLLABORATION  85–43  @strongmaintainer · External contributions: 2–0 [2]
-SHIPPING       96–67  @strongmaintainer · Long-running projects: 5–2 [3]
-ACTIVITY       88–63  @strongmaintainer · Active weeks: 12/12–7/12 [4]
+SHIPPING BREADTH  85–43  @strongmaintainer · External contributions: 2–0 [2]
+SHIPPING          96–67  @strongmaintainer · Long-running projects: 5–2 [3]
+ACTIVITY          88–63  @strongmaintainer · Active weeks: 12/12–7/12 [4]
 THE READ
 @strongmaintainer — Tests: 25 per 100 source files in inspected trees. [5]
 @partialtree — Tests: 25 per 100 source files in inspected trees. [6]
@@ -20,8 +20,8 @@ RECEIPTS
 [2] External contributions — 2 vs 0
 [3] Long-running projects — 5 vs 2
 [4] Active weeks — 12/12 vs 7/12
-[5] @strongmaintainer — Test files 25 per 100 source files
-[6] @partialtree — Test files 25 per 100 source files
+[5] @strongmaintainer — Test-file density 25 per 100 source files
+[6] @partialtree — Test-file density 25 per 100 source files
 More: --details · --receipts · --share x
 Rematch: gitmog strongmaintainer partialtree
 Next: gitmog strongmaintainer <handle>

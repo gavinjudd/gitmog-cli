@@ -30,6 +30,7 @@ export const RELEASE_WORKSPACE_PACKAGES = Object.freeze([
   "packages/distribution",
   "packages/github",
   "packages/personality",
+  "packages/private-context",
   "packages/quality-judge",
   "packages/scoring",
   "packages/source-analysis",
@@ -77,6 +78,28 @@ function readQualityPolicy() {
 function readQualityVersions() {
   const path = resolve(root, "config/quality-versions.json");
   return existsSync(path) ? readJson(path) : null;
+}
+
+function readPrivateContextContract() {
+  const app = readJson(resolve(root, "config/private-context-app.json"));
+  if (
+    app.privateKeys !== 0 ||
+    app.clientSecrets !== 0 ||
+    app.deviceFlow !== true ||
+    app.installationSelectionRequired !== "selected" ||
+    app.permissions?.metadata !== "read" ||
+    app.permissions?.contents !== "read"
+  ) {
+    throw new Error("Release candidate requires the minimum-permission Private Context app.");
+  }
+  return {
+    app,
+    resultVersion: "1.0.0-selected-private-repositories",
+    requestVersion: "1.0.0-bounded-private-rest",
+    scoreInfluence: 0,
+    publicWinnerInfluence: 0,
+    persisted: false,
+  };
 }
 
 function parserAssets(files) {
@@ -175,6 +198,7 @@ export function releaseMetadata(input) {
       policy: input.policy,
       versions: input.qualityVersions,
     },
+    privateContext: input.privateContext,
     evidence: input.evidence,
   };
 }
@@ -281,6 +305,7 @@ export async function buildReleaseArtifact(argv = process.argv.slice(2)) {
     const assets = parserAssets(artifact.files);
     const policy = readQualityPolicy();
     const qualityVersions = readQualityVersions();
+    const privateContext = readPrivateContextContract();
     const licenseReview = readLicenseReview();
     const licenses = {
       schema: "gitmog-release-licenses-v1",
@@ -309,6 +334,7 @@ export async function buildReleaseArtifact(argv = process.argv.slice(2)) {
       developmentDependencies: licenseReview.dependencies,
       workspacePackages: RELEASE_WORKSPACE_PACKAGES,
       quality: { policy, versions: qualityVersions },
+      privateContext,
     };
     const evidenceDocuments = {
       "LICENSES.json": `${JSON.stringify(licenses, null, 2)}\n`,
@@ -336,6 +362,7 @@ export async function buildReleaseArtifact(argv = process.argv.slice(2)) {
       parserAssets: assets,
       policy,
       qualityVersions,
+      privateContext,
       evidence,
       ...hashes,
     });

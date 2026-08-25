@@ -1,0 +1,34 @@
+{
+  "name": "@gitmog/private-context",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Session-only selected-private-repository context that cannot influence the public battle.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gitmog/github": "workspace:*",
+    "@gitmog/quality-judge": "workspace:*",
+    "@gitmog/scoring": "workspace:*"
+  },
+  "devDependencies": {
+    "@gitmog/config": "workspace:*",
+    "@gitmog/test-fixtures": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

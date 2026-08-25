@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 import { dirname, join, parse, posix, relative, sep, win32 } from "node:path";
 
 import type { SourceAnalysisResult, StoryResult } from "@gitmog/source-analysis";
+import { mixedPrivateArtifactIsSafe, type PrivateContextResult } from "@gitmog/private-context";
 import type { QualityJudgePair, QualityReading } from "@gitmog/quality-judge";
 import type { BattleResult, BattleRound, EvidenceItem, Side } from "@gitmog/scoring";
 
@@ -61,6 +62,14 @@ interface ExportDocument {
     readonly rightMaintained: string;
     readonly leftAttributed: string;
     readonly rightAttributed: string;
+    readonly sharedLimitation: string | null;
+  } | null;
+  readonly privateContext: {
+    readonly subject: string;
+    readonly analyzedRepositories: number;
+    readonly maintainedRepositories: number;
+    readonly attributableRepositories: number;
+    readonly summary: readonly string[];
   } | null;
 }
 
@@ -71,6 +80,7 @@ export interface RenderBattleExportInput {
   readonly version: string;
   readonly format: BattleExportFormat;
   readonly qualityPreview?: QualityJudgePair | undefined;
+  readonly privateContext?: PrivateContextResult | undefined;
 }
 
 export interface WriteBattleExportInput extends RenderBattleExportInput {
@@ -123,15 +133,24 @@ const exportReceipts = (
   rounds: readonly BattleRound[],
 ): readonly string[] => {
   const selected = new Map<string, string>();
+  const factKeys = new Set<string>();
+  const visibleTexts = new Set<string>();
   const add = (side: Side, evidence: EvidenceItem | null): void => {
     if (evidence === null) return;
-    const key = `${side}:${evidence.id}`;
-    if (!selected.has(key)) {
-      selected.set(
-        key,
-        `@${terminalSafe(battle[side].username)} · ${terminalSafe(evidence.title)} — ${terminalSafe(evidence.detail)}`,
-      );
-    }
+    const text = `@${terminalSafe(battle[side].username)} · ${terminalSafe(evidence.title)} — ${terminalSafe(evidence.detail)}`;
+    const factKey = JSON.stringify({
+      side,
+      category: evidence.category,
+      metric: evidence.metric,
+      value: evidence.value ?? null,
+      repository: evidence.repository ?? null,
+      sourceUrl: evidence.sourceUrl,
+      detail: evidence.detail,
+    });
+    if (factKeys.has(factKey) || visibleTexts.has(text)) return;
+    factKeys.add(factKey);
+    visibleTexts.add(text);
+    selected.set(`${side}:${evidence.id}`, text);
   };
   for (const round of rounds) {
     add("left", evidenceFor(battle, "left", round.leftEvidenceId));
@@ -169,6 +188,26 @@ const exportQualityReading = (reading: QualityReading): string =>
     ? "not enough supported source"
     : `${String(reading.previewScore)} · coverage ${String(reading.coverage)}%`;
 
+const sharedQualityLimitation = (quality: QualityJudgePair): string | null => {
+  if (
+    quality.left.maintainedCodebase.previewScore !== null ||
+    quality.right.maintainedCodebase.previewScore !== null ||
+    quality.left.limitationReason !== quality.right.limitationReason
+  )
+    return null;
+  const explanation: Readonly<Record<QualityJudgePair["left"]["limitationReason"], string>> = {
+    "request-budget-limited":
+      "GitHub request capacity limited Code Quality Preview for both profiles.",
+    "supported-language-limited": "Not enough TypeScript/JavaScript source for either profile.",
+    "eligible-source-limited":
+      "Not enough eligible TypeScript/JavaScript source for either profile.",
+    "attribution-limited": "Not enough user-linked source for either attributed-code reading.",
+    mixed: "Request capacity and supported-source limits affected both profiles.",
+    unknown: "Not enough supported source for either profile.",
+  };
+  return explanation[quality.left.limitationReason];
+};
+
 const exportDocument = (input: RenderBattleExportInput): ExportDocument => {
   const { battle, source, story } = input;
   const presentation = derivePresentationVerdict(battle, source);
@@ -203,6 +242,23 @@ const exportDocument = (input: RenderBattleExportInput): ExportDocument => {
             rightMaintained: exportQualityReading(input.qualityPreview.right.maintainedCodebase),
             leftAttributed: exportQualityReading(input.qualityPreview.left.attributedCode),
             rightAttributed: exportQualityReading(input.qualityPreview.right.attributedCode),
+            sharedLimitation: sharedQualityLimitation(input.qualityPreview),
+          },
+    privateContext:
+      input.privateContext === undefined
+        ? null
+        : {
+            subject: `@${terminalSafe(input.privateContext.subject)}`,
+            analyzedRepositories: input.privateContext.repositorySelection.analyzedRepositories,
+            maintainedRepositories: input.privateContext.repositorySelection.maintainedRepositories,
+            attributableRepositories:
+              input.privateContext.repositorySelection.attributableRepositories,
+            summary:
+              input.privateContext.status === "insufficient"
+                ? [
+                    "Selected private repos were available, but not enough supported source qualified.",
+                  ]
+                : input.privateContext.receipts.slice(0, 3).map((receipt) => receipt.claim),
           },
   };
 };
@@ -229,6 +285,7 @@ const renderHtml = (document: ExportDocument): string => `<!doctype html>
     .player { border: 1px solid #30363d; padding: 18px; }
     .score { font-size: 34px; font-weight: 800; }
     .muted { color: #8b949e; }
+    .mixed { color: #58a6ff; font-weight: 700; }
     li { margin: 9px 0; overflow-wrap: anywhere; }
     code { color: #f0f6fc; overflow-wrap: anywhere; }
     @media (max-width: 620px) { .scoreboard, .reads { grid-template-columns: 1fr; } header, section, footer { padding: 20px; } }
@@ -241,6 +298,7 @@ const renderHtml = (document: ExportDocument): string => `<!doctype html>
     <p class="muted">GIT MOG</p>
     <h1>${escapeMarkup(document.leftHandle)} vs ${escapeMarkup(document.rightHandle)}</h1>
     <p class="verdict">${escapeMarkup(document.winner)} · ${escapeMarkup(document.presentation.label)}</p>
+    ${document.privateContext === null ? "" : `<p class="mixed">MIXED CONTEXT · ${escapeMarkup(document.privateContext.subject)} +${String(document.privateContext.analyzedRepositories)} PRIVATE · PUBLIC WINNER</p>`}
   </header>
   <section aria-labelledby="score-heading">
     <h2 id="score-heading">Score and coverage</h2>
@@ -251,7 +309,8 @@ const renderHtml = (document: ExportDocument): string => `<!doctype html>
   </section>
   <section aria-labelledby="fight-heading"><h2 id="fight-heading">Three decisive comparisons</h2><ol>${document.comparisons.map((entry) => `<li>${escapeMarkup(entry)}</li>`).join("")}</ol></section>
   <section aria-labelledby="read-heading"><h2 id="read-heading">The read</h2><div class="reads"><p><strong>${escapeMarkup(document.leftHandle)}</strong><br>${escapeMarkup(document.leftRead)}</p><p><strong>${escapeMarkup(document.rightHandle)}</strong><br>${escapeMarkup(document.rightRead)}</p></div></section>
-  ${document.quality === null ? "" : `<section aria-labelledby="quality-heading"><h2 id="quality-heading">Code Quality · Preview</h2><div class="reads"><p><strong>${escapeMarkup(document.leftHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.leftMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.leftAttributed)}</p><p><strong>${escapeMarkup(document.rightHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.rightMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.rightAttributed)}</p></div><p class="muted">Separate from the battle score.</p></section>`}
+  ${document.quality === null ? "" : document.quality.sharedLimitation === null ? `<section aria-labelledby="quality-heading"><h2 id="quality-heading">Code Quality · Preview</h2><div class="reads"><p><strong>${escapeMarkup(document.leftHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.leftMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.leftAttributed)}</p><p><strong>${escapeMarkup(document.rightHandle)}</strong><br>Maintained codebase: ${escapeMarkup(document.quality.rightMaintained)}<br>Attributed code: ${escapeMarkup(document.quality.rightAttributed)}</p></div><p class="muted">Separate from the battle score.</p></section>` : `<section aria-labelledby="quality-heading"><h2 id="quality-heading">Code Quality · Preview</h2><p>${escapeMarkup(document.quality.sharedLimitation)}</p><p class="muted">Separate from the battle score.</p></section>`}
+  ${document.privateContext === null ? "" : `<section aria-labelledby="private-heading"><h2 id="private-heading">Private Context · ${escapeMarkup(document.privateContext.subject)}</h2><p>${String(document.privateContext.analyzedRepositories)} analyzed · ${String(document.privateContext.maintainedRepositories)} maintained · ${String(document.privateContext.attributableRepositories)} attributable</p><ol>${document.privateContext.summary.map((entry) => `<li>${escapeMarkup(entry)}</li>`).join("")}</ol><p class="muted">Private context is separate from the public battle. The public winner uses public evidence only.</p></section>`}
   <section aria-labelledby="receipt-heading"><h2 id="receipt-heading">Public receipts</h2><ol>${document.receipts.map((entry) => `<li>${escapeMarkup(entry)}</li>`).join("")}</ol></section>
   <footer><p>${escapeMarkup(document.limitation)}</p><p>Git Mog ${escapeMarkup(document.version)} · Rematch: <code>${escapeMarkup(document.rematch)}</code></p></footer>
 </main>
@@ -304,20 +363,39 @@ const renderSvg = (document: ExportDocument): string => {
   const qualityLines =
     document.quality === null
       ? []
+      : document.quality.sharedLimitation === null
+        ? [
+            `${document.leftHandle} maintained: ${document.quality.leftMaintained}; attributed: ${document.quality.leftAttributed}`,
+            `${document.rightHandle} maintained: ${document.quality.rightMaintained}; attributed: ${document.quality.rightAttributed}`,
+            "Separate from the battle score.",
+          ]
+        : [document.quality.sharedLimitation, "Separate from the battle score."];
+  const privateLines =
+    document.privateContext === null
+      ? []
       : [
-          `${document.leftHandle} maintained: ${document.quality.leftMaintained}; attributed: ${document.quality.leftAttributed}`,
-          `${document.rightHandle} maintained: ${document.quality.rightMaintained}; attributed: ${document.quality.rightAttributed}`,
-          "Separate from the battle score.",
+          `MIXED CONTEXT · ${document.privateContext.subject} +${String(document.privateContext.analyzedRepositories)} PRIVATE · PUBLIC WINNER`,
+          `${String(document.privateContext.analyzedRepositories)} analyzed · ${String(document.privateContext.maintainedRepositories)} maintained · ${String(document.privateContext.attributableRepositories)} attributable`,
+          ...document.privateContext.summary,
+          "Private context is separate from the public battle. The public winner uses public evidence only.",
         ];
   const height =
     620 +
-    (comparisons.length + reads.length + qualityLines.length + receipts.length) * 24 +
-    (qualityLines.length > 0 ? 70 : 0);
+    (comparisons.length +
+      reads.length +
+      qualityLines.length +
+      privateLines.length +
+      receipts.length) *
+      24 +
+    (qualityLines.length > 0 ? 70 : 0) +
+    (privateLines.length > 0 ? 70 : 0);
   const comparisonY = 330;
   const readY = comparisonY + comparisons.length * 24 + 70;
   const qualityY = readY + reads.length * 24 + 70;
   const receiptY = qualityY + qualityLines.length * 24 + (qualityLines.length > 0 ? 70 : 0);
-  const footerY = receiptY + receipts.length * 24 + 70;
+  const privateY = receiptY;
+  const publicReceiptY = privateY + privateLines.length * 24 + (privateLines.length > 0 ? 70 : 0);
+  const footerY = publicReceiptY + receipts.length * 24 + 70;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${String(height)}" viewBox="0 0 1200 ${String(height)}" role="img" aria-labelledby="title description">
   <title id="title">${escapeMarkup(document.title)}: ${escapeMarkup(document.leftHandle)} versus ${escapeMarkup(document.rightHandle)}</title>
   <desc id="description">Scores, public scorecard coverage, presentation verdict, decisive comparisons, profile reads, public receipts, and rematch command.</desc>
@@ -334,8 +412,9 @@ const renderSvg = (document: ExportDocument): string => {
   ${svgText(["THE READ"], 80, readY - 34, "label")}
   ${svgText(reads, 80, readY, "body")}
   ${qualityLines.length === 0 ? "" : `${svgText(["CODE QUALITY · PREVIEW"], 80, qualityY - 34, "label")} ${svgText(qualityLines, 80, qualityY, "body")}`}
-  ${svgText(["PUBLIC RECEIPTS"], 80, receiptY - 34, "label")}
-  ${svgText(receipts, 80, receiptY, "body")}
+  ${privateLines.length === 0 ? "" : `${svgText(["PRIVATE CONTEXT"], 80, privateY - 34, "label")} ${svgText(privateLines, 80, privateY, "body")}`}
+  ${svgText(["PUBLIC RECEIPTS"], 80, publicReceiptY - 34, "label")}
+  ${svgText(receipts, 80, publicReceiptY, "body")}
   ${svgText(wrapText(document.limitation, 96), 80, footerY, "muted")}
   ${svgText(wrapText(`Git Mog ${document.version} · Rematch: ${document.rematch}`, 96), 80, footerY + 52, "muted")}
 </svg>
@@ -345,6 +424,12 @@ const renderSvg = (document: ExportDocument): string => {
 export function renderBattleExport(input: RenderBattleExportInput): Buffer {
   const document = exportDocument(input);
   const rendered = input.format === "html" ? renderHtml(document) : renderSvg(document);
+  if (
+    input.privateContext !== undefined &&
+    !mixedPrivateArtifactIsSafe(rendered, input.privateContext)
+  ) {
+    throw new Error("Mixed-context export failed its privacy boundary.");
+  }
   const bytes = Buffer.from(rendered, "utf8");
   if (bytes.byteLength > MAX_EXPORT_BYTES) {
     throw new Error(`Export exceeds the ${String(MAX_EXPORT_BYTES)}-byte limit.`);

@@ -4,6 +4,22 @@ All notable changes are documented here. Released artifacts remain tied to immut
 
 ## Unreleased
 
+## 0.4.0 - Optional Private Context and evidence clarity
+
+- Keep public-only as the default and add `--private-context` through a separate read-only GitHub
+  App whose repository identifiers, token, source, and nonaggregate derived features remain
+  process-only.
+- Bind Private Context to exactly one authenticated participant, refuse all-repository
+  installations, and disclose mixed context on terminal, card, share, JSON, HTML, and SVG output.
+- Prove that Private Context cannot alter the public score, winner, rounds, verdict, coverage,
+  evidence, battle key, source analysis, Code DNA, or Code Quality Preview.
+- Distinguish request-budget, supported-language, eligible-source, attribution, and mixed Quality
+  Preview limits so sign-in is offered only when requests can help.
+- Give TESTS metrics literal labels and denominators, keep round support inside its owning category,
+  deduplicate factual receipts, and collapse matching insufficient-quality explanations.
+- Keep TypeScript/JavaScript Quality Judge informational with `scoreInfluence: 0`; v0.3.1 remains
+  available.
+
 ## 0.3.1 - Quality policy and request accounting
 
 - Retire the never-run external reviewer proposal and replace it with an informational-only

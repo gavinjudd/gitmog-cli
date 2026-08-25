@@ -1,4 +1,5 @@
 import type { SourceAnalysisResult, StoryResult } from "@gitmog/source-analysis";
+import type { PrivateContextResult } from "@gitmog/private-context";
 import type { BattleResult } from "@gitmog/scoring";
 
 import { containsHumanClassifierIdentity } from "./classifier-visibility.js";
@@ -83,31 +84,42 @@ export function renderShare(
   preset: SharePreset,
   source: SourceAnalysisResult,
   story: StoryResult,
+  privateContext?: PrivateContextResult,
 ): string {
   const presentation = derivePresentationVerdict(battle, source);
   switch (preset) {
     case "x":
-      return renderX(battle, source, story, presentation);
+      return renderX(battle, source, story, presentation, privateContext);
     case "discord":
-      return renderDiscord(battle, source, story, presentation);
+      return renderDiscord(battle, source, story, presentation, privateContext);
     case "linkedin":
-      return renderLinkedin(battle, presentation);
+      return renderLinkedin(battle, presentation, privateContext);
     default:
-      return renderPlain(battle, source, story, presentation);
+      return renderPlain(battle, source, story, presentation, privateContext);
   }
 }
+
+const mixedContextDisclosure = (result: PrivateContextResult | undefined): readonly string[] =>
+  result === undefined
+    ? []
+    : [
+        `Mixed context: @${terminalSafe(result.subject)} included ${String(result.repositorySelection.analyzedRepositories)} selected private repos.`,
+        "The winner uses public evidence only.",
+      ];
 
 function renderPlain(
   battle: BattleResult,
   source: SourceAnalysisResult,
   story: StoryResult,
   presentation: PresentationVerdict,
+  privateContext?: PrivateContextResult,
 ): string {
   return [
     headlineOf(battle, presentation),
     scoreReceipt(battle),
     basisReceipt(battle),
     ...supportedStory(battle, source, story, true),
+    ...mixedContextDisclosure(privateContext),
     battle.challenge.canonical,
   ].join("\n");
 }
@@ -117,26 +129,35 @@ function renderX(
   source: SourceAnalysisResult,
   story: StoryResult,
   presentation: PresentationVerdict,
+  privateContext?: PrivateContextResult,
 ): string {
   const headline = headlineOf(battle, presentation);
   const score = scoreReceipt(battle, true);
   const basis = basisReceipt(battle, true);
   const supported = supportedStory(battle, source, story, false);
   const command = battle.challenge.canonical;
+  const disclosure = mixedContextDisclosure(privateContext);
   const compactCore = [
     `SCORE ${String(battle.left.overallScore)}:${String(battle.right.overallScore)}`,
     `COVERAGE ${String(battle.left.confidence.measuredWeight)}%:${String(battle.right.confidence.measuredWeight)}%`,
     command,
   ];
   const candidates: readonly (readonly string[])[] = [
-    [headline, score, basis, ...supported, command],
-    [headline, score, basis, command],
-    [score, basis, command],
-    compactCore,
+    [headline, score, basis, ...supported, ...disclosure, command],
+    [headline, score, basis, ...disclosure, command],
+    [score, basis, ...disclosure, command],
+    [...compactCore.slice(0, 2), ...disclosure, command],
   ];
   for (const segments of candidates) {
     const text = segments.join("\n");
     if (text.length <= X_CHARACTER_LIMIT) return text;
+  }
+  if (privateContext !== undefined) {
+    const required = [...disclosure, command].join("\n");
+    if (required.length > X_CHARACTER_LIMIT) {
+      throw new Error("The required mixed-context disclosure exceeds the X share limit.");
+    }
+    return required;
   }
   return compactCore.join("\n").slice(0, X_CHARACTER_LIMIT);
 }
@@ -146,28 +167,36 @@ function renderDiscord(
   source: SourceAnalysisResult,
   story: StoryResult,
   presentation: PresentationVerdict,
+  privateContext?: PrivateContextResult,
 ): string {
   const text = [
     `**${headlineOf(battle, presentation)}**`,
     scoreReceipt(battle),
     basisReceipt(battle),
     ...supportedStory(battle, source, story, true),
+    ...mixedContextDisclosure(privateContext),
     `\`${battle.challenge.canonical}\``,
   ].join("\n");
   if (text.length <= DISCORD_CHARACTER_LIMIT) return text;
   return [
     scoreReceipt(battle, true),
     basisReceipt(battle, true),
+    ...mixedContextDisclosure(privateContext),
     `\`${battle.challenge.canonical}\``,
   ].join("\n");
 }
 
-function renderLinkedin(battle: BattleResult, presentation: PresentationVerdict): string {
+function renderLinkedin(
+  battle: BattleResult,
+  presentation: PresentationVerdict,
+  privateContext?: PrivateContextResult,
+): string {
   return [
     headlineOf(battle, presentation),
     "",
     scoreReceipt(battle),
     basisReceipt(battle),
+    ...mixedContextDisclosure(privateContext),
     "",
     "Run the matchup:",
     battle.challenge.canonical,

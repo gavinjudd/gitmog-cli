@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -9,8 +10,9 @@ import {
   type PersonaSpec,
 } from "@gitmog/test-fixtures/github-personas";
 import { describe, expect, it } from "vitest";
+import type { PrivateContextAppConfig } from "@gitmog/private-context";
 
-import { advancedUsage, run, usage, type CliContext } from "../src/cli.js";
+import { advancedUsage, qualityPreflightMessage, run, usage, type CliContext } from "../src/cli.js";
 import { createPalette, stripAnsi } from "../src/color.js";
 import {
   renderBattle,
@@ -21,6 +23,35 @@ import {
 } from "../src/render.js";
 import { DISCORD_CHARACTER_LIMIT, renderShare, X_CHARACTER_LIMIT } from "../src/share.js";
 import { classifierLabelsIn } from "./classifier-labels.js";
+import { PRIVATE_CONTEXT_FIXTURE } from "./private-context-fixture.js";
+
+const PRIVATE_APP_FIXTURE: PrivateContextAppConfig = {
+  version: "1.0.0",
+  name: "Git Mog Private Context",
+  slug: "git-mog-private-context",
+  appId: "123456",
+  clientId: "Iv123456789012345678",
+  deviceFlow: true,
+  permissions: { metadata: "read", contents: "read" },
+  installationSelectionRequired: "selected",
+  privateKeys: 0,
+  clientSecrets: 0,
+};
+
+const directoryBytesFingerprint = (directory: string): string => {
+  const hash = createHash("sha256");
+  const visit = (current: string): void => {
+    for (const name of readdirSync(current).toSorted()) {
+      const path = join(current, name);
+      const relative = path.slice(directory.length);
+      hash.update(relative);
+      if (statSync(path).isDirectory()) visit(path);
+      else hash.update(readFileSync(path));
+    }
+  };
+  visit(directory);
+  return hash.digest("hex");
+};
 
 const contextFor = (...personas: readonly PersonaSpec[]): CliContext => {
   const handlers = personas.map((persona) => ({
@@ -83,6 +114,23 @@ const assertAnsiIsLineBounded = (output: string): void => {
 };
 
 describe("public grammar", () => {
+  it("uses typed Code Quality Preview limitation wording without promising coverage", () => {
+    const plan = (limitationReason: string) =>
+      ({ limitationReason }) as Parameters<typeof qualityPreflightMessage>[0];
+    expect(qualityPreflightMessage(plan("request-budget-limited"))).toContain(
+      "More GitHub requests may improve",
+    );
+    expect(qualityPreflightMessage(plan("supported-language-limited"))).toContain(
+      "Sign-in will not change this result",
+    );
+    expect(qualityPreflightMessage(plan("mixed"))).toBe(
+      "More GitHub requests may help, but supported-source coverage will still be limited.",
+    );
+    for (const reason of ["request-budget-limited", "supported-language-limited", "mixed"]) {
+      expect(qualityPreflightMessage(plan(reason))).not.toContain("for complete coverage");
+    }
+  });
+
   it("makes every common help form friend-first and local", async () => {
     let calls = 0;
     const context = {
@@ -152,6 +200,8 @@ describe("public grammar", () => {
       "--caption",
       "--sign-in",
       "--anonymous",
+      "--private-context",
+      "--public-only",
       "--no-prompt",
       "--cache-info",
       "--clear-cache",
@@ -160,6 +210,266 @@ describe("public grammar", () => {
     ]) {
       expect(result.stdout).toContain(option);
     }
+  });
+
+  it("rejects conflicting or noninteractive private modes before any GitHub call", async () => {
+    for (const args of [
+      ["alice", "bob", "--private-context", "--anonymous"],
+      ["alice", "bob", "--private-context", "--public-only"],
+    ] as const) {
+      let calls = 0;
+      const result = await invoke(
+        {
+          ...battleContext(),
+          fetchImpl: () => {
+            calls += 1;
+            return Promise.resolve(new Response("{}"));
+          },
+        },
+        ...args,
+        "--json",
+      );
+      expect(result.exitCode).toBe(2);
+      expect(calls).toBe(0);
+    }
+
+    let calls = 0;
+    const required = await invoke(
+      {
+        ...battleContext(),
+        stdinIsTty: false,
+        fetchImpl: () => {
+          calls += 1;
+          return Promise.resolve(new Response("{}"));
+        },
+      },
+      "alice",
+      "bob",
+      "--private-context",
+      "--json",
+    );
+    expect(required.exitCode).toBe(1);
+    expect(calls).toBe(0);
+    expect(JSON.parse(required.stdout)).toMatchObject({
+      error: { code: "private_context_auth_required" },
+    });
+  });
+
+  it("keeps the public battle and complete persistent cache byte-identical", async () => {
+    const scratch = mkdtempSync(join(tmpdir(), "gitmog-private-cache-"));
+    const cacheDirectory = join(scratch, "cache");
+    const base = battleContext();
+    const publicToken = "public_fixture_capacity_token_123456";
+    const privateToken = "private_fixture_access_token_123456";
+    const publicAuthorizationValues: string[] = [];
+    const fetchImpl: typeof fetch = (input, init) => {
+      const request = new Request(input, init);
+      const authorization = request.headers.get("authorization");
+      if (authorization !== null) publicAuthorizationValues.push(authorization);
+      return (base.fetchImpl as typeof fetch)(request);
+    };
+    const context: CliContext = {
+      ...base,
+      env: {
+        NO_COLOR: "1",
+        GITHUB_TOKEN: publicToken,
+        GITMOG_CACHE_DIR: cacheDirectory,
+      },
+      fetchImpl,
+      useFilesystem: true,
+      home: join(scratch, "home"),
+      cwd: join(scratch, "work"),
+      stdinIsTty: true,
+      prompt: () => Promise.resolve(""),
+      privateContextAppConfig: PRIVATE_APP_FIXTURE,
+      authorizePrivateDevice: (options) => {
+        expect(options.forbiddenTokens).toEqual([publicToken]);
+        let active = true;
+        return Promise.resolve({
+          ok: true,
+          lease: {
+            get active() {
+              return active;
+            },
+            expiresAt: null,
+            use: async (callback) => {
+              try {
+                return await callback(privateToken);
+              } finally {
+                active = false;
+              }
+            },
+            dispose: () => {
+              active = false;
+            },
+          },
+        });
+      },
+      runPrivateContext: (options) => {
+        expect(options.token).toBe(privateToken);
+        return Promise.resolve({ ok: true, result: PRIVATE_CONTEXT_FIXTURE });
+      },
+    };
+    try {
+      const baseline = await invoke(context, "strongmaintainer", "sidequester", "--json");
+      expect(baseline.exitCode).toBe(0);
+      const beforeFingerprint = directoryBytesFingerprint(cacheDirectory);
+      const mixed = await invoke(
+        context,
+        "strongmaintainer",
+        "sidequester",
+        "--private-context",
+        "--json",
+      );
+      expect(mixed.exitCode).toBe(0);
+      const afterFingerprint = directoryBytesFingerprint(cacheDirectory);
+      const baselineJson = JSON.parse(baseline.stdout) as Record<string, unknown>;
+      const mixedJson = JSON.parse(mixed.stdout) as Record<string, unknown>;
+      expect(JSON.stringify(mixedJson.battle)).toBe(JSON.stringify(baselineJson.battle));
+      expect(afterFingerprint).toBe(beforeFingerprint);
+      expect(mixedJson).toMatchObject({
+        evidenceMode: "public-with-private-context",
+        privateContext: {
+          scoreInfluence: 0,
+          publicWinnerInfluence: 0,
+          persisted: false,
+        },
+      });
+      expect(publicAuthorizationValues.length).toBeGreaterThan(0);
+      expect(new Set(publicAuthorizationValues)).toEqual(new Set([`Bearer ${publicToken}`]));
+      expect(mixed.stdout).not.toContain(privateToken);
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
+  });
+
+  it("offers the secondary private choice once after matching public sign-in", async () => {
+    const base = battleContext();
+    const prompts: string[] = [];
+    const liveOutput: string[] = [];
+    let privateAuthorizations = 0;
+    let privateRuns = 0;
+    let answer = "";
+    const publicToken = "public_fixture_capacity_token_123456";
+    const privateToken = "private_fixture_access_token_123456";
+    const context: CliContext = {
+      ...base,
+      skipBudgetPreflight: false,
+      isTty: true,
+      stdinIsTty: true,
+      prompt: (question) => {
+        prompts.push(question);
+        return Promise.resolve(answer);
+      },
+      writeOutput: (value) => liveOutput.push(value),
+      fetchImpl: (input, init) => {
+        const request = new Request(input, init);
+        if (new URL(request.url).pathname === "/user") {
+          return Promise.resolve(Response.json({ login: "StrongMaintainer" }));
+        }
+        return (base.fetchImpl as typeof fetch)(request);
+      },
+      readAllowance: () =>
+        Promise.resolve({
+          ok: true,
+          allowance: {
+            authenticated: true,
+            limit: 5_000,
+            remaining: 5_000,
+            resetAt: "2026-08-25T12:00:00.000Z",
+            rateLimitClass: "none",
+            retryAfterSeconds: null,
+            source: "endpoint",
+          },
+        }),
+      authorizeDevice: async (options) => {
+        await options.onPrompt({
+          userCode: "ABCD-EFGH",
+          verificationUri: "https://github.com/login/device",
+          expiresAt: "2026-08-25T12:00:00.000Z",
+          intervalSeconds: 5,
+        });
+        return { ok: true, token: publicToken, tokenType: "bearer", scopes: [] };
+      },
+      privateContextAppConfig: PRIVATE_APP_FIXTURE,
+      authorizePrivateDevice: async (options) => {
+        privateAuthorizations += 1;
+        await options.onPrompt({
+          userCode: "WXYZ-1234",
+          verificationUri: "https://github.com/login/device",
+          expiresAt: "2026-08-25T12:00:00.000Z",
+          intervalSeconds: 5,
+        });
+        let active = true;
+        return {
+          ok: true,
+          lease: {
+            get active() {
+              return active;
+            },
+            expiresAt: null,
+            use: async (callback) => {
+              try {
+                return await callback(privateToken);
+              } finally {
+                active = false;
+              }
+            },
+            dispose: () => {
+              active = false;
+            },
+          },
+        };
+      },
+      runPrivateContext: (options) => {
+        privateRuns += 1;
+        expect(options.token).toBe(privateToken);
+        return Promise.resolve({ ok: true, result: PRIVATE_CONTEXT_FIXTURE });
+      },
+    };
+
+    const publicOnly = await invoke(context, "strongmaintainer", "sidequester", "--sign-in");
+    expect(publicOnly.exitCode).toBe(0);
+    expect(prompts).toHaveLength(1);
+    expect(prompts[0]).toBe(
+      "Private repos are excluded by default.\nAdd selected private repos for @StrongMaintainer?\n\n[n] public only  [p] private context: ",
+    );
+    expect(privateAuthorizations).toBe(0);
+    expect(privateRuns).toBe(0);
+    expect(publicOnly.stdout).not.toContain("PRIVATE CONTEXT");
+
+    answer = "p";
+    prompts.length = 0;
+    const mixed = await invoke(context, "strongmaintainer", "sidequester", "--sign-in");
+    expect(mixed.exitCode).toBe(0);
+    expect(prompts).toHaveLength(1);
+    expect(privateAuthorizations).toBe(1);
+    expect(privateRuns).toBe(1);
+    expect(mixed.stdout).toContain("PRIVATE CONTEXT · @StrongMaintainer");
+    expect(liveOutput.join("\n")).toContain(
+      "Signed in for public API capacity. Private repositories are still excluded.",
+    );
+    expect(liveOutput.join("\n")).toContain("PRIVATE CONTEXT SIGN-IN");
+    expect(liveOutput.join("\n")).toContain(
+      "It cannot write, administer, read secrets, or execute repository code.",
+    );
+    expect(`${mixed.stdout}${mixed.stderr}${liveOutput.join("\n")}`).not.toContain(privateToken);
+
+    prompts.length = 0;
+    const privateAuthorizationsBeforeOverride = privateAuthorizations;
+    const privateRunsBeforeOverride = privateRuns;
+    const override = await invoke(
+      context,
+      "strongmaintainer",
+      "sidequester",
+      "--sign-in",
+      "--public-only",
+    );
+    expect(override.exitCode).toBe(0);
+    expect(prompts).toEqual([]);
+    expect(privateAuthorizations).toBe(privateAuthorizationsBeforeOverride);
+    expect(privateRuns).toBe(privateRunsBeforeOverride);
+    expect(override.stdout).not.toContain("PRIVATE CONTEXT");
   });
 
   it("routes no arguments to friendly help with zero GitHub calls", async () => {
@@ -502,11 +812,13 @@ describe("complete result", () => {
     const payload = JSON.parse(result.stdout) as Record<string, unknown>;
     expect(Object.keys(payload).sort()).toEqual([
       "battle",
+      "evidenceMode",
       "presentationVerdict",
       "qualityPreview",
       "sourceAnalysis",
       "story",
     ]);
+    expect(payload.evidenceMode).toBe("public-only");
     expect(payload.presentationVerdict).toMatchObject({
       version: "1.0.0-coverage-aware",
       band: "qualified",

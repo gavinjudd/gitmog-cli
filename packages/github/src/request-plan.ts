@@ -4,7 +4,7 @@ export const REQUEST_PLAN_VERSION = "1.0.0-first-run-budget";
 export const COMPLETE_PROFILE_REQUESTS = 16;
 export const MINIMUM_USEFUL_PROFILE_REQUESTS = 6;
 export const MAXIMUM_SOURCE_REQUESTS_PER_PROFILE = 4;
-export const QUALITY_REQUEST_PLAN_VERSION = "1.1.0-cache-invariant-quality-tier";
+export const QUALITY_REQUEST_PLAN_VERSION = "1.2.0-typed-quality-opportunity";
 export const COMPLETE_QUALITY_SOURCE_REQUESTS_PER_PROFILE = 21;
 export const COMPLETE_QUALITY_ATTRIBUTION_REQUESTS_PER_PROFILE = 12;
 export const MINIMUM_USEFUL_QUALITY_REQUESTS_PER_PROFILE = 5;
@@ -12,12 +12,23 @@ export const MINIMUM_USEFUL_QUALITY_REQUESTS_PER_PROFILE = 5;
 export type AuthenticationState = "anonymous" | "explicit" | "device";
 export type RateLimitClass = "none" | "primary" | "secondary" | "unknown";
 export type BudgetDisposition = "complete" | "limited" | "blocked" | "unknown";
+export type QualityLimitationReason =
+  | "request-budget-limited"
+  | "supported-language-limited"
+  | "eligible-source-limited"
+  | "attribution-limited"
+  | "mixed"
+  | "unknown";
 
 export interface RequestPlanCacheState {
   readonly snapshotHit: boolean;
   readonly analysisHit: boolean;
   readonly qualityHit: boolean;
   readonly maximumSourceRequests: number;
+  readonly supportedSourceOpportunity: boolean | null;
+  readonly eligibleFileOpportunity: boolean | null;
+  readonly attributionOpportunity: boolean | null;
+  readonly cachedQualityLimitationReason: QualityLimitationReason | null;
 }
 
 export interface GithubCoreAllowance {
@@ -62,6 +73,12 @@ export interface GithubRequestPlan {
     readonly expectedCurrentRequests: number;
     readonly minimumUsefulRequests: number;
     readonly completeSupportedRequests: number;
+    readonly plannedAdditionalCalls: number;
+    readonly supportedSourceOpportunity: boolean | null;
+    readonly eligibleFileOpportunity: boolean | null;
+    readonly attributionOpportunity: boolean | null;
+    readonly limitationReason: QualityLimitationReason;
+    readonly signInMayImprove: boolean;
     readonly perProfileSourceRequestCaps: readonly [number] | readonly [number, number];
     readonly perProfileAttributionRequestCaps: readonly [number] | readonly [number, number];
   };
@@ -190,6 +207,43 @@ export function buildGithubRequestPlan(input: BuildRequestPlanInput): GithubRequ
     qualityIndexes
       .filter((index) => !qualityCacheHitSet.has(index))
       .reduce((total, index) => total + (qualityAttributionCaps[index] ?? 0), 0);
+  const opportunity = (
+    key: "supportedSourceOpportunity" | "eligibleFileOpportunity" | "attributionOpportunity",
+  ): boolean | null => {
+    const values = input.profiles.map((profile) => profile[key]);
+    return values.includes(true) ? true : values.every((value) => value === false) ? false : null;
+  };
+  const supportedSourceOpportunity = opportunity("supportedSourceOpportunity");
+  const eligibleFileOpportunity = opportunity("eligibleFileOpportunity");
+  const attributionOpportunity = opportunity("attributionOpportunity");
+  const cachedReasons = new Set(
+    input.profiles
+      .map((profile) => profile.cachedQualityLimitationReason)
+      .filter(
+        (reason): reason is QualityLimitationReason => reason !== null && reason !== "unknown",
+      ),
+  );
+  const budgetLimited =
+    qualityEnabled && qualityDisposition !== "complete" && supportedSourceOpportunity === true;
+  const nonBudgetReasons = [...cachedReasons].filter(
+    (reason) => reason !== "request-budget-limited",
+  );
+  const limitationReason: QualityLimitationReason =
+    eligibleFileOpportunity === false
+      ? "eligible-source-limited"
+      : supportedSourceOpportunity === false
+        ? "supported-language-limited"
+        : budgetLimited && nonBudgetReasons.length > 0
+          ? "mixed"
+          : budgetLimited
+            ? "request-budget-limited"
+            : nonBudgetReasons.length > 1
+              ? "mixed"
+              : (nonBudgetReasons[0] ?? "unknown");
+  const signInMayImprove =
+    input.authenticationState === "anonymous" &&
+    supportedSourceOpportunity === true &&
+    (limitationReason === "request-budget-limited" || limitationReason === "mixed");
 
   return {
     version: REQUEST_PLAN_VERSION,
@@ -226,6 +280,12 @@ export function buildGithubRequestPlan(input: BuildRequestPlanInput): GithubRequ
           (COMPLETE_QUALITY_SOURCE_REQUESTS_PER_PROFILE +
             COMPLETE_QUALITY_ATTRIBUTION_REQUESTS_PER_PROFILE)
         : 0,
+      plannedAdditionalCalls: qualityAllocated,
+      supportedSourceOpportunity,
+      eligibleFileOpportunity,
+      attributionOpportunity,
+      limitationReason,
+      signInMayImprove,
       perProfileSourceRequestCaps: qualitySourceCaps as unknown as
         readonly [number] | readonly [number, number],
       perProfileAttributionRequestCaps: qualityAttributionCaps as unknown as
