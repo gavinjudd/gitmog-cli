@@ -66,6 +66,51 @@ interface RequestCounters {
   attribution: number;
 }
 
+const PRIVATE_REST_ORIGIN = "https://api.github.com";
+
+const exactQuery = (url: URL, expected: readonly string[]): boolean => {
+  const actual = [...url.searchParams.keys()].toSorted();
+  const sortedExpected = [...expected].toSorted();
+  return (
+    actual.length === sortedExpected.length &&
+    actual.every((key, index) => key === sortedExpected[index])
+  );
+};
+
+const privateRestRequestAllowed = (request: Request): boolean => {
+  if (request.method !== "GET") return false;
+  const url = new URL(request.url);
+  if (
+    url.origin !== PRIVATE_REST_ORIGIN ||
+    url.username !== "" ||
+    url.password !== "" ||
+    url.hash !== ""
+  )
+    return false;
+  const path = url.pathname;
+  if (path === "/user") return exactQuery(url, []);
+  if (path === "/user/installations")
+    return exactQuery(url, ["per_page"]) && url.searchParams.get("per_page") === "100";
+  if (/^\/user\/installations\/\d+\/repositories$/u.test(path))
+    return (
+      exactQuery(url, ["page", "per_page"]) &&
+      url.searchParams.get("per_page") === "100" &&
+      /^[1-5]$/u.test(url.searchParams.get("page") ?? "")
+    );
+  if (/^\/repos\/[^/]+\/[^/]+\/commits\/[^/]+$/u.test(path)) return exactQuery(url, []);
+  if (/^\/repos\/[^/]+\/[^/]+\/git\/trees\/[0-9a-f]{40}$/u.test(path))
+    return exactQuery(url, ["recursive"]) && url.searchParams.get("recursive") === "1";
+  if (/^\/repos\/[^/]+\/[^/]+\/releases$/u.test(path))
+    return exactQuery(url, ["per_page"]) && url.searchParams.get("per_page") === "10";
+  if (/^\/repos\/[^/]+\/[^/]+\/git\/blobs\/[0-9a-f]{40}$/u.test(path)) return exactQuery(url, []);
+  if (/^\/repos\/[^/]+\/[^/]+\/commits$/u.test(path))
+    return (
+      exactQuery(url, ["author", "path", "per_page", "sha"]) &&
+      url.searchParams.get("per_page") === "5"
+    );
+  return false;
+};
+
 export interface RunPrivateContextOptions {
   readonly handles: readonly [string] | readonly [string, string];
   readonly token: string;
@@ -205,6 +250,9 @@ const boundedFetch =
   ): typeof globalThis.fetch =>
   async (input, init) => {
     const request = new Request(input, init);
+    if (!privateRestRequestAllowed(request)) {
+      return Response.json({ message: "Private Context endpoint refused." }, { status: 403 });
+    }
     const url = new URL(request.url);
     const repositoryKey = repositoryKeyForUrl(url);
     if (
@@ -228,7 +276,7 @@ const boundedFetch =
     else if (url.pathname.endsWith("/commits") && url.searchParams.has("author"))
       counters.attribution += 1;
     else if (repositoryKey !== null) counters.repositoryMetadata += 1;
-    return fetchImpl(request);
+    return fetchImpl(new Request(request, { redirect: "error" }));
   };
 
 const qualityReading = (reading: QualityReading): PrivateQualityReading => ({

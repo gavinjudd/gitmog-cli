@@ -301,7 +301,7 @@ describe("human-readable presentation contract", () => {
       "testfileswithoutci",
     );
     expect(human.stdout).toContain("CI-backed testing: 3/3–0/3");
-    expect(human.stdout).not.toContain("Automated tests: 100%–0%");
+    expect(human.stdout).not.toContain("Automated tests");
   });
 
   it("omits cross-category round support while preserving every public score", async () => {
@@ -483,7 +483,9 @@ describe("human-readable presentation contract", () => {
     expect(terminal).toContain("PRIVATE CONTEXT · @StrongMaintainer");
     for (const surface of surfaces) {
       expect(surface).toMatch(/MIXED CONTEXT|Mixed context|Context:/u);
-      expect(surface.toLowerCase()).toMatch(/public winner|winner uses public evidence/u);
+      expect(surface.toLowerCase()).toMatch(
+        /winner uses public evidence|public winner · public evidence/u,
+      );
       expect(surface).not.toContain("sensitive-private-project");
       expect(surface).not.toContain("secret/private/path.ts");
       expect(surface).not.toContain("github.com/fixture");

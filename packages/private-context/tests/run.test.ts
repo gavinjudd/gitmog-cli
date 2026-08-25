@@ -63,7 +63,7 @@ const repository = (
 
 const selectedFixture = (
   repositories: readonly Record<string, unknown>[],
-  options: { readonly linkedAuthor?: boolean } = {},
+  options: { readonly linkedAuthor?: boolean; readonly treePath?: string } = {},
 ) => {
   const requests: Request[] = [];
   const source = "export function add(a: number, b: number): number { return a + b; }\n";
@@ -96,7 +96,7 @@ const selectedFixture = (
           truncated: false,
           tree: [
             {
-              path: "src/add.ts",
+              path: options.treePath ?? "src/add.ts",
               mode: "100644",
               type: "blob",
               sha: sha("c"),
@@ -136,7 +136,11 @@ const selectedFixture = (
                   },
                 },
               }
-            : { sha: sha("e"), author: { login: "FixtureUser" } },
+            : {
+                sha: sha("e"),
+                author: { login: "FixtureUser" },
+                commit: { message: "private commit message must not leave the process" },
+              },
         ]),
       );
     return Promise.resolve(Response.json({ message: "not found" }, { status: 404 }));
@@ -182,6 +186,10 @@ describe("bounded private repository collection", () => {
           request.headers.get("authorization") === "Bearer private_fixture_access_token_123456",
       ),
     ).toBe(true);
+    expect(fixture.requests.every((request) => request.redirect === "error")).toBe(true);
+    expect(
+      fixture.requests.every((request) => new URL(request.url).origin === "https://api.github.com"),
+    ).toBe(true);
     expect(
       fixture.requests.every(
         (request) =>
@@ -190,6 +198,27 @@ describe("bounded private repository collection", () => {
           !request.url.includes("actions"),
       ),
     ).toBe(true);
+  });
+
+  it("keeps malicious private paths, controls, and commit messages out of the aggregate result", async () => {
+    const maliciousPath = "src/private\u001b[31m-marker.ts";
+    const fixture = selectedFixture([repository("FixtureUser/private-project")], {
+      treePath: maliciousPath,
+    });
+    const outcome = await runPrivateContext({
+      handles: ["FixtureUser", "Opponent"],
+      token: "private_fixture_access_token_123456",
+      config,
+      fetchImpl: fixture.fetchImpl,
+      now: () => Date.parse("2026-08-25T00:00:00.000Z"),
+    });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    const serialized = JSON.stringify(outcome.result);
+    expect(serialized).not.toContain(maliciousPath);
+    expect(serialized).not.toContain("\\u001b");
+    expect(serialized).not.toContain("private commit message");
+    expect(serialized).not.toContain("private-project");
   });
 
   it("rejects all-repository installations before listing or reading a repository", async () => {

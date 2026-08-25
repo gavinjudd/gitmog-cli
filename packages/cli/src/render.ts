@@ -781,7 +781,9 @@ const renderPrivateContext = (
         "Selected private repos were available, but not enough supported source qualified.",
         width,
       ).map((line) => palette.wrap("yellow", line)),
-      palette.wrap("dim", "Private context is separate from the public battle."),
+      ...wrapPlain("Private context is separate; public winner uses public evidence.", width).map(
+        (line) => palette.wrap("dim", line),
+      ),
     ];
   }
   const receipt = (id: string): string => palette.wrap("dim", `[${id}]`);
@@ -828,7 +830,11 @@ const renderPrivateContext = (
       ).map((line) => line.replace("[P3]", receipt("P3"))),
     );
   }
-  lines.push(palette.wrap("dim", "Private context is separate from the public battle."));
+  lines.push(
+    ...wrapPlain("Private context is separate; public winner uses public evidence.", width).map(
+      (line) => palette.wrap("dim", line),
+    ),
+  );
   return lines;
 };
 
@@ -1027,7 +1033,7 @@ const plainAuraWeakness = (profile: ProfileScorecard): HumanWeakness | null => {
       const withTests = diagnostics.repositoriesInspected - diagnostics.repositoriesWithoutTests;
       return {
         text: `${String(diagnostics.repositoriesInspected - diagnostics.repositoriesWithoutCi)} of ${String(diagnostics.repositoriesInspected)} inspected projects use automated checks, but only ${String(withTests)} show automated tests.`,
-        receiptText: `Automated tests — ${String(withTests)} of ${String(diagnostics.repositoriesInspected)} inspected projects`,
+        receiptText: `Repositories containing tests — ${String(withTests)}/${String(diagnostics.repositoriesInspected)} inspected projects`,
       };
     }
     case "repo_graveyard":

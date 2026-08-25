@@ -22,6 +22,12 @@ describe("Private Context output privacy", () => {
     scanner.dispose();
   });
 
+  it("normalizes Unicode before comparing private values", () => {
+    const scanner = createPrivateArtifactScanner(["sensitive/privat\u00e9"]);
+    expect(scanner.scan("sensitive/private\u0301")).toBe(false);
+    scanner.dispose();
+  });
+
   it("rejects prohibited stable fields even when a value list is unavailable", () => {
     expect(privateAggregateShapeIsSafe({ repositorySignals: { activeRepositories: 2 } })).toBe(
       true,
