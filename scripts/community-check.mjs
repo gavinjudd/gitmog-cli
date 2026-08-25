@@ -72,6 +72,31 @@ for (const issueForm of required.filter(
   }
 }
 
+const dependabot = readFileSync(resolve(root, ".github", "dependabot.yml"), "utf8");
+for (const fragment of [
+  'labels: ["dependency-maintenance"]',
+  "development-tooling:",
+  "codeql-actions:",
+  'patterns: ["github/codeql-action/*"]',
+  "official-actions:",
+  'patterns: ["actions/*"]',
+  'dependency-name: "@types/node"',
+  'update-types: ["version-update:semver-major"]',
+]) {
+  if (!dependabot.includes(fragment)) {
+    throw new Error(`Dependabot grouping contract is missing: ${fragment}`);
+  }
+}
+if ((dependabot.match(/applies-to: security-updates/gu) ?? []).length !== 2) {
+  throw new Error("Dependabot security updates must remain distinct in both ecosystems.");
+}
+if ((dependabot.match(/update-types: \["minor", "patch"\]/gu) ?? []).length !== 3) {
+  throw new Error("Dependabot routine update groups must remain minor/patch only.");
+}
+if (dependabot.includes('labels: ["area:security"]')) {
+  throw new Error("Routine Dependabot updates must not be labeled as security work.");
+}
+
 const ciWorkflow = readFileSync(resolve(workflowRoot, "ci.yml"), "utf8");
 const architectureStart = ciWorkflow.indexOf("\n  architecture:");
 const qualityStart = ciWorkflow.indexOf("\n  quality:");

@@ -18,7 +18,7 @@
     },
     {
       "name": "eslint",
-      "version": "10.8.1",
+      "version": "10.9.0",
       "license": "MIT",
       "source": "https://github.com/eslint/eslint"
     },
@@ -30,7 +30,7 @@
     },
     {
       "name": "globals",
-      "version": "17.10.0",
+      "version": "17.11.0",
       "license": "MIT",
       "source": "https://github.com/sindresorhus/globals"
     },
@@ -42,7 +42,7 @@
     },
     {
       "name": "rolldown",
-      "version": "1.2.4",
+      "version": "1.2.5",
       "license": "MIT",
       "source": "https://github.com/rolldown/rolldown/tree/main/packages/rolldown"
     },
@@ -66,7 +66,7 @@
     },
     {
       "name": "vitest",
-      "version": "4.1.10",
+      "version": "4.1.11",
       "license": "MIT",
       "source": "https://github.com/vitest-dev/vitest/tree/main/packages/vitest"
     }
