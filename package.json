@@ -27,6 +27,7 @@
     "package:acceptance": "node scripts/package-acceptance.mjs",
     "quality:fixtures": "node scripts/quality-fixtures.mjs",
     "quality:policy:check": "node scripts/quality-policy-check.mjs",
+    "private-context:policy:check": "node scripts/private-context-policy-check.mjs",
     "quality:benchmark:check": "node scripts/benchmark-quality.mjs",
     "community:check": "node scripts/community-check.mjs",
     "security:check": "node scripts/security-check.mjs",

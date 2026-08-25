@@ -3,6 +3,9 @@
 Releases are built from clean public `main`. A release candidate must bind an exact public commit,
 version, package member allowlist, SHA-256, SHA-512 SRI, npm shasum, SBOM, licenses, parser assets,
 runtime dependencies, install scripts, engine range, platform evidence, and quality policy.
+For a Private Context release it also binds the public GitHub App name, slug, app ID, client ID,
+exact metadata/contents read permissions, device-flow state, selected-repository requirement, and
+zero private-key/client-secret counts.
 
 GitHub Actions may build and retain a candidate but cannot publish from an ordinary pull request.
 No npm credential is stored in repository secrets. Tags are annotated and immutable. The exact
@@ -20,3 +23,10 @@ Quality Preview remains separate from the battle score. Its release notes must s
 influence is zero and winner selection is unchanged. `v0.2.2` and its archived source-export
 evidence remain available. Publication requires the release-specific approval and any unavoidable
 user-only 2FA.
+
+Before publication, require synthetic privacy/invariance gates, one selected-repository live
+acceptance in disposable home/cache state, byte-identical public baseline hashes, unchanged cache
+fingerprints, six-architecture acceptance, Node 22/24/26 acceptance, and two byte-identical builds.
+No private identifier, live capture, token, device code, or source may enter a release asset. The
+GitHub App installation remains selected-repository only; v0.4.0 publication requires its exact
+release-specific approval phrase.

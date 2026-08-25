@@ -46,6 +46,13 @@ dedicated issue form. Provide a reduced synthetic fixture with invented identifi
 repository, immutable commit, safe-path, receipt, and limitation references are optional context;
 never copy target source into the issue.
 
+Use the [**Code Quality feedback** Discussion category](https://github.com/gavinjudd/gitmog-cli/discussions/categories/code-quality-feedback)
+for false positives, false negatives, supported-language gaps, and Code Quality Preview behavior.
+Private Context defects must use
+synthetic repositories, paths, IDs, source, and tokens; never paste a real private identifier or
+capture. Changes to its app permissions, identity binding, aggregate contract, persistence, or
+public-result invariance require security tests and ADR review.
+
 ## Pull requests and licensing
 
 Keep changes focused and use the pull-request template. Fork pull requests receive no secrets
