@@ -1,6 +1,8 @@
 GIT MOG
 ◆ @strongmaintainer WINS 92–39 · PUBLIC REPO GAP
-Coverage: @strongmaintainer 59% · @sidequester 54%
+Public coverage: @strongmaintainer 59% · @sidequester 54%
+Context: @StrongMaintainer added 4 private repos · winner still uses public
+repos only
 » One side has releases. The other has lore. [1]
 THE FIGHT
 TOOLING         100–0  @strongmaintainer · Project automation: 3/3–0/3 [2]
@@ -16,6 +18,11 @@ Authored sample @strongmaintainer 81 · @sidequester 89
 @strongmaintainer — 0 high-complexity funcs · orchestrator/migrate.ts:1 [LQ1]
 @sidequester — 0 high-complexity funcs · project-0/index.js:1 [RQ1]
 Not used in the battle score.
+PRIVATE CONTEXT · @StrongMaintainer
+4 selected private repos · codebase read · authorship matched
++ CI found in 3 of 4 selected repos.
++ Long-running maintenance found in 2 selected repos.
+Code sample: 10 of 12 files readable by Git Mog
 RECEIPTS
 [1] Versioned releases — 15 vs 0
 [2] Project automation — 3/3 vs 0/3

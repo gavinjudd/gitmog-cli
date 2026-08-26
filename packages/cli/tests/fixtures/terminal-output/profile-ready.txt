@@ -6,10 +6,10 @@ THE READ
 @strongmaintainer — Tests: 25 per 100 source files in inspected trees.
   orchestrator has build output or dependencies committed. [1]
 CODE QUALITY · PREVIEW
-Maintained codebase 81 (100%)
-Attributed code 81 (67%)
+Codebase sample 81
+Authored sample 81
 @strongmaintainer — 0 high-complexity funcs · orchestrator/migrate.ts:1 [PQ1]
-Separate from the battle score.
+Not used in the battle score.
 RECEIPTS
 [1] @strongmaintainer — Test-file density 25 per 100 source files; Project
     structure

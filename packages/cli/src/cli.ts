@@ -26,6 +26,10 @@ import { parseRoastMode } from "@gitmog/scoring";
 
 import { createPalette, parseColorMode, shouldUseColor } from "./color.js";
 import { PLAIN_PALETTE } from "./color.js";
+import type {
+  AuthorizationInputController,
+  AuthorizationInputSession,
+} from "./authorization-input.js";
 import {
   clearCache,
   CACHE_MARKER_NAME,
@@ -46,6 +50,13 @@ import { renderBattle, renderCard, renderError, renderProfile } from "./render.j
 import { parseSharePreset, renderShare } from "./share.js";
 import { createFileSnapshotCache, resolveCacheDirectory } from "./snapshot-store.js";
 import { formatLocalReset, planGithubInvocation, resolveExplicitGithubToken } from "./preflight.js";
+import {
+  privateAppInstallationDestination,
+  privateAppSettingsDestination,
+  validateExternalDestination,
+  type OpenExternalResult,
+  type ValidatedExternalDestination,
+} from "./open-external.js";
 
 export interface CliContext {
   readonly invokedAs: string;
@@ -74,6 +85,9 @@ export interface CliContext {
   readonly authorizeDevice?: typeof authorizeGithubDevice | undefined;
   readonly authorizePrivateDevice?: typeof authorizePrivateGithubDevice | undefined;
   readonly runPrivateContext?: typeof runPrivateContext | undefined;
+  readonly openExternal?:
+    ((destination: ValidatedExternalDestination) => Promise<OpenExternalResult>) | undefined;
+  readonly authorizationInput?: AuthorizationInputController | undefined;
   readonly privateContextAppConfig?: PrivateContextAppConfig | undefined;
   readonly home?: string | undefined;
   readonly cwd?: string | undefined;
@@ -90,6 +104,10 @@ export interface CliResult {
   readonly stderr: string;
 }
 
+export const CLI_INTERACTION_VERSION = "2.0.0-frictionless-github-authorization";
+export const CLI_TERMINAL_PRESENTATION_VERSION = "2.0.0-first-screen-editorial";
+export const CLI_COPY_CONTRACT_VERSION = "1.0.0-surface-aware-copy-gate";
+
 export function resolveInvocationName(
   executable: string | undefined,
   _env: Readonly<Record<string, string | undefined>>,
@@ -102,37 +120,31 @@ export function usage(invokedAs = "gitmog"): string {
   const command = invokedAs === "git mog" ? "git mog" : "gitmog";
   return [
     "GIT MOG",
-    "Compare public GitHub work for fun.",
     "",
-    "Run a battle:",
+    "Battle two GitHub profiles:",
     "  npx -y gitmog <left> <right>",
     "",
     "Check one profile:",
     "  npx -y gitmog <username>",
     "",
-    "Paste a username, @handle, or https://github.com/profile URL.",
-    `Installed: ${command} <left> <right>`,
+    "Paste a username, @handle, or GitHub profile link.",
     "",
-    "Try a famous matchup:",
+    "TRY IT",
     "  npx -y gitmog torvalds gvanrossum",
     "  npx -y gitmog karpathy geohot",
-    "  Public profiles. No affiliation or endorsement implied.",
     "",
-    "Common options:",
-    "  --card       Compact battle card",
-    "  --share      Share-ready text",
+    "USEFUL",
+    "  --card       Screenshot-ready result",
     "  --details    Full score breakdown",
     "  --receipts   Every supporting receipt",
-    "  --export     Self-contained .html or .svg battle",
-    "  --no-quality Disable the automatic code-quality preview",
-    "  --private-context  Add selected private repositories separately",
-    "  --public-only      Suppress every private prompt and endpoint",
+    "  --share x    X-ready result",
     "",
-    "Coverage is the share of the public scorecard Git Mog could measure.",
-    "If GitHub's anonymous limit is low, Git Mog may offer one-time sign-in.",
-    "Code Quality Preview is parser-backed and never affects the winner.",
-    "Entertainment based on public evidence—not a hiring score.",
+    "PRIVATE REPOS",
+    "  Add --private-context. They never change the public winner.",
+    "",
     `More options: ${command} --help-all`,
+    "",
+    "Entertainment based on GitHub evidence—not a hiring score.",
     "",
   ].join("\n");
 }
@@ -165,6 +177,7 @@ export function advancedUsage(invokedAs = "gitmog"): string {
     "  --private-context            Add selected private repositories separately",
     "  --public-only                Suppress every private prompt and endpoint",
     "  --no-prompt                  Return instead of prompting",
+    "  --no-open                    Do not open a browser automatically",
     "  --refresh                    Refresh stable cached evidence",
     "  --no-cache                   Read and write no Git Mog cache",
     "  --cache-info                 Show Git Mog cache usage",
@@ -202,6 +215,7 @@ const OPTIONS = {
   "clear-cache": { type: "boolean" },
   "private-context": { type: "boolean" },
   "public-only": { type: "boolean" },
+  "no-open": { type: "boolean" },
   export: { type: "string" },
 } as const;
 
@@ -259,6 +273,13 @@ export type JsonErrorCode =
   | "export_failed"
   | "usage";
 
+const publicPrivateContextError = (error: PrivateContextError): PrivateContextError => ({
+  code: error.code,
+  message: error.message,
+  ...(error.signedInAs === undefined ? {} : { signedInAs: error.signedInAs }),
+  ...(error.installationUrl === undefined ? {} : { installationUrl: error.installationUrl }),
+});
+
 const privateContextFailure = (
   error: PrivateContextError,
   jsonRequested: boolean,
@@ -267,7 +288,11 @@ const privateContextFailure = (
   jsonRequested
     ? {
         exitCode: 1,
-        stdout: `${JSON.stringify({ error: { ...error, retryable: false } }, null, 2)}\n`,
+        stdout: `${JSON.stringify(
+          { error: { ...publicPrivateContextError(error), retryable: false } },
+          null,
+          2,
+        )}\n`,
         stderr: "",
       }
     : {
@@ -275,13 +300,25 @@ const privateContextFailure = (
         stdout: publicStdout,
         stderr: `${
           error.code === "private_context_identity_mismatch"
-            ? "PRIVATE CONTEXT NOT AVAILABLE"
-            : error.code === "private_context_installation_required"
-              ? "PRIVATE CONTEXT · OPTIONAL"
-              : error.code === "private_context_selected_repositories_required"
-                ? "PRIVATE CONTEXT REQUIRES SELECTED REPOSITORIES"
-                : "PRIVATE CONTEXT NOT AVAILABLE"
-        }\n\n${error.signedInAs === undefined ? "" : `Signed in as @${error.signedInAs}.\n`}${error.message}${error.installationUrl === undefined ? "" : `\n\nOpen:\n${error.installationUrl}\n\nReturn here after installation.`}\n`,
+            ? "IDENTITY MISMATCH"
+            : error.code === "private_context_auth_denied"
+              ? "AUTH DENIED"
+              : error.code === "private_context_auth_expired"
+                ? "AUTH EXPIRED"
+                : error.code === "private_context_installation_required"
+                  ? "INSTALLATION MISSING"
+                  : error.code === "private_context_selected_repositories_required"
+                    ? "PRIVATE REPOS SETUP"
+                    : "PRIVATE REPOS NOT AVAILABLE"
+        }\n\n${
+          error.signedInAs === undefined
+            ? ""
+            : `Signed in as @${error.signedInAs}.\nPrivate repos can only be added to the matching person in this battle.\n`
+        }${error.signedInAs === undefined ? error.message : ""}${
+          error.installationUrl === undefined
+            ? ""
+            : `\n\nOpen GitHub, choose the private repos, then press Enter here.\nOpen this link: ${error.installationUrl}`
+        }\n`,
       };
 
 const jsonFailure = (
@@ -366,60 +403,226 @@ const budgetFailure = (
 export const qualityPreflightMessage = (plan: GithubRequestPlan["quality"]): string => {
   switch (plan.limitationReason) {
     case "request-budget-limited":
-      return "More GitHub requests may improve Code Quality Preview.\nComplete coverage also depends on supported TypeScript/JavaScript source.";
+      return "More GitHub lookups may improve the code-quality sample.\nSupported TypeScript/JavaScript source can still limit it.";
     case "mixed":
-      return "More GitHub requests may help, but supported-source coverage will still be limited.";
+      return "More GitHub lookups may help, but the available code sample is still limited.";
     case "supported-language-limited":
     case "eligible-source-limited":
-      return "Code Quality Preview is limited by supported source, not GitHub request capacity. Sign-in will not change this result.";
+      return "Code quality is limited by the available TypeScript/JavaScript sample.\nSigning in would not change that.";
     case "attribution-limited":
-      return "Code Quality Preview is limited by user-linked attribution, not GitHub request capacity.";
+      return "The code sample does not establish enough authorship for a complete read.";
     default:
-      return "Code Quality Preview coverage is limited; the current evidence does not show that sign-in would improve it.";
+      return "The available code sample is limited. Signing in may not change it.";
   }
+};
+
+const truthy = (value: string | undefined): boolean =>
+  value !== undefined && /^(?:1|true|yes|on)$/iu.test(value.trim());
+
+const browserOpeningAllowed = (
+  context: CliContext,
+  input: {
+    readonly explicitAuthorization: boolean;
+    readonly noOpen: boolean;
+    readonly json: boolean;
+    readonly anonymous: boolean;
+    readonly promptingAllowed: boolean;
+  },
+): boolean =>
+  input.explicitAuthorization &&
+  !input.noOpen &&
+  !input.json &&
+  !input.anonymous &&
+  input.promptingAllowed &&
+  context.stdinIsTty === true &&
+  context.stderrIsTty === true &&
+  context.isTty === true &&
+  context.openExternal !== undefined &&
+  context.authorizationInput !== undefined &&
+  !truthy(context.env.GITMOG_NO_BROWSER) &&
+  !truthy(context.env.CI);
+
+interface DevicePromptShape {
+  readonly userCode: string;
+  readonly verificationUri: string;
+}
+
+interface DeviceInteraction {
+  readonly signal: AbortSignal;
+  readonly onPrompt: (prompt: DevicePromptShape) => Promise<void>;
+  readonly close: () => void;
+}
+
+const createDeviceInteraction = (
+  context: CliContext,
+  input: {
+    readonly title: string;
+    readonly reason: readonly string[];
+    readonly allowBrowser: boolean;
+    readonly palette: ReturnType<typeof createPalette>;
+  },
+): DeviceInteraction => {
+  const cancellation = new AbortController();
+  const signal =
+    context.signal === undefined
+      ? cancellation.signal
+      : AbortSignal.any([context.signal, cancellation.signal]);
+  const now = context.now ?? Date.now;
+  const write = context.writeOutput ?? (() => undefined);
+  let session: AuthorizationInputSession | null = null;
+  let destination: ValidatedExternalDestination | null = null;
+  let openedAt = Number.NEGATIVE_INFINITY;
+  let manualAttempts = 0;
+  let opening = false;
+  let closed = false;
+  let fallbackShown = false;
+
+  const showFallback = (): void => {
+    if (fallbackShown || destination === null || closed) return;
+    fallbackShown = true;
+    write(`\nThe browser did not open.\nOpen this link: ${destination.url}\n`);
+  };
+  const manualOpen = async (): Promise<void> => {
+    if (
+      closed ||
+      destination === null ||
+      !input.allowBrowser ||
+      context.openExternal === undefined ||
+      opening
+    ) {
+      return;
+    }
+    if (manualAttempts >= 5) {
+      showFallback();
+      return;
+    }
+    const current = now();
+    if (current - openedAt < 1_000) return;
+    manualAttempts += 1;
+    openedAt = current;
+    opening = true;
+    const result = await context
+      .openExternal(destination)
+      .catch((): OpenExternalResult => ({ status: "failed" }));
+    opening = false;
+    if (result.status !== "opened") showFallback();
+    if (manualAttempts >= 5) showFallback();
+  };
+
+  return {
+    signal,
+    onPrompt: async (prompt) => {
+      destination = validateExternalDestination({
+        kind: "github-device",
+        url: prompt.verificationUri,
+      });
+      if (destination === null) throw new Error("GitHub device destination was refused.");
+      let result: OpenExternalResult = { status: "unsupported" };
+      if (input.allowBrowser && context.openExternal !== undefined) {
+        openedAt = now();
+        opening = true;
+        result = await context
+          .openExternal(destination)
+          .catch((): OpenExternalResult => ({ status: "failed" }));
+        opening = false;
+      }
+      const opened = result.status === "opened";
+      const controls =
+        input.allowBrowser && context.authorizationInput !== undefined
+          ? `${input.palette.wrap("cyan", `[Enter] ${opened ? "open again" : "try again"}`)} ${input.palette.wrap("dim", "· [q] cancel")}`
+          : input.palette.wrap("dim", "[q] cancel");
+      write(
+        [
+          input.title,
+          "",
+          ...input.reason,
+          "",
+          opened ? "Browser opened." : "The browser did not open.",
+          ...(opened ? [] : [`Open this link: ${destination.url}`]),
+          `Enter this code: ${input.palette.wrap("bold", prompt.userCode)}`,
+          "",
+          controls,
+          "",
+        ].join("\n"),
+      );
+      fallbackShown = !opened;
+      if (context.authorizationInput !== undefined) {
+        session = context.authorizationInput.start({
+          onEnter: manualOpen,
+          onCancel: () => cancellation.abort(),
+        });
+      }
+    },
+    close: () => {
+      closed = true;
+      session?.close();
+      session = null;
+    },
+  };
 };
 
 const authorizeOnce = async (
   context: CliContext,
-  privateContextFollows = false,
+  options: {
+    readonly privateContextFollows: boolean;
+    readonly allowBrowser: boolean;
+    readonly palette: ReturnType<typeof createPalette>;
+  },
 ): Promise<
-  { readonly ok: true; readonly token: string } | { readonly ok: false; readonly message: string }
+  | { readonly ok: true; readonly token: string }
+  | { readonly ok: false; readonly title: string; readonly message: string }
 > => {
   const authorize = context.authorizeDevice ?? authorizeGithubDevice;
-  const result = await authorize({
-    ...(context.fetchImpl === undefined ? {} : { fetchImpl: context.fetchImpl }),
-    ...(context.signal === undefined ? {} : { signal: context.signal }),
-    onPrompt: (prompt) => {
-      context.writeOutput?.(
-        [
-          privateContextFollows ? "PUBLIC API ACCESS · STEP 1 OF 2" : "PUBLIC API ACCESS",
-          "",
-          "This authorization increases public API capacity.",
-          "Private repositories remain excluded.",
-          "",
-          `Open: ${prompt.verificationUri}`,
-          `Code: ${prompt.userCode}`,
-          "",
-          "Git Mog will continue here after approval. The token stays in memory only.",
-          "",
-        ].join("\n"),
-      );
-    },
+  const interaction = createDeviceInteraction(context, {
+    title: options.privateContextFollows ? "GITHUB SIGN-IN · 1 OF 2" : "GITHUB SIGN-IN",
+    reason: [
+      "GitHub is almost out of anonymous lookups for this hour.",
+      "Sign in once so Git Mog can finish the full public read.",
+      "",
+      options.privateContextFollows
+        ? "Private repos are not included in this step."
+        : "Private repos are not included.",
+    ],
+    allowBrowser: options.allowBrowser,
+    palette: options.palette,
   });
+  let result: Awaited<ReturnType<typeof authorizeGithubDevice>>;
+  try {
+    result = await authorize({
+      ...(context.fetchImpl === undefined ? {} : { fetchImpl: context.fetchImpl }),
+      signal: interaction.signal,
+      onPrompt: interaction.onPrompt,
+    });
+  } finally {
+    interaction.close();
+  }
   if (!result.ok) {
     const messages = {
-      access_denied: "GitHub sign-in was denied.",
-      expired: "The GitHub sign-in code expired.",
+      access_denied: "GitHub sign-in was cancelled.\nRun the command again when you’re ready.",
+      expired: "That code expired.\nRun the command again for a new one.",
       cancelled: "GitHub sign-in was cancelled.",
       network: "GitHub sign-in could not reach GitHub.",
       timeout: "GitHub sign-in timed out.",
       malformed: "GitHub returned an unreadable sign-in response.",
       configuration: "GitHub sign-in is not configured for this build.",
     } as const;
-    return { ok: false, message: messages[result.error] };
+    return {
+      ok: false,
+      title:
+        result.error === "access_denied" || result.error === "cancelled"
+          ? "AUTH DENIED"
+          : result.error === "expired"
+            ? "AUTH EXPIRED"
+            : "GITHUB SIGN-IN FAILED",
+      message: messages[result.error],
+    };
   }
   if (result.scopes.length !== 0) {
-    return { ok: false, message: "GitHub returned permissions Git Mog did not request." };
+    return {
+      ok: false,
+      title: "GITHUB SIGN-IN FAILED",
+      message: "GitHub returned permissions Git Mog did not request.",
+    };
   }
   return { ok: true, token: result.token };
 };
@@ -445,7 +648,15 @@ const collectPrivateContext = async (
   publicToken: string | undefined,
   context: CliContext,
   followsPublicAuthorization: boolean,
-): Promise<{ readonly result?: PrivateContextResult; readonly error?: PrivateContextError }> => {
+  interactionOptions: {
+    readonly allowBrowser: boolean;
+    readonly palette: ReturnType<typeof createPalette>;
+  },
+): Promise<{
+  readonly result?: PrivateContextResult;
+  readonly error?: PrivateContextError;
+  readonly continuedPublicOnly?: true;
+}> => {
   const validated = validatePrivateContextAppConfig(context.privateContextAppConfig);
   if (!validated.ok) {
     return {
@@ -456,28 +667,31 @@ const collectPrivateContext = async (
     };
   }
   const authorize = context.authorizePrivateDevice ?? authorizePrivateGithubDevice;
-  const authorized = await authorize({
-    config: validated.config,
-    ...(publicToken === undefined ? {} : { forbiddenTokens: [publicToken] }),
-    ...(context.fetchImpl === undefined ? {} : { fetchImpl: context.fetchImpl }),
-    ...(context.signal === undefined ? {} : { signal: context.signal }),
-    onPrompt: (prompt) => {
-      context.writeOutput?.(
-        [
-          followsPublicAuthorization ? "PRIVATE CONTEXT · STEP 2 OF 2" : "PRIVATE CONTEXT",
-          "",
-          "Read-only access applies only to repositories selected in the GitHub App installation.",
-          "",
-          "It cannot write, administer, read secrets, or execute repository code.",
-          "The token is memory-only for this run.",
-          "",
-          `Open: ${prompt.verificationUri}`,
-          `Code: ${prompt.userCode}`,
-          "",
-        ].join("\n"),
-      );
-    },
+  const interaction = createDeviceInteraction(context, {
+    title: followsPublicAuthorization ? "PRIVATE REPOS · 2 OF 2" : "PRIVATE REPOS",
+    reason: [
+      "Git Mog can read only the private repos you selected on GitHub.",
+      "",
+      "No write access.",
+      "No GitHub Secrets access.",
+      "No code execution.",
+      "Access ends when this run ends.",
+    ],
+    allowBrowser: interactionOptions.allowBrowser,
+    palette: interactionOptions.palette,
   });
+  let authorized: Awaited<ReturnType<typeof authorizePrivateGithubDevice>>;
+  try {
+    authorized = await authorize({
+      config: validated.config,
+      ...(publicToken === undefined ? {} : { forbiddenTokens: [publicToken] }),
+      ...(context.fetchImpl === undefined ? {} : { fetchImpl: context.fetchImpl }),
+      signal: interaction.signal,
+      onPrompt: interaction.onPrompt,
+    });
+  } finally {
+    interaction.close();
+  }
   if (!authorized.ok) {
     const code =
       authorized.error === "conflicting_token_boundary"
@@ -490,12 +704,17 @@ const collectPrivateContext = async (
     return {
       error: {
         code,
-        message: "Private Context authorization did not complete. The public result is unchanged.",
+        message:
+          authorized.error === "access_denied" || authorized.error === "cancelled"
+            ? "GitHub sign-in was cancelled.\nRun the command again when you’re ready."
+            : authorized.error === "expired"
+              ? "That code expired.\nRun the command again for a new one."
+              : "Private repo sign-in did not complete. The public result is still available.",
       },
     };
   }
   const privateRunner = context.runPrivateContext ?? runPrivateContext;
-  const outcome = await authorized.lease.use((token) =>
+  const runWithToken = (token: string) =>
     privateRunner({
       handles,
       token,
@@ -503,10 +722,94 @@ const collectPrivateContext = async (
       ...(context.fetchImpl === undefined ? {} : { fetchImpl: context.fetchImpl }),
       ...(context.signal === undefined ? {} : { signal: context.signal }),
       ...(context.now === undefined ? {} : { now: context.now }),
-    }),
-  );
+    });
+  const outcome = await authorized.lease.use(async (token) => {
+    let current = await runWithToken(token);
+    for (let rechecks = 0; !current.ok && rechecks < 3; rechecks += 1) {
+      const setupKind =
+        current.error.code === "private_context_installation_required"
+          ? "install"
+          : current.error.code === "private_context_selected_repositories_required"
+            ? "settings"
+            : null;
+      if (setupKind === null || context.prompt === undefined) return current;
+      const destination =
+        setupKind === "install"
+          ? privateAppInstallationDestination()
+          : current.error.settingsUrl === undefined
+            ? null
+            : privateAppSettingsDestination(current.error.settingsUrl);
+      const openResult =
+        interactionOptions.allowBrowser &&
+        context.openExternal !== undefined &&
+        destination !== null
+          ? await context
+              .openExternal(destination)
+              .catch((): OpenExternalResult => ({ status: "failed" }))
+          : ({ status: "unsupported" } as const);
+      const browserLine =
+        openResult.status === "opened" ? "Browser opened." : "The browser did not open.";
+      const instructions =
+        setupKind === "install"
+          ? [
+              "Choose “Only select repositories” on GitHub, then pick the private repos you",
+              "want Git Mog to read.",
+            ]
+          : [
+              "Git Mog requires “Only select repositories.”",
+              "",
+              "Switch the installation from “All repositories” to the private repos you want",
+              "included.",
+            ];
+      const fallback =
+        openResult.status === "opened"
+          ? []
+          : setupKind === "install"
+            ? [`Open this link: ${privateAppInstallationDestination().url}`]
+            : ["Open GitHub’s Installed GitHub Apps settings."];
+      const answer = (
+        await context.prompt(
+          [
+            "PRIVATE REPOS SETUP",
+            "",
+            ...instructions,
+            "",
+            browserLine,
+            ...fallback,
+            "",
+            setupKind === "install"
+              ? "[Enter] I’m finished · [p] continue public-only · [q] cancel"
+              : "[Enter] I’ve changed it · [p] continue public-only · [q] cancel",
+            "",
+          ].join("\n"),
+        )
+      )
+        .trim()
+        .toLowerCase();
+      if (answer === "p" || answer === "public" || answer === "public-only") {
+        return { continuedPublicOnly: true } as const;
+      }
+      if (answer === "q" || answer === "quit" || answer === "cancel") {
+        return { cancelled: true } as const;
+      }
+      current = await runWithToken(token);
+    }
+    return current;
+  });
   authorized.lease.dispose();
-  return outcome.ok ? { result: outcome.result } : { error: outcome.error };
+  if ("continuedPublicOnly" in outcome) return { continuedPublicOnly: true };
+  if ("cancelled" in outcome)
+    return {
+      error: {
+        code: "private_context_auth_denied",
+        message: "Private repos were cancelled.",
+      },
+    };
+  if (outcome.ok) {
+    context.writeOutput?.(`Private repos connected for @${outcome.result.subject}.\n`);
+    return { result: outcome.result };
+  }
+  return { error: outcome.error };
 };
 
 const machineErrorCode = (error: BattleError): JsonErrorCode =>
@@ -678,6 +981,21 @@ export async function run(argv: readonly string[], context: CliContext): Promise
   const color = parseColorMode(colorValue ?? "auto");
   if (color === null)
     return invalid("Invalid --color value.", context.invokedAs, values.json === true);
+  const authorizationPalette = createPalette(
+    shouldUseColor({
+      mode: color,
+      env: context.env,
+      isTty: context.stderrIsTty === true,
+    }),
+  );
+  const allowBrowserForAuthorization = (): boolean =>
+    browserOpeningAllowed(context, {
+      explicitAuthorization: true,
+      noOpen: values["no-open"] === true,
+      json: values.json === true,
+      anonymous: values.anonymous === true,
+      promptingAllowed: values["no-prompt"] !== true,
+    });
   const parsedShare = shareValue === undefined ? null : parseSharePreset(shareValue);
   if (shareValue !== undefined && parsedShare === null)
     return invalid("Invalid --share value.", context.invokedAs, values.json === true);
@@ -887,12 +1205,16 @@ export async function run(argv: readonly string[], context: CliContext): Promise
   if (context.skipBudgetPreflight !== true) {
     let authenticationState: AuthenticationState = invocationAuthenticationState;
     if (values["sign-in"] === true) {
-      const authorized = await authorizeOnce(context, explicitPrivateContextRequested);
+      const authorized = await authorizeOnce(context, {
+        privateContextFollows: explicitPrivateContextRequested,
+        allowBrowser: allowBrowserForAuthorization(),
+        palette: authorizationPalette,
+      });
       if (!authorized.ok) {
         return {
           exitCode: 1,
           stdout: "",
-          stderr: `GITHUB SIGN-IN STOPPED\n\n${authorized.message}\n`,
+          stderr: `${authorized.title}\n\n${authorized.message}\n`,
         };
       }
       invocationToken = authorized.token;
@@ -900,7 +1222,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       invocationAuthenticationState = "device";
       publicSignInJustSucceeded = true;
       context.writeOutput?.(
-        "Signed in for public API capacity. Private repositories are still excluded.\n",
+        "Connected for public GitHub data.\nPrivate repos are still excluded.\n",
       );
     }
 
@@ -945,22 +1267,26 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       const remaining = requestPlan.remaining ?? "unknown";
       const need = requestPlan.expectedCurrentRequests;
       const choices = requestPlan.limitedRunPossible
-        ? "[s] sign in once, [l] continue with a limited public read, [c] cancel"
-        : "[s] sign in once, [c] cancel";
+        ? "[Enter] sign in once · [l] smaller read · [q] cancel"
+        : "[Enter] sign in once · [q] cancel";
       const answer = (
         await context.prompt(
-          `GitHub has ${remaining} requests left; this read can use up to ${need}.\n${choices}: `,
+          `GITHUB LIMIT\n\nGitHub is almost out of anonymous lookups for this hour.\n${remaining} left · the full read may need ${String(need)}\n\n${choices}\n`,
         )
       )
         .trim()
         .toLowerCase();
-      if (answer === "s" || answer === "sign in" || answer === "sign-in") {
-        const authorized = await authorizeOnce(context, explicitPrivateContextRequested);
+      if (answer === "" || answer === "s" || answer === "sign in" || answer === "sign-in") {
+        const authorized = await authorizeOnce(context, {
+          privateContextFollows: explicitPrivateContextRequested,
+          allowBrowser: allowBrowserForAuthorization(),
+          palette: authorizationPalette,
+        });
         if (!authorized.ok) {
           return {
             exitCode: 1,
             stdout: "",
-            stderr: `GITHUB SIGN-IN STOPPED\n\n${authorized.message}\n`,
+            stderr: `${authorized.title}\n\n${authorized.message}\n`,
           };
         }
         invocationToken = authorized.token;
@@ -968,7 +1294,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         invocationAuthenticationState = "device";
         publicSignInJustSucceeded = true;
         context.writeOutput?.(
-          "Signed in for public API capacity. Private repositories are still excluded.\n",
+          "Connected for public GitHub data.\nPrivate repos are still excluded.\n",
         );
         planned = await makePlan();
         if (!planned.ok) {
@@ -1034,24 +1360,35 @@ export async function run(argv: readonly string[], context: CliContext): Promise
       const limited = requestPlan.quality.disposition === "limited";
       const qualityRequired = values.quality === true;
       const choices = qualityRequired
-        ? "[s] sign in once, [c] cancel"
+        ? "[Enter] sign in once · [q] cancel"
         : limited
-          ? "[s] sign in once, [l] run the bounded preview, [w] continue without quality"
-          : "[s] sign in once, [w] continue without quality";
+          ? "[Enter] use this sample · [s] sign in once · [w] skip code quality"
+          : "[Enter] sign in once · [w] skip code quality";
       const answer = (
-        await context.prompt(`${qualityPreflightMessage(requestPlan.quality)}\n${choices}: `)
+        await context.prompt(
+          `CODE QUALITY\n\n${qualityPreflightMessage(requestPlan.quality)}\n\n${choices}\n`,
+        )
       )
         .trim()
         .toLowerCase();
-      if (answer === "s" || answer === "sign in" || answer === "sign-in") {
-        const authorized = await authorizeOnce(context, explicitPrivateContextRequested);
+      if (
+        answer === "s" ||
+        answer === "sign in" ||
+        answer === "sign-in" ||
+        (answer === "" && (qualityRequired || !limited))
+      ) {
+        const authorized = await authorizeOnce(context, {
+          privateContextFollows: explicitPrivateContextRequested,
+          allowBrowser: allowBrowserForAuthorization(),
+          palette: authorizationPalette,
+        });
         if (authorized.ok) {
           invocationToken = authorized.token;
           authenticationState = "device";
           invocationAuthenticationState = "device";
           publicSignInJustSucceeded = true;
           context.writeOutput?.(
-            "Signed in for public API capacity. Private repositories are still excluded.\n",
+            "Connected for public GitHub data.\nPrivate repos are still excluded.\n",
           );
           const qualityPlanned = await makePlan();
           if (qualityPlanned.ok) requestPlan = qualityPlanned.plan;
@@ -1059,8 +1396,12 @@ export async function run(argv: readonly string[], context: CliContext): Promise
         } else {
           qualityEnabledForRun = false;
         }
-      } else if (!qualityRequired && (answer === "l" || answer === "limited") && limited) {
-        // The bounded preview remains enabled with explicit coverage limits.
+      } else if (
+        !qualityRequired &&
+        (answer === "" || answer === "l" || answer === "limited") &&
+        limited
+      ) {
+        // The smaller preview remains enabled with explicit coverage limits.
       } else {
         qualityEnabledForRun = false;
       }
@@ -1099,11 +1440,18 @@ export async function run(argv: readonly string[], context: CliContext): Promise
     if (login !== null && matches.length === 1) {
       const answer = (
         await context.prompt(
-          `Private repos are excluded by default.\nAdd selected private repos for @${login}?\n\n[n] public only  [p] private context: `,
+          `PRIVATE REPOS · OPTIONAL\n\nPrivate repos are excluded.\nAdd selected private repos for @${login}?\n\n[Enter] public only · [p] add private repos · [q] cancel\n`,
         )
       )
         .trim()
         .toLowerCase();
+      if (answer === "q" || answer === "quit" || answer === "cancel") {
+        return {
+          exitCode: 1,
+          stdout: "",
+          stderr: "CANCELLED\n\nNo GitHub profile read began.\n",
+        };
+      }
       privateContextRequested =
         answer === "p" || answer === "private" || answer === "private context";
     }
@@ -1179,6 +1527,10 @@ export async function run(argv: readonly string[], context: CliContext): Promise
             invocationToken,
             context,
             explicitPrivateContextRequested && publicSignInJustSucceeded,
+            {
+              allowBrowser: allowBrowserForAuthorization(),
+              palette: authorizationPalette,
+            },
           )
         : {};
       const privateContext = privateOutcome.result;
@@ -1195,7 +1547,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
                 ...(privateContext === undefined ? {} : { privateContext }),
                 ...(privateOutcome.error === undefined
                   ? {}
-                  : { privateContextError: privateOutcome.error }),
+                  : { privateContextError: publicPrivateContextError(privateOutcome.error) }),
               },
               privateContext,
             )
@@ -1267,6 +1619,10 @@ export async function run(argv: readonly string[], context: CliContext): Promise
           invocationToken,
           context,
           explicitPrivateContextRequested && publicSignInJustSucceeded,
+          {
+            allowBrowser: allowBrowserForAuthorization(),
+            palette: authorizationPalette,
+          },
         )
       : {};
     const privateContext = privateOutcome.result;
@@ -1332,7 +1688,7 @@ export async function run(argv: readonly string[], context: CliContext): Promise
             ...(privateContext === undefined ? {} : { privateContext }),
             ...(privateOutcome.error === undefined
               ? {}
-              : { privateContextError: privateOutcome.error }),
+              : { privateContextError: publicPrivateContextError(privateOutcome.error) }),
           },
           privateContext,
         ),

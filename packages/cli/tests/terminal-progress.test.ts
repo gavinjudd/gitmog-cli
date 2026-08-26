@@ -336,9 +336,16 @@ describe("terminal progress behavior", () => {
   });
 
   it.each([
-    ["public authorization", "PUBLIC API ACCESS · STEP 1 OF 2", "settle", 60, true, false],
-    ["private authorization", "PRIVATE CONTEXT · STEP 2 OF 2", "settle", 80, false, false],
-    ["user choice", "[s] sign in once, [l] limited, [c] cancel", "settle", 100, true, true],
+    ["public authorization", "GITHUB SIGN-IN · 1 OF 2", "settle", 60, true, false],
+    ["private authorization", "PRIVATE REPOS · 2 OF 2", "settle", 80, false, false],
+    [
+      "user choice",
+      "[Enter] sign in once · [l] smaller read · [q] cancel",
+      "settle",
+      100,
+      true,
+      true,
+    ],
     ["error", "GIT MOG STOPPED", "failure", 60, false, false],
     ["final battle", "GIT MOG · FINAL BATTLE", "complete", 80, true, false],
     ["Ctrl-C", "CANCELLED", "abort", 100, false, false],
@@ -495,8 +502,8 @@ describe("CLI output boundaries", () => {
     if (result.exitCode !== 0) throw new Error(JSON.stringify(result));
     const raw = transcript.join("");
     expect(raw).not.toContain("Reviewing code qualityPRIVATE CONTEXT");
-    const promptLine = renderedTerminalLines(raw).find((line) => line === "PRIVATE CONTEXT");
-    expect(promptLine).toBe("PRIVATE CONTEXT");
+    const promptLine = renderedTerminalLines(raw).find((line) => line === "PRIVATE REPOS");
+    expect(promptLine).toBe("PRIVATE REPOS");
   });
 
   it.each([

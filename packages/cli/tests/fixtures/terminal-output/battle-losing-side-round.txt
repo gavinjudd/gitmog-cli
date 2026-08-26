@@ -3,19 +3,19 @@ GIT MOG
 Coverage: @tagmachine 59% · @assertionpilled 59%
 » A verification stack entered the fight: 100% tested, 100% automated. [1]
 THE FIGHT
-ACTIVITY          24–78  @assertionpilled · Active weeks: 0/12–12/12 [2]
-TOOLING           100–50  @tagmachine · Project automation: 3/3–0/3 [3]
-SHIPPING BREADTH  50–25  @tagmachine · Versioned releases: 63–0 [4]
+ACTIVITY  24–78  @assertionpilled · Active weeks: 0/12–12/12 [2]
+TOOLING   100–50  @tagmachine · Project automation: 3/3–0/3 [3]
+SHIPPING  50–25  @tagmachine · Versioned releases: 63–0 [4]
 THE READ
 @tagmachine — Tests: 25 per 100 source files in inspected trees. [5]
 @assertionpilled — Tests: 63 per 100 source files in inspected trees.
-  3 established projects have no version tags. [6]
+  Three established projects have no version tags. [6]
 CODE QUALITY · PREVIEW
-Maintained codebase @tagmachine 81 (100%) · @assertionpilled 81 (100%)
-Attributed code @tagmachine 81 (67%) · @assertionpilled 81 (68%)
+Codebase sample @tagmachine 81 · @assertionpilled 81
+Authored sample @tagmachine 81 · @assertionpilled 81
 @tagmachine — 0 high-complexity funcs · packager/migrate.ts:1 [LQ1]
 @assertionpilled — 0 high-complexity funcs · validator/cli.ts:1 [RQ1]
-Separate from the battle score.
+Not used in the battle score.
 RECEIPTS
 [1] Repositories containing tests — 3/3 vs 3/3
 [2] Active weeks — 0/12 vs 12/12

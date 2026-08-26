@@ -1,0 +1,11 @@
+GITHUB SIGN-IN
+
+GitHub is almost out of anonymous lookups for this hour.
+Sign in once so Git Mog can finish the full public read.
+
+Private repos are not included.
+
+Browser opened.
+Enter this code: TEST-CODE
+
+[Enter] open again · [q] cancel

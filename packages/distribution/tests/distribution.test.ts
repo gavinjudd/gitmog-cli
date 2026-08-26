@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { browserOpenBundlePolicyFailures } from "../browser-open-policy.mjs";
+
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryDirectory = resolve(packageDirectory, "../..");
 const qualityVersions = JSON.parse(
@@ -28,6 +30,16 @@ const manifest = JSON.parse(readFileSync(resolve(packageDirectory, "package.json
 const bundlePath = resolve(packageDirectory, "dist/gitmog.mjs");
 const parserBundlePath = resolve(packageDirectory, "dist/parsers/quality-worker.mjs");
 const binPath = resolve(packageDirectory, "bin/gitmog.mjs");
+const buildMetadata = JSON.parse(
+  readFileSync(resolve(packageDirectory, "dist/build.json"), "utf8"),
+) as {
+  readonly interaction: {
+    readonly browserCapability: string;
+    readonly interaction: string;
+    readonly terminalPresentation: string;
+    readonly copyContract: string;
+  };
+};
 
 describe("standalone npm distribution", () => {
   it("has the public identity, release metadata, accepted engines and both bins", () => {
@@ -70,7 +82,7 @@ describe("standalone npm distribution", () => {
     expect(bundle).not.toContain("workspace:");
     expect(bundle).not.toContain("sourceMappingURL=");
     expect(bundle).not.toMatch(/@ai-sdk|api\.openai\.com/);
-    expect(bundle).not.toContain("node:child_process");
+    expect(browserOpenBundlePolicyFailures(bundle, parserBundle)).toEqual([]);
     expect(bundle).toContain("2.0.0-source-opportunity-scope");
     expect(bundle).toContain("6.1.0-failure-fallback-opportunities");
     expect(bundle).toContain("1.2.0-cache-invariant-support");
@@ -81,7 +93,13 @@ describe("standalone npm distribution", () => {
     expect(bundle).toContain(privateContextApp.appId);
     expect(bundle).toContain(privateContextApp.clientId);
     expect(bundle).toContain(privateContextApp.slug);
-    expect(bundle).toContain("1.1.0-selected-sample-presentation");
+    expect(bundle).toContain("1.2.0-readable-sample-presentation");
+    expect(buildMetadata.interaction).toEqual({
+      browserCapability: "1.0.0-closed-github-destinations",
+      interaction: "2.0.0-frictionless-github-authorization",
+      terminalPresentation: "2.0.0-first-screen-editorial",
+      copyContract: "1.0.0-surface-aware-copy-gate",
+    });
     expect(bundle).toContain("1.0.0-bounded-private-rest");
     expect(bundle).toContain("parsers/quality-worker.mjs");
     expect(parserBundle).toContain(qualityVersions.parserContract);
@@ -168,15 +186,13 @@ describe("standalone npm distribution", () => {
     expect(help).toContain("npx -y gitmog <username>");
     expect(help).toContain("npx -y gitmog torvalds gvanrossum");
     expect(help).toContain("npx -y gitmog karpathy geohot");
-    expect(help.indexOf("npx -y gitmog <left> <right>")).toBeLessThan(
-      help.indexOf("Try a famous matchup:"),
-    );
+    expect(help.indexOf("npx -y gitmog <left> <right>")).toBeLessThan(help.indexOf("TRY IT"));
     expect(help).toContain("--receipts");
     expect(help).toContain("--details");
     expect(help).toContain("--card");
     expect(help).toContain("--share");
-    expect(help).toContain("Coverage is the share of the public scorecard");
-    expect(help).toContain("one-time sign-in");
+    expect(help).not.toContain("API");
+    expect(help).not.toContain("parser-backed");
     expect(help).toContain("--help-all");
     expect(help).not.toContain("higher-quality");
   });

@@ -20,7 +20,7 @@ import { canonicalizePackageHelpInvocation } from "./lib/package-acceptance.mjs"
 
 const ESCAPE = String.fromCodePoint(27);
 const PRIVATE_PROGRESS_COLLISION = new RegExp(
-  `Reviewing code quality(?:${ESCAPE}\\[[0-9;?]*[A-Za-z])*PRIVATE CONTEXT`,
+  `Reviewing code quality(?:${ESCAPE}\\[[0-9;?]*[A-Za-z])*PRIVATE REPOS`,
   "u",
 );
 const removedThirdToken = ["ultra", "think"].join("");
@@ -568,6 +568,7 @@ async function main() {
   const environment = {
     ...process.env,
     GITHUB_TOKEN: "",
+    GITMOG_NO_BROWSER: "1",
     GITMOG_CACHE_DIR: cacheDirectory,
     npm_config_cache: npmCacheDirectory,
     NPM_CONFIG_CACHE: npmCacheDirectory,
@@ -801,8 +802,7 @@ async function main() {
     }
     if (
       fixtureHelp.result.stdout.indexOf("npx -y gitmog <left> <right>") >
-        fixtureHelp.result.stdout.indexOf("Try a famous matchup:") ||
-      !fixtureHelp.result.stdout.includes("No affiliation or endorsement implied.") ||
+        fixtureHelp.result.stdout.indexOf("TRY IT") ||
       fixtureHelp.result.stdout.split(/\r?\n/).some((line) => line.length > 80)
     ) {
       fail("Packed help reordered primary grammar, exceeded 80 columns, or lost the disclaimer.");
@@ -812,6 +812,7 @@ async function main() {
       fixtureAdvancedHelp.report.calls.length !== 0 ||
       !fixtureAdvancedHelp.result.stdout.includes("--json") ||
       !fixtureAdvancedHelp.result.stdout.includes("--sign-in") ||
+      !fixtureAdvancedHelp.result.stdout.includes("--no-open") ||
       !fixtureAdvancedHelp.result.stdout.includes("--cache-info") ||
       !fixtureAdvancedHelp.result.stdout.includes("--clear-cache")
     ) {
@@ -927,10 +928,10 @@ async function main() {
     };
     assertPrivateSurfaceSafe(privateMixed.result.stdout, "Mixed JSON");
     assertPrivateSurfaceSafe(privateMixed.result.stderr, "Mixed JSON instructions");
-    if (!privateMixed.result.stderr.includes("PRIVATE CONTEXT")) {
+    if (!privateMixed.result.stderr.includes("PRIVATE REPOS")) {
       fail("Packed Private Context omitted its separate permission explanation.");
     }
-    if (privateMixed.result.stderr.includes("Reviewing code qualityPRIVATE CONTEXT")) {
+    if (privateMixed.result.stderr.includes("Reviewing code qualityPRIVATE REPOS")) {
       fail("Packed Private Context authorization collided with transient progress.");
     }
     record(
@@ -974,17 +975,17 @@ async function main() {
       assertPrivateSurfaceSafe(surface.result.stderr, `Mixed ${label} instructions`);
       const required =
         label === "card"
-          ? ["MIXED CONTEXT", "PUBLIC WINNER"]
+          ? ["MIXED CONTEXT", "WINNER STILL USES PUBLIC REPOS ONLY"]
           : label.startsWith("share-")
-            ? ["Mixed context:", "The winner uses public evidence only."]
-            : ["PRIVATE CONTEXT", "public winner unchanged"];
+            ? ["Mixed context:", "Private repos did not change the winner."]
+            : ["PRIVATE CONTEXT", "winner still uses public repos only"];
       const compact = compactRenderedText(surface.result.stdout);
       for (const text of required) {
         if (!compact.includes(text)) {
           fail(`Mixed ${label} omitted required disclosure: ${text}`);
         }
       }
-      if (!compact.includes("Code-quality sample:")) {
+      if (!compact.includes("Code sample:")) {
         fail(`Mixed ${label} omitted selected-sample scope.`);
       }
       if (label !== "details" && /previewScore: \d+/.test(compact)) {

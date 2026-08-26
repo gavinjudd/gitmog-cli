@@ -201,9 +201,9 @@ describe("bounded private repository collection", () => {
     const p2 = outcome.result.receipts.find((receipt) => receipt.id === "P2");
     const p3 = outcome.result.receipts.find((receipt) => receipt.id === "P3");
     const p4 = outcome.result.receipts.find((receipt) => receipt.id === "P4");
-    expect(p1?.claim).toBe("1 of 1 analyzed private repository contains CI configuration.");
-    expect(p2?.claim).toBe("1 selected private project shows sustained maintenance.");
-    expect(p3?.claim).toContain("Code-quality sample: 1 repo · 1 parsed file ·");
+    expect(p1?.claim).toBe("CI found in the selected repo.");
+    expect(p2?.claim).toBe("Long-running maintenance found in 1 selected repo.");
+    expect(p3?.claim).toBe("Code sample: 1 file · all 1 readable by Git Mog.");
     expect(p4?.claim).toBe("1 of 1 sampled file has user-linked commit evidence.");
     const serialized = JSON.stringify(outcome.result);
     expect(serialized).not.toContain(privateName);

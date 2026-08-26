@@ -1,0 +1,6 @@
+{
+  "browserCapability": "1.0.0-closed-github-destinations",
+  "interaction": "2.0.0-frictionless-github-authorization",
+  "terminalPresentation": "2.0.0-first-screen-editorial",
+  "copyContract": "1.0.0-surface-aware-copy-gate"
+}

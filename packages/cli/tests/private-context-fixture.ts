@@ -53,7 +53,7 @@ const unavailableDimensions = {
 } as const;
 
 export const PRIVATE_CONTEXT_FIXTURE: PrivateContextResult = {
-  version: "1.1.0-selected-sample-presentation",
+  version: "1.2.0-readable-sample-presentation",
   mode: "selected-private-repositories",
   status: "partial",
   subject: "StrongMaintainer",
@@ -86,6 +86,7 @@ export const PRIVATE_CONTEXT_FIXTURE: PrivateContextResult = {
     coverage: 61,
     dimensions: unavailableDimensions,
     repositories: 3,
+    sampledFiles: 12,
     files: 10,
     sourceBytes: 64_000,
     nonBlankLines: 1_200,
@@ -102,6 +103,7 @@ export const PRIVATE_CONTEXT_FIXTURE: PrivateContextResult = {
     coverage: 52,
     dimensions: unavailableDimensions,
     repositories: 2,
+    sampledFiles: 11,
     files: 7,
     sourceBytes: 44_000,
     nonBlankLines: 800,
@@ -117,21 +119,21 @@ export const PRIVATE_CONTEXT_FIXTURE: PrivateContextResult = {
   receipts: [
     {
       id: "P1",
-      claim: "3 of 4 analyzed private repositories contain CI configuration.",
+      claim: "CI found in 3 of 4 selected repos.",
       metric: "ci-repositories",
       observed: 3,
       total: 4,
     },
     {
       id: "P2",
-      claim: "2 selected private projects show sustained maintenance.",
+      claim: "Long-running maintenance found in 2 selected repos.",
       metric: "sustained-repositories",
       observed: 2,
       total: 4,
     },
     {
       id: "P3",
-      claim: "Code-quality sample: 3 repos · 10 parsed files · 61% supported coverage.",
+      claim: "Code sample: 10 of 12 files readable by Git Mog.",
       metric: "quality-coverage",
       observed: 61,
       total: 100,

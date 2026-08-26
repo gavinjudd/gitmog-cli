@@ -435,9 +435,9 @@ describe("human-readable presentation contract", () => {
       qualityPreview: quality,
     });
     expect(collapsed).toContain(
-      "CODE QUALITY · PREVIEW\nNot enough TypeScript/JavaScript source for either profile.\nSeparate from the battle score.",
+      "CODE QUALITY · PREVIEW\nNot enough TypeScript/JavaScript for a useful sample.\nNot used in the battle score.",
     );
-    expect(collapsed).not.toContain("limited parser-supported evidence");
+    expect(collapsed).not.toContain("limited readable code sample");
 
     const different = {
       ...quality,
@@ -446,8 +446,8 @@ describe("human-readable presentation contract", () => {
     const sideSpecific = renderBattle(result.battle, result.sourceAnalysis, result.story, {
       qualityPreview: different,
     });
-    expect(sideSpecific).toContain("@strongmaintainer — limited parser-supported evidence.");
-    expect(sideSpecific).toContain("@sidequester — limited parser-supported evidence.");
+    expect(sideSpecific).toContain("@strongmaintainer — limited readable code sample.");
+    expect(sideSpecific).toContain("@sidequester — limited readable code sample.");
   });
 
   it("discloses mixed context on terminal, card, and every share without private details", async () => {
@@ -479,12 +479,15 @@ describe("human-readable presentation contract", () => {
         ),
       ),
     ];
-    expect(terminal.split("\n")[3]).toContain("public winner unchanged");
+    expect(terminal.split("\n")[2]).toContain("Public coverage:");
+    expect(terminal.split("\n").slice(3, 5).join(" ")).toContain(
+      "winner still uses public repos only",
+    );
     expect(terminal).toContain("PRIVATE CONTEXT · @StrongMaintainer");
     for (const surface of surfaces) {
       expect(surface).toMatch(/MIXED CONTEXT|Mixed context|Context:/u);
-      expect(surface.toLowerCase()).toMatch(
-        /winner uses public evidence|public winner · public evidence/u,
+      expect(surface.toLowerCase().replace(/\s+/gu, " ")).toMatch(
+        /winner uses public evidence|public winner · public evidence|winner still uses public repos only|private repos did not change the winner/u,
       );
       expect(surface).not.toContain("sensitive-private-project");
       expect(surface).not.toContain("secret/private/path.ts");
@@ -609,7 +612,7 @@ describe("human-readable presentation contract", () => {
     expect(output).not.toMatch(/^\[1\] (?:Finisher|Established projects)/mu);
   });
 
-  it("uses semantic forced color without making losing scores red", async () => {
+  it("uses semantic forced color for winning and losing comparisons", async () => {
     const result = await invoke(
       { ...battleContext(), env: {}, isTty: true, terminalColumns: 80 },
       "strongmaintainer",
@@ -617,11 +620,10 @@ describe("human-readable presentation contract", () => {
       "--color",
       "always",
     );
-    for (const code of ["\u001B[32m", "\u001B[31m", "\u001B[36m", "\u001B[97m", "\u001B[2m"]) {
+    for (const code of ["\u001B[32m", "\u001B[31m", "\u001B[36m", "\u001B[2m"]) {
       expect(result.stdout).toContain(code);
     }
-    expect(result.stdout).toContain("\u001B[97m0\u001B[0m");
-    expect(result.stdout).not.toContain("\u001B[31m0\u001B[0m");
+    expect(result.stdout).toContain("\u001B[31m0\u001B[0m");
     const plain = stripAnsi(result.stdout);
     expect(plain).toContain("WINS");
     expect(plain).toContain("Coverage:");

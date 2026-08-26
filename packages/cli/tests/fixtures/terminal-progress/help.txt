@@ -1,32 +1,26 @@
 GIT MOG
-Compare public GitHub work for fun.
 
-Run a battle:
+Battle two GitHub profiles:
   npx -y gitmog <left> <right>
 
 Check one profile:
   npx -y gitmog <username>
 
-Paste a username, @handle, or https://github.com/profile URL.
-Installed: gitmog <left> <right>
+Paste a username, @handle, or GitHub profile link.
 
-Try a famous matchup:
+TRY IT
   npx -y gitmog torvalds gvanrossum
   npx -y gitmog karpathy geohot
-  Public profiles. No affiliation or endorsement implied.
 
-Common options:
-  --card       Compact battle card
-  --share      Share-ready text
+USEFUL
+  --card       Screenshot-ready result
   --details    Full score breakdown
   --receipts   Every supporting receipt
-  --export     Self-contained .html or .svg battle
-  --no-quality Disable the automatic code-quality preview
-  --private-context  Add selected private repositories separately
-  --public-only      Suppress every private prompt and endpoint
+  --share x    X-ready result
 
-Coverage is the share of the public scorecard Git Mog could measure.
-If GitHub's anonymous limit is low, Git Mog may offer one-time sign-in.
-Code Quality Preview is parser-backed and never affects the winner.
-Entertainment based on public evidence—not a hiring score.
+PRIVATE REPOS
+  Add --private-context. They never change the public winner.
+
 More options: gitmog --help-all
+
+Entertainment based on GitHub evidence—not a hiring score.

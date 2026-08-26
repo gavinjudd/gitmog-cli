@@ -155,13 +155,13 @@ describe("public grammar", () => {
     const plan = (limitationReason: string) =>
       ({ limitationReason }) as Parameters<typeof qualityPreflightMessage>[0];
     expect(qualityPreflightMessage(plan("request-budget-limited"))).toContain(
-      "More GitHub requests may improve",
+      "More GitHub lookups may improve",
     );
     expect(qualityPreflightMessage(plan("supported-language-limited"))).toContain(
-      "Sign-in will not change this result",
+      "Signing in would not change that",
     );
     expect(qualityPreflightMessage(plan("mixed"))).toBe(
-      "More GitHub requests may help, but supported-source coverage will still be limited.",
+      "More GitHub lookups may help, but the available code sample is still limited.",
     );
     for (const reason of ["request-budget-limited", "supported-language-limited", "mixed"]) {
       expect(qualityPreflightMessage(plan(reason))).not.toContain("for complete coverage");
@@ -208,7 +208,7 @@ describe("public grammar", () => {
       } as ProfileScorecard;
       const output = renderProfile(profile, source);
       expect(output.replace(/\s+/gu, " ")).toContain(
-        "Tests appear in 5 inspected projects. 3 established projects have no version tags.",
+        "Tests appear in 5 inspected projects. Three established projects have no version tags.",
       );
       expect(output).not.toContain("Repositories containing tests:");
     }
@@ -233,26 +233,27 @@ describe("public grammar", () => {
     expect(new Set([bare.stdout, help.stdout, long.stdout, short.stdout])).toHaveLength(1);
     expect(calls).toBe(0);
     expect(help.stdout).toContain("npx -y gitmog <left> <right>");
+    expect(help.stdout.split("\n").indexOf("  npx -y gitmog <left> <right>")).toBeLessThan(5);
+    expect(help.stdout).not.toContain("API");
+    expect(help.stdout).not.toContain("parser-backed");
     expect(help.stdout).toContain("npx -y gitmog <username>");
-    expect(help.stdout).toContain("Try a famous matchup:");
+    expect(help.stdout).toContain("TRY IT");
     expect(help.stdout).toContain("npx -y gitmog torvalds gvanrossum");
     expect(help.stdout).toContain("npx -y gitmog karpathy geohot");
     expect(help.stdout.indexOf("npx -y gitmog <left> <right>")).toBeLessThan(
-      help.stdout.indexOf("Try a famous matchup:"),
+      help.stdout.indexOf("TRY IT"),
     );
-    expect(help.stdout).toContain("Coverage is the share of the public scorecard");
-    expect(help.stdout).toContain("one-time sign-in");
     expect(help.stdout).toContain("not a hiring score");
     expect(help.stdout).toContain("--details");
     expect(help.stdout).toContain("--receipts");
     expect(help.stdout).toContain("--card");
     expect(help.stdout).toContain("--share");
-    expect(help.stdout).toContain("--export");
+    expect(help.stdout).not.toContain("--export");
     expect(help.stdout).not.toContain("--json");
     expect(help.stdout).not.toContain("bounded deterministic analysis");
     expect(help.stdout).not.toContain("provider-free");
     expect(help.stdout).not.toContain("battle <left>");
-    expect(usage("git mog")).toContain("git mog <left> <right>");
+    expect(usage("git mog")).toContain("More options: git mog --help-all");
     expect(
       help.stdout.split("\n").findIndex((line) => line.includes("npx -y gitmog")),
     ).toBeLessThan(8);
@@ -282,6 +283,7 @@ describe("public grammar", () => {
       "--roast",
       "--caption",
       "--sign-in",
+      "--no-open",
       "--anonymous",
       "--private-context",
       "--public-only",
@@ -515,7 +517,7 @@ describe("public grammar", () => {
     expect(publicOnly.exitCode).toBe(0);
     expect(prompts).toHaveLength(1);
     expect(prompts[0]).toBe(
-      "Private repos are excluded by default.\nAdd selected private repos for @StrongMaintainer?\n\n[n] public only  [p] private context: ",
+      "PRIVATE REPOS · OPTIONAL\n\nPrivate repos are excluded.\nAdd selected private repos for @StrongMaintainer?\n\n[Enter] public only · [p] add private repos · [q] cancel\n",
     );
     expect(privateAuthorizations).toBe(0);
     expect(privateRuns).toBe(0);
@@ -529,13 +531,10 @@ describe("public grammar", () => {
     expect(privateAuthorizations).toBe(1);
     expect(privateRuns).toBe(1);
     expect(mixed.stdout).toContain("PRIVATE CONTEXT · @StrongMaintainer");
-    expect(liveOutput.join("\n")).toContain(
-      "Signed in for public API capacity. Private repositories are still excluded.",
-    );
-    expect(liveOutput.join("\n")).toContain("PRIVATE CONTEXT");
-    expect(liveOutput.join("\n")).toContain(
-      "It cannot write, administer, read secrets, or execute repository code.",
-    );
+    expect(liveOutput.join("\n")).toContain("Connected for public GitHub data.");
+    expect(liveOutput.join("\n")).toContain("PRIVATE REPOS");
+    expect(liveOutput.join("\n")).toContain("No write access.");
+    expect(liveOutput.join("\n")).toContain("No code execution.");
     expect(`${mixed.stdout}${mixed.stderr}${liveOutput.join("\n")}`).not.toContain(privateToken);
 
     prompts.length = 0;
@@ -568,13 +567,9 @@ describe("public grammar", () => {
       ),
     ]);
 
-    expect(normal.stdout).toContain(
-      "3 of 4 analyzed private repositories contain CI configuration.",
-    );
-    expect(normal.stdout).toContain("2 selected private projects show sustained maintenance.");
-    expect(normal.stdout).toContain(
-      "Code-quality sample: 3 repos · 10 parsed files · 61% supported coverage",
-    );
+    expect(normal.stdout).toContain("CI found in 3 of 4 selected repos.");
+    expect(normal.stdout).toContain("Long-running maintenance found in 2 selected repos.");
+    expect(normal.stdout).toContain("Code sample: 10 of 12 files readable by Git Mog");
     expect(normal.stdout).not.toMatch(/\[P\d+\]/u);
     expect(normal.stdout).not.toContain("Code quality 72");
     expect(normal.stdout).not.toContain("Maintained private code quality is 72");
@@ -618,8 +613,8 @@ describe("public grammar", () => {
 
     for (const surface of [card, ...shares]) {
       const compact = surface.stdout.replace(/[│\n]/gu, " ").replace(/\s+/gu, " ");
-      expect(compact).toContain("Code-quality sample:");
-      expect(compact).toContain("61% supported coverage");
+      expect(compact).toContain("Code sample:");
+      expect(compact).toContain("10 of 12 files readable by Git Mog");
       expect(compact).not.toContain("Maintained private code quality is 72");
       expect(compact).not.toMatch(/previewScore: \d+/u);
     }
@@ -655,20 +650,21 @@ describe("public grammar", () => {
       maintainedCodebase: {
         ...PRIVATE_CONTEXT_FIXTURE.maintainedCodebase,
         repositories: 1,
+        sampledFiles: 1,
         files: 1,
       },
       receipts: PRIVATE_CONTEXT_FIXTURE.receipts.map((entry) =>
         entry.metric === "ci-repositories"
           ? {
               ...entry,
-              claim: "1 of 1 analyzed private repository contains CI configuration.",
+              claim: "CI found in the selected repo.",
               observed: 1,
               total: 1,
             }
           : entry.metric === "sustained-repositories"
             ? {
                 ...entry,
-                claim: "No sustained-maintenance signal qualified in the selected sample.",
+                claim: "No long-running maintenance signal in this sample.",
                 observed: 0,
                 total: 1,
               }
@@ -683,12 +679,8 @@ describe("public grammar", () => {
       "--receipts",
     );
     expect(output.stdout).toContain("1 selected private repo");
-    expect(output.stdout).toContain(
-      "1 of 1 analyzed private repository contains CI configuration.",
-    );
-    expect(output.stdout).toContain(
-      "No sustained-maintenance signal qualified in the selected sample.",
-    );
+    expect(output.stdout).toContain("CI found in the selected repo.");
+    expect(output.stdout).toContain("No long-running maintenance signal in this sample.");
     expect(output.stdout).not.toContain("− 0 selected private projects");
     expect(output.stdout).not.toContain("1 private repos");
   });
@@ -756,12 +748,12 @@ describe("public grammar", () => {
     const result = await invoke(base, "strongmaintainer", "sidequester", "--private-context");
     expect(result.exitCode).toBe(0);
     const transcript = liveOutput.join("\n");
-    expect(transcript).toContain("PUBLIC API ACCESS · STEP 1 OF 2");
-    expect(transcript).toContain("This authorization increases public API capacity.");
-    expect(transcript).toContain("Private repositories remain excluded.");
-    expect(transcript).toContain("PRIVATE CONTEXT · STEP 2 OF 2");
-    expect(transcript).toContain("Read-only access applies only to repositories selected");
-    expect(transcript).toContain("The token is memory-only for this run.");
+    expect(transcript).toContain("GITHUB SIGN-IN · 1 OF 2");
+    expect(transcript).toContain("finish the full public read");
+    expect(transcript).toContain("Private repos are not included in this step.");
+    expect(transcript).toContain("PRIVATE REPOS · 2 OF 2");
+    expect(transcript).toContain("only the private repos you selected on GitHub");
+    expect(transcript).toContain("Access ends when this run ends.");
 
     promptAnswer = "l";
     publicAuthorized = false;
@@ -776,8 +768,8 @@ describe("public grammar", () => {
       "--private-context",
     );
     expect(boundedPlan.exitCode).toBe(0);
-    expect(liveOutput.join("\n")).toContain("PRIVATE CONTEXT");
-    expect(liveOutput.join("\n")).not.toContain("STEP 2 OF 2");
+    expect(liveOutput.join("\n")).toContain("PRIVATE REPOS");
+    expect(liveOutput.join("\n")).not.toContain("2 OF 2");
   });
 
   it("routes no arguments to friendly help with zero GitHub calls", async () => {
