@@ -20,6 +20,10 @@ import { captureNodeCli, resolveNpmEntrypoints } from "./lib/package-manager.mjs
 import { canonicalizePackageHelpInvocation } from "./lib/package-acceptance.mjs";
 
 const ESCAPE = String.fromCodePoint(27);
+const EXPECTED_CANONICAL_JSON_SHA256 =
+  "ed5b10d16ce02f72e6335a997cf1409f71a3377c8d481f0754bad31f6178c08d";
+const EXPECTED_CANONICAL_BATTLE_SHA256 =
+  "36361adb2e14d3a89cf43b473940ec8247be950e47116b0ef03c7ad58b66cf12";
 const PRIVATE_PROGRESS_COLLISION = new RegExp(
   `Reviewing code quality(?:${ESCAPE}\\[[0-9;?]*[A-Za-z])*PRIVATE REPOS`,
   "u",
@@ -214,6 +218,8 @@ const phase = process.env.GITMOG_FIXTURE_PHASE ?? "success";
 const variant = process.env.GITMOG_FIXTURE_BLOB_VARIANT ?? "a";
 const reportPath = process.env.GITMOG_FIXTURE_REPORT ?? "";
 const privateAppId = Number(process.env.GITMOG_FIXTURE_APP_ID ?? "0");
+const fixtureNowMs = Date.parse("2026-08-25T00:00:00.000Z");
+Date.now = () => fixtureNowMs;
 const calls = [];
 let blobCalls = 0;
 let privateEndpointAuthorized = 0;
@@ -1747,6 +1753,16 @@ async function main() {
     report.canonicalBattleSha256 = createHash("sha256")
       .update(JSON.stringify(first.battle))
       .digest("hex");
+    if (
+      report.canonicalJsonSha256 !== EXPECTED_CANONICAL_JSON_SHA256 ||
+      report.canonicalBattleSha256 !== EXPECTED_CANONICAL_BATTLE_SHA256
+    ) {
+      fail("Packed public fixture changed the v0.4.1 canonical JSON or battle bytes.");
+    }
+    record(
+      "canonical-v0.4.1-invariance",
+      "JSON and battle SHA-256 match the published v0.4.1 fixture",
+    );
     if (!first.battle || !first.presentationVerdict || !first.sourceAnalysis || !first.story) {
       fail("Battle JSON does not contain the complete contract.");
     }
