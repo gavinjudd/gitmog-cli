@@ -78,7 +78,7 @@ for (const fact of [
 }
 const fallback = interaction("public-auth-fallback");
 requireFact(
-  fallback.includes("https://github.com/login/device"),
+  fallback.split("\n").includes("Open this link: https://github.com/login/device"),
   "no-open fallback lacks exact manual URL",
 );
 requireFact(fallback.includes("[Enter] try again"), "browser failure lacks retry action");
