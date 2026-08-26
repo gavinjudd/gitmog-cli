@@ -20,12 +20,18 @@ Context GitHub App:
 npx -y gitmog alice bob --private-context
 ```
 
+After the user chooses sign-in, Git Mog opens the exact GitHub page in the default browser.
+Press Enter while the code is pending to open it again, or use the displayed link if the browser
+does not open. `--no-open` and `GITMOG_NO_BROWSER=1` keep the flow manual. If the Private Context
+App still needs installation or selected-repository setup, Git Mog rechecks it and continues the
+same command; public-only continuation remains available.
+
 The authenticated login must match one participant. All-repository installations are refused.
 The app has only metadata read and contents read permission, with no private key, client secret,
 webhook, write, admin, organization, or account access. Its device token is memory-only; raw source
 is process-only; no private cache exists; names and paths never enter results. Target code is never
 executed. Private Context cannot change the public score or winner, and every mixed surface says
-who added context and that the PUBLIC WINNER uses public evidence.
+who added context and that the winner still uses public repositories only.
 
 Use `--public-only` to suppress every private prompt and endpoint. `--anonymous` implies
 public-only. See [docs/PRIVATE_CONTEXT.md](docs/PRIVATE_CONTEXT.md) for exact bounds, revocation,
