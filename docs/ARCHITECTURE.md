@@ -39,3 +39,11 @@ Target repository data is untrusted. Collection uses bounded public API requests
 blob identity. Source is decoded only in process, reduced to safe derived features, and
 discarded. No target clone, dependency, compiler, runtime, test, build, import, or execution is
 permitted.
+
+Browser handoff is a separate, closed CLI capability. Only
+`packages/cli/src/open-external.ts` may import `spawn` from `node:child_process`, and it can
+construct commands only for the reviewed GitHub device, Private Context installation, and
+numeric installation-settings destinations. The URL is revalidated immediately before command
+construction and is always passed as a separate argument to a fixed system executable. This
+capability has no dependency path from target handles, repository data, source, tokens, or device
+codes. Source and packed-bundle checks fail closed if another subprocess path appears.

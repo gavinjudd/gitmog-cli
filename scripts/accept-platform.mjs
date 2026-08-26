@@ -15,6 +15,7 @@ import { basename, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Worker } from "node:worker_threads";
 
+import { assertBrowserOpenBundlePolicy } from "../packages/distribution/browser-open-policy.mjs";
 import { captureNodeCli, resolveNpmEntrypoints } from "./lib/package-manager.mjs";
 import { canonicalizePackageHelpInvocation } from "./lib/package-acceptance.mjs";
 
@@ -53,6 +54,32 @@ const unsafeCacheKeys = new Set([
 const privateContextConfig = JSON.parse(
   readFileSync(resolve(import.meta.dirname, "../config/private-context-app.json"), "utf8"),
 );
+const interactionVersions = JSON.parse(
+  readFileSync(resolve(import.meta.dirname, "../config/interaction-versions.json"), "utf8"),
+);
+
+const hostedBrowserCommandContract = (platform) => {
+  if (platform === "darwin") {
+    return {
+      executable: "/usr/bin/open",
+      arguments: ["<validated-github-url>"],
+      guiOpened: false,
+    };
+  }
+  if (platform === "win32") {
+    return {
+      executable: String.raw`C:\Windows\System32\rundll32.exe`,
+      arguments: ["url.dll,FileProtocolHandler", "<validated-github-url>"],
+      guiOpened: false,
+    };
+  }
+  return {
+    executable: "/usr/bin/xdg-open",
+    arguments: ["<validated-github-url>"],
+    condition: "executable-present-and-graphical-session",
+    guiOpened: false,
+  };
+};
 
 const humanTaxonomyPhrases = Object.freeze([
   "AURA LEAK",
@@ -682,6 +709,24 @@ async function main() {
     }
     record("parser-asset-smoke", "TypeScript AST; resource-limited worker; source-free result");
     const installedBundle = readFileSync(installedBundlePath, "utf8");
+    assertBrowserOpenBundlePolicy(installedBundle, readFileSync(installedParserPath, "utf8"));
+    if (JSON.stringify(installedBuild.interaction) !== JSON.stringify(interactionVersions)) {
+      fail("Packed browser and interaction versions differ from the reviewed contract.");
+    }
+    report.browserCapability = {
+      version: installedBuild.interaction.browserCapability,
+      destinations: [
+        "https://github.com/login/device",
+        "https://github.com/apps/git-mog-private-context/installations/new",
+        "https://github.com/settings/installations/<numeric-id>",
+      ],
+      commandContract: hostedBrowserCommandContract(process.platform),
+      evidence: "packed-command-construction-only",
+    };
+    record(
+      "packed-browser-command-contract",
+      `${process.platform} mapping present; hosted lane does not claim a visible GUI open`,
+    );
     const installedReadme = readFileSync(
       join(scratch, "node_modules", "gitmog", "README.md"),
       "utf8",
