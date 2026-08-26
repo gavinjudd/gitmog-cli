@@ -150,7 +150,7 @@ for (const directory of ["packages/battle", "packages/scoring"]) {
 
 const cliSource = read(resolve(root, "packages/cli/src/cli.ts"), "CLI source");
 if (
-  !cliSource.includes("authorized.lease.use((token) =>") ||
+  !/authorized\.lease\.use\(async \(token\) =>/u.test(cliSource) ||
   !cliSource.includes("privateRunner({") ||
   !cliSource.includes("private_context_conflicting_token_boundaries")
 ) {

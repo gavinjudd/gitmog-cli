@@ -44,7 +44,7 @@ const buildMetadata = JSON.parse(
 describe("standalone npm distribution", () => {
   it("has the public identity, release metadata, accepted engines and both bins", () => {
     expect(manifest.name).toBe("gitmog");
-    expect(manifest.version).toBe("0.4.1");
+    expect(manifest.version).toBe("0.5.0");
     expect(manifest.license).toBe("MIT");
     expect(manifest.repository).toEqual({
       type: "git",
