@@ -9,3 +9,8 @@ claim remains native Apple Silicon macOS and Windows x64.
 Private Context uses the same pure-Node package and parser worker on each supported lane. Platform
 acceptance is synthetic and offline; public CI never receives a GitHub App token or private
 repository identifier. Live selected-repository acceptance is a separate release-candidate gate.
+
+Browser-opening acceptance has two layers. Hosted lanes verify the exact macOS, Windows, and Linux
+command construction against the packed candidate; they do not prove that a GUI appeared. Native
+GUI acceptance is recorded separately in each release packet. Linux uses `/usr/bin/xdg-open` only
+when a graphical session is present and otherwise keeps the validated manual link visible.
