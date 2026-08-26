@@ -15,7 +15,35 @@ import { SPICY_FULL_COPY_MINIMUM, SPICY_SHORT_COPY_MINIMUM } from "../src/meme/t
 import { ROAST_MODES, type MemeLine } from "../src/fast-scan/types.js";
 import { buildBattle } from "../src/fast-scan/battle.js";
 
-import { scorecardFor } from "./helpers.js";
+import { scorecardFor, type PersonaName } from "./helpers.js";
+
+const EDITORIAL_FIXTURES: readonly (readonly [PersonaName, PersonaName])[] = [
+  ["strongMaintainer", "manyTinyRepos"],
+  ["strongMaintainer", "repoGraveyard"],
+  ["strongMaintainer", "readmeCeo"],
+  ["releaseHeavy", "testHeavy"],
+  ["releaseHeavy", "ciHeavy"],
+  ["testHeavy", "ciHeavy"],
+  ["ossContributor", "forkCollector"],
+  ["truePolyglot", "frameworkTourist"],
+  ["archivedPortfolio", "archiveDiscipline"],
+  ["oneRepoHighImpact", "oneRepoThin"],
+  ["balancedBuilder", "commitGrinder"],
+  ["monorepoOperator", "structureMerchant"],
+  ["sustainedGrinder", "sidequestCollector"],
+  ["highActivityLowImpact", "fixLooper"],
+  ["lowPublicEvidence", "strongMaintainer"],
+  ["unsupportedLanguages", "truePolyglot"],
+  ["partialTreeFailure", "balancedBuilder"],
+  ["readmeCeo", "releaseHeavy"],
+  ["repoGraveyard", "archiveDiscipline"],
+  ["forkCollector", "ossContributor"],
+  ["frameworkTourist", "monorepoOperator"],
+  ["sidequestCollector", "manyTinyRepos"],
+  ["oneRepoHighImpact", "releaseHeavy"],
+  ["commitGrinder", "fixLooper"],
+  ["ciHeavy", "structureMerchant"],
+];
 
 const variants = () =>
   MEME_TEMPLATES.flatMap((template) =>
@@ -244,5 +272,58 @@ describe("copy-quality lint", () => {
       expect(line.evidenceIds.length, line.templateId).toBeGreaterThan(0);
       for (const id of line.evidenceIds) expect(ids.has(id), `${line.templateId}:${id}`).toBe(true);
     }
+  });
+
+  it("scores at least 25 rendered editorial fixtures across the release rubric", async () => {
+    expect(EDITORIAL_FIXTURES.length).toBeGreaterThanOrEqual(25);
+    const failures: string[] = [];
+    const scorecards = new Map<PersonaName, Awaited<ReturnType<typeof scorecardFor>>>();
+    const cardFor = async (name: PersonaName) => {
+      const cached = scorecards.get(name);
+      if (cached !== undefined) return cached;
+      const card = await scorecardFor(name);
+      scorecards.set(name, card);
+      return card;
+    };
+
+    for (const [fixtureIndex, [leftName, rightName]] of EDITORIAL_FIXTURES.entries()) {
+      const roast = ROAST_MODES[fixtureIndex % ROAST_MODES.length] ?? "spicy";
+      const battle = buildBattle(await cardFor(leftName), await cardFor(rightName), { roast });
+      const evidenceIds = new Set(
+        [...battle.left.evidence, ...battle.right.evidence].map((entry) => entry.id),
+      );
+      const visible = battleLines(battle).filter((line) => !line.templateId.startsWith("system."));
+      const textCounts = new Map<string, number>();
+      for (const line of visible) textCounts.set(line.text, (textCounts.get(line.text) ?? 0) + 1);
+
+      for (const line of visible) {
+        const wordsInLine = words(line.text).length;
+        const factualFit =
+          line.evidenceIds.length > 0 && line.evidenceIds.every((id) => evidenceIds.has(id));
+        const axes = {
+          immediateComprehension:
+            line.text.length <= 150 && !/\{\w+\}|\b(?:undefined|null|NaN)\b/u.test(line.text)
+              ? 2
+              : 0,
+          specificity:
+            line.evidenceIds.length > 0 && findGenericCopy(line.text).length === 0 ? 2 : 0,
+          factualFit: factualFit ? 2 : 0,
+          screenshotValue: line.text.length <= 100 ? 2 : line.text.length <= 150 ? 1 : 0,
+          memeValue:
+            findGenericCopy(line.text).length === 0 && findSafetyViolations(line.text).length === 0
+              ? 2
+              : 0,
+          originality: textCounts.get(line.text) === 1 ? 2 : 0,
+          brevity: wordsInLine <= 16 ? 2 : wordsInLine <= 24 ? 1 : 0,
+        };
+        const total = Object.values(axes).reduce((sum, score) => sum + score, 0);
+        if (!factualFit || total < 11) {
+          failures.push(
+            `${leftName}/${rightName}/${roast}/${line.templateId}: ${String(total)}/14 ${JSON.stringify(axes)}`,
+          );
+        }
+      }
+    }
+    expect(failures).toEqual([]);
   });
 });
