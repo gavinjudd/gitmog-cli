@@ -10,11 +10,11 @@ THE READ
 @strongmaintainer — Tests: 25 per 100 source files in inspected trees. [5]
 @sidequester — Updated publicly today. 64% of sampled commit messages are one word or shorter. [6]
 CODE QUALITY · PREVIEW
-Maintained codebase @strongmaintainer 81 (100%) · @sidequester 89 (100%)
-Attributed code @strongmaintainer 81 (67%) · @sidequester 89 (100%)
+Codebase sample @strongmaintainer 81 · @sidequester 89
+Authored sample @strongmaintainer 81 · @sidequester 89
 @strongmaintainer — 0 high-complexity funcs · orchestrator/migrate.ts:1 [LQ1]
 @sidequester — 0 high-complexity funcs · project-0/index.js:1 [RQ1]
-Separate from the battle score.
+Not used in the battle score.
 RECEIPTS
 [1] Repositories containing tests — 3/3 vs 0/3
 [2] Project automation — 3/3 vs 0/3

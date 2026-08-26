@@ -8,9 +8,11 @@ import {
   PERSONAS,
   type PersonaSpec,
 } from "@gitmog/test-fixtures/github-personas";
+import { PRIVATE_CONTEXT_APP_CONFIG } from "@gitmog/private-context";
 import { describe, expect, it } from "vitest";
 
 import { run, type CliContext } from "../src/cli.js";
+import { PRIVATE_CONTEXT_FIXTURE } from "./private-context-fixture.js";
 
 const fixturePath = (name: string): string =>
   resolve(import.meta.dirname, "fixtures", "terminal-output", `${name}.txt`);
@@ -117,6 +119,46 @@ describe("reviewed terminal output fixtures", () => {
     ]);
     expectFixture("battle-no-color", plain.stdout);
     expectFixture("battle-color", color.stdout);
+  });
+
+  it("matches the mixed-context disclosure and private summary", async () => {
+    const result = await invoke(
+      {
+        ...contextFor(PERSONAS.strongMaintainer, PERSONAS.manyTinyRepos),
+        isTty: true,
+        stderrIsTty: true,
+        stdinIsTty: true,
+        prompt: () => Promise.resolve(""),
+        privateContextAppConfig: PRIVATE_CONTEXT_APP_CONFIG,
+        authorizePrivateDevice: async (options) => {
+          await options.onPrompt({
+            userCode: "MIXD-CONT",
+            verificationUri: "https://github.com/login/device",
+            expiresAt: "2026-08-26T06:00:00.000Z",
+            intervalSeconds: 5,
+          });
+          let active = true;
+          return {
+            ok: true,
+            lease: {
+              get active() {
+                return active;
+              },
+              expiresAt: null,
+              use: async (callback) => callback("synthetic_private_token_value_123"),
+              dispose: () => {
+                active = false;
+              },
+            },
+          };
+        },
+        runPrivateContext: () => Promise.resolve({ ok: true, result: PRIVATE_CONTEXT_FIXTURE }),
+      },
+      "strongmaintainer",
+      "sidequester",
+      "--private-context",
+    );
+    expectFixture("battle-mixed", result.stdout);
   });
 
   it("matches warm-cache and no-motion result captures", async () => {

@@ -1,0 +1,8 @@
+PRIVATE REPOS SETUP
+
+Choose “Only select repositories” on GitHub, then pick the private repos you
+want Git Mog to read.
+
+Browser opened.
+
+[Enter] I’m finished · [p] continue public-only · [q] cancel

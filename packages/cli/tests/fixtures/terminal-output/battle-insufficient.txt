@@ -7,8 +7,8 @@ UPKEEP   60–60  tie · Project structure: 60%–60% [2]
 TESTS    0–0  tie · CI-backed testing: 0/1–0/1 [3]
 TOOLING  0–0  tie · Project automation: 0/1–0/1 [4]
 CODE QUALITY · PREVIEW
-Not enough eligible TypeScript/JavaScript source for either profile.
-Separate from the battle score.
+Not enough TypeScript/JavaScript for a useful sample.
+Not used in the battle score.
 RECEIPTS
 [1] Repositories containing tests — 0/1 vs 0/1
 [2] Project structure — 60% vs 60%

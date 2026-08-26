@@ -6,7 +6,7 @@ import {
   type CodeDnaOutcome,
 } from "@gitmog/personality";
 import type { SourceAnalysisResult, StoryResult } from "@gitmog/source-analysis";
-import { countVerb, formatCount, type PrivateContextResult } from "@gitmog/private-context";
+import { formatCount, type PrivateContextResult } from "@gitmog/private-context";
 import type {
   QualityFinding,
   QualityJudgePair,
@@ -24,7 +24,11 @@ import type {
 
 import { containsHumanClassifierIdentity } from "./classifier-visibility.js";
 import { PLAIN_PALETTE, stripAnsi, type Palette, type PaletteKey } from "./color.js";
-import { privateQualitySampleText, selectedPrivateRepositoryText } from "./private-presentation.js";
+import {
+  privateQualitySampleText,
+  privateRelationshipText,
+  selectedPrivateRepositoryText,
+} from "./private-presentation.js";
 import { derivePresentationVerdict, type PresentationVerdict } from "./presentation-verdict.js";
 import {
   evidenceReceipt,
@@ -43,7 +47,7 @@ const DEFAULT_ROUND_LABELS: Readonly<Record<string, string>> = Object.freeze({
   "ship.frequency": "ACTIVITY",
   "ship.substance": "SHIPPING",
   "ship.discipline": "COMMIT QUALITY",
-  "ship.breadth": "SHIPPING BREADTH",
+  "ship.breadth": "SHIPPING",
   "craft.testing": "TESTS",
   "craft.maintainability": "MAINTAINABILITY",
   "craft.tooling": "TOOLING",
@@ -127,10 +131,12 @@ export interface RenderOptions {
 const isQualityPair = (value: QualityJudgeResult | QualityJudgePair): value is QualityJudgePair =>
   "left" in value && "right" in value;
 
-const qualityScoreText = (reading: QualityReading): string =>
+const qualityScoreText = (reading: QualityReading, showCoverage = false): string =>
   reading.previewScore === null
-    ? "— not enough supported source"
-    : `${String(reading.previewScore)} (${String(reading.coverage)}%)`;
+    ? "— not enough readable source"
+    : showCoverage
+      ? `${String(reading.previewScore)} (${String(reading.coverage)}% sample coverage)`
+      : String(reading.previewScore);
 
 const compactQualityMetric = (metric: string, observed: number): string => {
   const value = String(observed);
@@ -150,7 +156,7 @@ const compactQualityMetric = (metric: string, observed: number): string => {
     case "empty-catch":
       return `${value} empty catch blocks`;
     case "parsed-files":
-      return `${value} parser-supported files`;
+      return `${value} files read by Git Mog`;
     default:
       return `${terminalSafe(metric)} ${value}`;
   }
@@ -171,7 +177,7 @@ const qualityProfileSummary = (
       ? undefined
       : result.receipts.find((candidate) => finding.receiptIds.includes(candidate.id));
   if (finding === undefined || receipt === undefined) {
-    return wrapPlain(`@${terminalSafe(handle)} — limited parser-supported evidence.`, width).map(
+    return wrapPlain(`@${terminalSafe(handle)} — limited readable code sample.`, width).map(
       (line) => palette.wrap("yellow", line),
     );
   }
@@ -209,9 +215,8 @@ const renderQualityPair = (
     const explanation: Readonly<Record<QualityJudgeResult["limitationReason"], string>> = {
       "request-budget-limited":
         "GitHub request capacity limited Code Quality Preview for both profiles.",
-      "supported-language-limited": "Not enough TypeScript/JavaScript source for either profile.",
-      "eligible-source-limited":
-        "Not enough eligible TypeScript/JavaScript source for either profile.",
+      "supported-language-limited": "Not enough TypeScript/JavaScript for a useful sample.",
+      "eligible-source-limited": "Not enough TypeScript/JavaScript for a useful sample.",
       "attribution-limited": "Not enough user-linked source for either attributed-code reading.",
       mixed: "Request capacity and supported-source limits affected both profiles.",
       unknown: "Not enough supported source for either profile.",
@@ -221,11 +226,11 @@ const renderQualityPair = (
       ...wrapPlain(explanation[quality.left.limitationReason], width).map((line) =>
         palette.wrap("yellow", line),
       ),
-      palette.wrap("dim", "Separate from the battle score."),
+      palette.wrap("dim", "Not used in the battle score."),
     ];
   }
-  const maintained = `Maintained codebase  @${terminalSafe(battle.left.username)} ${qualityScoreText(quality.left.maintainedCodebase)} · @${terminalSafe(battle.right.username)} ${qualityScoreText(quality.right.maintainedCodebase)}`;
-  const attributed = `Attributed code      @${terminalSafe(battle.left.username)} ${qualityScoreText(quality.left.attributedCode)} · @${terminalSafe(battle.right.username)} ${qualityScoreText(quality.right.attributedCode)}`;
+  const maintained = `${detailed ? "Maintained codebase" : "Codebase sample"}  @${terminalSafe(battle.left.username)} ${qualityScoreText(quality.left.maintainedCodebase, detailed)} · @${terminalSafe(battle.right.username)} ${qualityScoreText(quality.right.maintainedCodebase, detailed)}`;
+  const attributed = `${detailed ? "Attributed code" : "Authored sample"}  @${terminalSafe(battle.left.username)} ${qualityScoreText(quality.left.attributedCode, detailed)} · @${terminalSafe(battle.right.username)} ${qualityScoreText(quality.right.attributedCode, detailed)}`;
   const lines = [section("CODE QUALITY · PREVIEW", palette)];
   for (const value of [maintained, attributed]) {
     lines.push(
@@ -277,7 +282,7 @@ const renderQualityPair = (
       }
     }
   }
-  lines.push(palette.wrap("dim", "Separate from the battle score."));
+  lines.push(palette.wrap("dim", "Not used in the battle score."));
   return lines;
 };
 
@@ -290,8 +295,14 @@ const renderQualityProfile = (
 ): string[] => {
   const lines = [
     section("CODE QUALITY · PREVIEW", palette),
-    ...wrapPlain(`Maintained codebase  ${qualityScoreText(quality.maintainedCodebase)}`, width),
-    ...wrapPlain(`Attributed code      ${qualityScoreText(quality.attributedCode)}`, width),
+    ...wrapPlain(
+      `${detailed ? "Maintained codebase" : "Codebase sample"}  ${qualityScoreText(quality.maintainedCodebase, detailed)}`,
+      width,
+    ),
+    ...wrapPlain(
+      `${detailed ? "Attributed code" : "Authored sample"}  ${qualityScoreText(quality.attributedCode, detailed)}`,
+      width,
+    ),
     ...qualityProfileSummary(handle, quality, width, palette, "P"),
   ];
   if (detailed) {
@@ -308,7 +319,7 @@ const renderQualityProfile = (
       lines.push(...wrapStyledPrefix("! ", limitation.detail, width, palette, "yellow"));
     }
   }
-  lines.push(palette.wrap("dim", "Separate from the battle score."));
+  lines.push(palette.wrap("dim", "Not used in the battle score."));
   return lines;
 };
 
@@ -727,7 +738,7 @@ const renderHeader = (
     }
     return styled;
   });
-  const coverageText = `Coverage: @${terminalSafe(battle.left.username)} ${String(battle.left.confidence.measuredWeight)}% · @${terminalSafe(battle.right.username)} ${String(battle.right.confidence.measuredWeight)}%`;
+  const coverageText = `${privateContext === undefined ? "Coverage" : "Public coverage"}: @${terminalSafe(battle.left.username)} ${String(battle.left.confidence.measuredWeight)}% · @${terminalSafe(battle.right.username)} ${String(battle.right.confidence.measuredWeight)}%`;
   const coverageLines = wrapPlain(coverageText, width).map((line) => {
     let cursor = 0;
     let styled = "";
@@ -753,7 +764,7 @@ const renderHeader = (
     privateContext === undefined
       ? []
       : wrapPlain(
-          `Context: @${terminalSafe(privateContext.subject)} added ${selectedPrivateRepositoryText(privateContext, "private")} · public winner unchanged`,
+          `Context: @${terminalSafe(privateContext.subject)} added ${selectedPrivateRepositoryText(privateContext, "private")} · winner still uses public repos only`,
           width,
         ).map((line) => palette.wrap("dim", line));
   return [
@@ -784,9 +795,6 @@ const renderPrivateContext = (
         width,
       ).map((line) => palette.wrap("yellow", line)),
       ...wrapPlain(privateQualitySampleText(result), width),
-      ...wrapPlain("Private context is separate; public winner uses public evidence.", width).map(
-        (line) => palette.wrap("dim", line),
-      ),
     ];
   }
   const signalLine = (
@@ -802,10 +810,7 @@ const renderPrivateContext = (
       : formatCount(selection.installedPrivateRepositories, "repo", "selected private");
   const lines = [
     `${section("PRIVATE CONTEXT", palette)} · ${palette.wrap("cyan", handle)}`,
-    ...wrapPlain(
-      `${repositorySummary} · ${String(selection.maintainedRepositories)} maintained · ${String(selection.attributableRepositories)} attributable`,
-      width,
-    ),
+    ...wrapPlain(`${repositorySummary} · ${privateRelationshipText(result)}`, width),
   ];
   if (ci !== undefined)
     lines.push(
@@ -835,11 +840,6 @@ const renderPrivateContext = (
       );
     }
   }
-  lines.push(
-    ...wrapPlain("Private context is separate; public winner uses public evidence.", width).map(
-      (line) => palette.wrap("dim", line),
-    ),
-  );
   return lines;
 };
 
@@ -892,8 +892,8 @@ const renderRounds = (
       const scorePair = `${leftScore}–${rightScore}`;
       const row = `${padPlain(label, labelWidth)}  ${scorePair}  ${direction} · ${reason}${markerSuffix}`;
       const styledScores = (): string =>
-        `${palette.wrap(round.winner === "left" ? "green" : "white", leftScore)}–${palette.wrap(
-          round.winner === "right" ? "green" : "white",
+        `${palette.wrap(round.winner === "left" ? "green" : round.winner === "right" ? "red" : "white", leftScore)}–${palette.wrap(
+          round.winner === "right" ? "green" : round.winner === "left" ? "red" : "white",
           rightScore,
         )}`;
       if (plainLength(row) <= width) {
@@ -927,8 +927,10 @@ const renderRounds = (
     const contentPrefix = "     ";
     lines.push(
       ...wrapPlain(comparison, width, contentPrefix).map((line) => {
-        const leftStyle: PaletteKey = round.winner === "left" ? "green" : "white";
-        const rightStyle: PaletteKey = round.winner === "right" ? "green" : "white";
+        const leftStyle: PaletteKey =
+          round.winner === "left" ? "green" : round.winner === "right" ? "red" : "white";
+        const rightStyle: PaletteKey =
+          round.winner === "right" ? "green" : round.winner === "left" ? "red" : "white";
         const leftPlaceholder = "\u{E000}";
         const rightPlaceholder = "\u{E001}";
         const directionPlaceholder = "\u{E002}";
@@ -992,6 +994,10 @@ interface HumanWeakness {
 const metricRatioPercent = (profile: ProfileScorecard, metric: string): number =>
   Math.round((profile.metrics.find((item) => item.id === metric)?.ratio ?? 0) * 100);
 
+const sentenceCount = (value: number): string =>
+  ["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"][value] ??
+  String(value);
+
 const plainAuraWeakness = (profile: ProfileScorecard): HumanWeakness | null => {
   const aura = profile.auraLeak;
   if (aura === null) return null;
@@ -1016,7 +1022,7 @@ const plainAuraWeakness = (profile: ProfileScorecard): HumanWeakness | null => {
       };
     case "release_avoider":
       return {
-        text: `${formatCount(diagnostics.substantialRepositories, "project", "established")} ${countVerb(diagnostics.substantialRepositories, "has")} no version tags.`,
+        text: `${sentenceCount(diagnostics.substantialRepositories)} established ${diagnostics.substantialRepositories === 1 ? "project has" : "projects have"} no version tags.`,
         receiptText: `Versioned releases — ${String(diagnostics.substantialRepositories)} established projects, 0 tags`,
       };
     case "forklift_operator":
@@ -1777,13 +1783,16 @@ export function renderProfile(
     section("GIT MOG", palette),
     palette.wrap("cyan", `@${terminalSafe(profile.username)}`),
     `Score: ${palette.wrap("white", String(profile.overallScore))}`,
-    palette.wrap("dim", `Coverage: ${String(profile.confidence.measuredWeight)}%`),
+    palette.wrap(
+      "dim",
+      `${options.privateContext === undefined ? "Coverage" : "Public coverage"}: ${String(profile.confidence.measuredWeight)}%`,
+    ),
     ...(options.privateContext === undefined
       ? []
       : [
           palette.wrap(
             "dim",
-            `Context: @${terminalSafe(options.privateContext.subject)} added ${selectedPrivateRepositoryText(options.privateContext, "private")} · public score unchanged`,
+            `Context: @${terminalSafe(options.privateContext.subject)} added ${selectedPrivateRepositoryText(options.privateContext, "private")} · score still uses public repos only`,
           ),
         ]),
   ];
@@ -1921,7 +1930,7 @@ export function renderCard(
             width,
           ),
           ...cardRows(privateQualitySampleText(options.privateContext), width),
-          ...cardRows("PUBLIC WINNER · PUBLIC EVIDENCE", width),
+          ...cardRows("WINNER STILL USES PUBLIC REPOS ONLY", width),
         ]),
     ...(claim.length === 0 ? [] : [divider, ...claim, ...evidence]),
     close,

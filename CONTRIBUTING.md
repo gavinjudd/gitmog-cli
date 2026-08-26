@@ -20,6 +20,10 @@ focused package's workspace dependencies first, including in a fresh clone. The 
 formats, lints, typechecks, tests, builds, validates community and quality fixtures, and accepts
 the packed package.
 
+Changes to authorization, prompts, ordinary terminal copy, or browser handoff must also keep
+`pnpm browser-open:policy:check`, `pnpm interaction:check`, and `pnpm copy:check` green. Browser
+tests inject an opener and authorization controller; they must not launch a real browser.
+
 ## Make a useful change
 
 Explain the observed defect, the owning contract, and the expected behavior. Behavioral

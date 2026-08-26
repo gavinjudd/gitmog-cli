@@ -17,7 +17,9 @@ runner is part of the release contract.
 against that exact tarball, and emits `release-metadata.json`, `SHA256SUMS.txt`, `SBOM.json`,
 `LICENSES.json`, and `platform-acceptance.json` beside it. The metadata binds package members,
 engine and install behavior, parser assets, Quality Judge versions when present, and the
-fail-closed informational-only policy. A failed exact-tarball acceptance prevents artifact upload.
+fail-closed informational-only policy. It also binds the browser capability, interaction,
+terminal-presentation, and copy-contract versions. A failed exact-tarball acceptance prevents
+artifact upload.
 
 Quality Preview remains separate from the battle score. Its release notes must state that score
 influence is zero and winner selection is unchanged. `v0.2.2` and its archived source-export
@@ -28,5 +30,11 @@ Before publication, require synthetic privacy/invariance gates, one selected-rep
 acceptance in disposable home/cache state, byte-identical public baseline hashes, unchanged cache
 fingerprints, six-architecture acceptance, Node 22/24/26 acceptance, and two byte-identical builds.
 No private identifier, live capture, token, device code, or source may enter a release asset. The
-GitHub App installation remains selected-repository only; v0.4.1 publication requires the exact
+GitHub App installation remains selected-repository only; publication requires the exact
 release-specific approval phrase in its release packet.
+
+Browser-opening releases additionally require the source and packed capability checks, mocked
+cross-platform command-construction tests, explicit `--no-open` and CI suppression, bounded
+Enter-to-reopen cleanup tests, native macOS GUI evidence, and native Windows GUI evidence or an
+explicitly unclosed Windows GUI limitation. Hosted architecture runners never substitute for a
+visible native GUI opening claim.

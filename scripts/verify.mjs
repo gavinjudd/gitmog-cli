@@ -30,6 +30,9 @@ for (const script of [
   "benchmark:check",
   "community:check",
   "security:check",
+  "browser-open:policy:check",
+  "interaction:check",
+  "copy:check",
   "package:acceptance",
 ]) {
   step(`pnpm run ${script}`);

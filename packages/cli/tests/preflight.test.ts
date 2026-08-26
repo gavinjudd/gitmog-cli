@@ -134,6 +134,32 @@ describe("request-budget preflight", () => {
     expect(JSON.parse(result.stdout)).toHaveProperty("battle");
   });
 
+  it("uses the reviewed Enter-default rate-limit choice before collection", async () => {
+    const prompts: string[] = [];
+    const result = await invoke(
+      {
+        ...baseContext(PERSONAS.strongMaintainer, PERSONAS.manyTinyRepos),
+        isTty: true,
+        stdinIsTty: true,
+        stderrIsTty: true,
+        prompt: (question) => {
+          prompts.push(question);
+          return Promise.resolve("l");
+        },
+        readAllowance: () => Promise.resolve(allowance(22)),
+      },
+      PERSONAS.strongMaintainer.login,
+      PERSONAS.manyTinyRepos.login,
+    );
+    expect(result.exitCode).toBe(0);
+    expect(prompts[0]).toBe(
+      readFileSync(
+        resolve(import.meta.dirname, "fixtures", "interaction", "rate-limit-choice.txt"),
+        "utf8",
+      ),
+    );
+  });
+
   it("fails closed when --quality cannot obtain the complete preview tier", async () => {
     let collectionCalls = 0;
     const result = await invoke(
@@ -233,3 +259,5 @@ describe("request-budget preflight", () => {
     expect(result.stdout).not.toContain("second-secret");
   });
 });
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";

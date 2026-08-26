@@ -87,6 +87,25 @@ uses no client secret, and keeps the resulting token in process memory only for 
 invocation. It neither requests nor receives private-repository, organization, write,
 admin, gist, or workflow permission.
 
+Automatic browser opening is one narrow exception to the package's subprocess prohibition.
+Exactly `packages/cli/src/open-external.ts` may import `spawn` from `node:child_process`; no
+other shipped source module may import that built-in. The module accepts only a validated closed
+destination: `https://github.com/login/device`, the exact Git Mog Private Context installation
+path, or a numeric GitHub installation-settings path returned by the reviewed App flow. It rejects
+alternate origins, ports, credentials, fragments, unexpected queries, lookalike hosts, arbitrary
+URLs, handles, repository data, device codes, and tokens before command construction.
+
+The command map is fixed to `/usr/bin/open <url>` on macOS,
+`C:\Windows\System32\rundll32.exe url.dll,FileProtocolHandler <url>` on Windows, and
+`/usr/bin/xdg-open <url>` on Linux when both that executable and a graphical session are present.
+The validated URL is always a separate argument. Processes use no shell, inherited stdio, target
+working directory, or credential-bearing environment. `exec`, `execSync`, `fork`, `spawnSync`,
+PowerShell strings, `cmd.exe`, environment-selected executables, and general-purpose URL opening
+remain forbidden. Source and packed-bundle policy checks fail the build if this boundary drifts.
+Browser failure is nonfatal and leaves the exact validated manual URL available. JSON, pipes, CI,
+non-TTY commands, help, version, anonymous mode, `--no-prompt`, `--no-open`, and
+`GITMOG_NO_BROWSER=1` never launch a browser.
+
 Private Context is a separate trust boundary. It uses a distinct public GitHub App with device
 flow, repository metadata read, contents read, no other permission, no webhook, no private key,
 and no client secret. Its user access token is held in a one-use in-memory lease and cannot enter

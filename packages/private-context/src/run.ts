@@ -41,6 +41,7 @@ interface Installation {
   readonly id: number;
   readonly appId: string;
   readonly repositorySelection: "selected" | "all";
+  readonly settingsUrl: string | null;
 }
 
 interface PrivateRepository {
@@ -165,7 +166,26 @@ const parseInstallations = (value: unknown, appId: string): readonly Installatio
     const selection = entry.repository_selection;
     if (id === null || (selection !== "selected" && selection !== "all")) return null;
     if (!exactInstallationPermissions(entry.permissions)) return null;
-    installations.push({ id, appId, repositorySelection: selection });
+    const settingsUrl = (() => {
+      if (typeof entry.html_url !== "string") return null;
+      try {
+        const url = new URL(entry.html_url);
+        return url.protocol === "https:" &&
+          url.hostname === "github.com" &&
+          url.port === "" &&
+          url.username === "" &&
+          url.password === "" &&
+          url.pathname === `/settings/installations/${String(id)}` &&
+          url.search === "" &&
+          url.hash === "" &&
+          url.href === entry.html_url
+          ? url.href
+          : null;
+      } catch {
+        return null;
+      }
+    })();
+    installations.push({ id, appId, repositorySelection: selection, settingsUrl });
   }
   return installations;
 };
@@ -280,7 +300,7 @@ const boundedFetch =
     return fetchImpl(new Request(request, { redirect: "error" }));
   };
 
-const qualityReading = (reading: QualityReading): PrivateQualityReading => ({
+const qualityReading = (reading: QualityReading, sampledFiles: number): PrivateQualityReading => ({
   status: reading.status,
   previewScore: reading.previewScore,
   scope: "selected-sample",
@@ -291,6 +311,7 @@ const qualityReading = (reading: QualityReading): PrivateQualityReading => ({
   coverage: reading.coverage,
   dimensions: reading.dimensions,
   repositories: reading.repositories,
+  sampledFiles,
   files: reading.files,
   sourceBytes: reading.sourceBytes,
   nonBlankLines: reading.nonBlankLines,
@@ -384,6 +405,7 @@ const unavailableReading = (): PrivateQualityReading => ({
     },
   },
   repositories: 0,
+  sampledFiles: 0,
   files: 0,
   sourceBytes: 0,
   nonBlankLines: 0,
@@ -462,13 +484,19 @@ export async function runPrivateContext(
         installationUrl: privateContextInstallationUrl(options.config),
       },
     };
-  if (installations.some((installation) => installation.repositorySelection === "all"))
+  const allRepositoriesInstallation = installations.find(
+    (installation) => installation.repositorySelection === "all",
+  );
+  if (allRepositoriesInstallation !== undefined)
     return {
       ok: false,
       error: {
         code: "private_context_selected_repositories_required",
         message:
           "Change the GitHub App installation to Only select repositories, then run it again.",
+        ...(allRepositoriesInstallation.settingsUrl === null
+          ? {}
+          : { settingsUrl: allRepositoriesInstallation.settingsUrl }),
       },
     };
 
@@ -718,7 +746,12 @@ export async function runPrivateContext(
   const receipts: PrivateAggregateReceipt[] = [
     {
       id: "P1",
-      claim: `${String(repositoriesWithCi)} of ${formatCount(inspections.length, "repository", "analyzed private")} ${countVerb(inspections.length, "contains")} CI configuration.`,
+      claim:
+        repositoriesWithCi === 0
+          ? `No CI found in ${inspections.length === 1 ? "the selected repo" : "the selected repos"}.`
+          : inspections.length === 1
+            ? "CI found in the selected repo."
+            : `CI found in ${String(repositoriesWithCi)} of ${String(inspections.length)} selected repos.`,
       metric: "ci-repositories",
       observed: repositoriesWithCi,
       total: inspections.length,
@@ -727,15 +760,18 @@ export async function runPrivateContext(
       id: "P2",
       claim:
         sustainedRepositories === 0
-          ? "No sustained-maintenance signal qualified in the selected sample."
-          : `${formatCount(sustainedRepositories, "project", "selected private")} ${countVerb(sustainedRepositories, "shows")} sustained maintenance.`,
+          ? "No long-running maintenance signal in this sample."
+          : `Long-running maintenance found in ${formatCount(sustainedRepositories, "repo", "selected")}.`,
       metric: "sustained-repositories",
       observed: sustainedRepositories,
       total: considered.length,
     },
     {
       id: "P3",
-      claim: `Code-quality sample: ${formatCount(maintainedAnalysis.maintainedCodebase.repositories, "repo")} · ${formatCount(maintainedAnalysis.maintainedCodebase.files, "file", "parsed")} · ${String(maintainedAnalysis.maintainedCodebase.coverage)}% supported coverage.`,
+      claim:
+        maintainedAnalysis.maintainedCodebase.files === maintainedInputs.length
+          ? `Code sample: ${formatCount(maintainedInputs.length, "file")} · all ${String(maintainedInputs.length)} readable by Git Mog.`
+          : `Code sample: ${String(maintainedAnalysis.maintainedCodebase.files)} of ${formatCount(maintainedInputs.length, "file")} readable by Git Mog.`,
       metric: "quality-coverage",
       observed: maintainedAnalysis.maintainedCodebase.coverage,
       total: 100,
@@ -816,8 +852,11 @@ export async function runPrivateContext(
       repositoriesWithCi,
       repositoriesWithReleases: releaseRepositories.size,
     },
-    maintainedCodebase: qualityReading(maintainedAnalysis.maintainedCodebase),
-    attributedCode: qualityReading(attributedAnalysis.attributedCode),
+    maintainedCodebase: qualityReading(
+      maintainedAnalysis.maintainedCodebase,
+      maintainedInputs.length,
+    ),
+    attributedCode: qualityReading(attributedAnalysis.attributedCode, inputs.length),
     limitations,
     receipts,
     requestTelemetry: telemetryFor(counters),

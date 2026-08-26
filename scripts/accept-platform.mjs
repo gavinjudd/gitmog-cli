@@ -15,12 +15,17 @@ import { basename, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { Worker } from "node:worker_threads";
 
+import { assertBrowserOpenBundlePolicy } from "../packages/distribution/browser-open-policy.mjs";
 import { captureNodeCli, resolveNpmEntrypoints } from "./lib/package-manager.mjs";
 import { canonicalizePackageHelpInvocation } from "./lib/package-acceptance.mjs";
 
 const ESCAPE = String.fromCodePoint(27);
+const EXPECTED_CANONICAL_JSON_SHA256 =
+  "ed5b10d16ce02f72e6335a997cf1409f71a3377c8d481f0754bad31f6178c08d";
+const EXPECTED_CANONICAL_BATTLE_SHA256 =
+  "36361adb2e14d3a89cf43b473940ec8247be950e47116b0ef03c7ad58b66cf12";
 const PRIVATE_PROGRESS_COLLISION = new RegExp(
-  `Reviewing code quality(?:${ESCAPE}\\[[0-9;?]*[A-Za-z])*PRIVATE CONTEXT`,
+  `Reviewing code quality(?:${ESCAPE}\\[[0-9;?]*[A-Za-z])*PRIVATE REPOS`,
   "u",
 );
 const removedThirdToken = ["ultra", "think"].join("");
@@ -53,6 +58,32 @@ const unsafeCacheKeys = new Set([
 const privateContextConfig = JSON.parse(
   readFileSync(resolve(import.meta.dirname, "../config/private-context-app.json"), "utf8"),
 );
+const interactionVersions = JSON.parse(
+  readFileSync(resolve(import.meta.dirname, "../config/interaction-versions.json"), "utf8"),
+);
+
+const hostedBrowserCommandContract = (platform) => {
+  if (platform === "darwin") {
+    return {
+      executable: "/usr/bin/open",
+      arguments: ["<validated-github-url>"],
+      guiOpened: false,
+    };
+  }
+  if (platform === "win32") {
+    return {
+      executable: String.raw`C:\Windows\System32\rundll32.exe`,
+      arguments: ["url.dll,FileProtocolHandler", "<validated-github-url>"],
+      guiOpened: false,
+    };
+  }
+  return {
+    executable: "/usr/bin/xdg-open",
+    arguments: ["<validated-github-url>"],
+    condition: "executable-present-and-graphical-session",
+    guiOpened: false,
+  };
+};
 
 const humanTaxonomyPhrases = Object.freeze([
   "AURA LEAK",
@@ -187,6 +218,8 @@ const phase = process.env.GITMOG_FIXTURE_PHASE ?? "success";
 const variant = process.env.GITMOG_FIXTURE_BLOB_VARIANT ?? "a";
 const reportPath = process.env.GITMOG_FIXTURE_REPORT ?? "";
 const privateAppId = Number(process.env.GITMOG_FIXTURE_APP_ID ?? "0");
+const fixtureNowMs = Date.parse("2026-08-25T00:00:00.000Z");
+Date.now = () => fixtureNowMs;
 const calls = [];
 let blobCalls = 0;
 let privateEndpointAuthorized = 0;
@@ -568,6 +601,7 @@ async function main() {
   const environment = {
     ...process.env,
     GITHUB_TOKEN: "",
+    GITMOG_NO_BROWSER: "1",
     GITMOG_CACHE_DIR: cacheDirectory,
     npm_config_cache: npmCacheDirectory,
     NPM_CONFIG_CACHE: npmCacheDirectory,
@@ -681,6 +715,24 @@ async function main() {
     }
     record("parser-asset-smoke", "TypeScript AST; resource-limited worker; source-free result");
     const installedBundle = readFileSync(installedBundlePath, "utf8");
+    assertBrowserOpenBundlePolicy(installedBundle, readFileSync(installedParserPath, "utf8"));
+    if (JSON.stringify(installedBuild.interaction) !== JSON.stringify(interactionVersions)) {
+      fail("Packed browser and interaction versions differ from the reviewed contract.");
+    }
+    report.browserCapability = {
+      version: installedBuild.interaction.browserCapability,
+      destinations: [
+        "https://github.com/login/device",
+        "https://github.com/apps/git-mog-private-context/installations/new",
+        "https://github.com/settings/installations/<numeric-id>",
+      ],
+      commandContract: hostedBrowserCommandContract(process.platform),
+      evidence: "packed-command-construction-only",
+    };
+    record(
+      "packed-browser-command-contract",
+      `${process.platform} mapping present; hosted lane does not claim a visible GUI open`,
+    );
     const installedReadme = readFileSync(
       join(scratch, "node_modules", "gitmog", "README.md"),
       "utf8",
@@ -801,8 +853,7 @@ async function main() {
     }
     if (
       fixtureHelp.result.stdout.indexOf("npx -y gitmog <left> <right>") >
-        fixtureHelp.result.stdout.indexOf("Try a famous matchup:") ||
-      !fixtureHelp.result.stdout.includes("No affiliation or endorsement implied.") ||
+        fixtureHelp.result.stdout.indexOf("TRY IT") ||
       fixtureHelp.result.stdout.split(/\r?\n/).some((line) => line.length > 80)
     ) {
       fail("Packed help reordered primary grammar, exceeded 80 columns, or lost the disclaimer.");
@@ -812,6 +863,7 @@ async function main() {
       fixtureAdvancedHelp.report.calls.length !== 0 ||
       !fixtureAdvancedHelp.result.stdout.includes("--json") ||
       !fixtureAdvancedHelp.result.stdout.includes("--sign-in") ||
+      !fixtureAdvancedHelp.result.stdout.includes("--no-open") ||
       !fixtureAdvancedHelp.result.stdout.includes("--cache-info") ||
       !fixtureAdvancedHelp.result.stdout.includes("--clear-cache")
     ) {
@@ -927,10 +979,10 @@ async function main() {
     };
     assertPrivateSurfaceSafe(privateMixed.result.stdout, "Mixed JSON");
     assertPrivateSurfaceSafe(privateMixed.result.stderr, "Mixed JSON instructions");
-    if (!privateMixed.result.stderr.includes("PRIVATE CONTEXT")) {
+    if (!privateMixed.result.stderr.includes("PRIVATE REPOS")) {
       fail("Packed Private Context omitted its separate permission explanation.");
     }
-    if (privateMixed.result.stderr.includes("Reviewing code qualityPRIVATE CONTEXT")) {
+    if (privateMixed.result.stderr.includes("Reviewing code qualityPRIVATE REPOS")) {
       fail("Packed Private Context authorization collided with transient progress.");
     }
     record(
@@ -974,17 +1026,17 @@ async function main() {
       assertPrivateSurfaceSafe(surface.result.stderr, `Mixed ${label} instructions`);
       const required =
         label === "card"
-          ? ["MIXED CONTEXT", "PUBLIC WINNER"]
+          ? ["MIXED CONTEXT", "WINNER STILL USES PUBLIC REPOS ONLY"]
           : label.startsWith("share-")
-            ? ["Mixed context:", "The winner uses public evidence only."]
-            : ["PRIVATE CONTEXT", "public winner unchanged"];
+            ? ["Mixed context:", "Private repos did not change the winner."]
+            : ["PRIVATE CONTEXT", "winner still uses public repos only"];
       const compact = compactRenderedText(surface.result.stdout);
       for (const text of required) {
         if (!compact.includes(text)) {
           fail(`Mixed ${label} omitted required disclosure: ${text}`);
         }
       }
-      if (!compact.includes("Code-quality sample:")) {
+      if (!compact.includes("Code sample:")) {
         fail(`Mixed ${label} omitted selected-sample scope.`);
       }
       if (label !== "details" && /previewScore: \d+/.test(compact)) {
@@ -1701,6 +1753,16 @@ async function main() {
     report.canonicalBattleSha256 = createHash("sha256")
       .update(JSON.stringify(first.battle))
       .digest("hex");
+    if (
+      report.canonicalJsonSha256 !== EXPECTED_CANONICAL_JSON_SHA256 ||
+      report.canonicalBattleSha256 !== EXPECTED_CANONICAL_BATTLE_SHA256
+    ) {
+      fail("Packed public fixture changed the v0.4.1 canonical JSON or battle bytes.");
+    }
+    record(
+      "canonical-v0.4.1-invariance",
+      "JSON and battle SHA-256 match the published v0.4.1 fixture",
+    );
     if (!first.battle || !first.presentationVerdict || !first.sourceAnalysis || !first.story) {
       fail("Battle JSON does not contain the complete contract.");
     }

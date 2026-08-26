@@ -5,7 +5,7 @@
   "attribution": "1.0.0-public-path-commits",
   "dimensionFormula": "1.0.0-preview-29-point",
   "validationContract": "1.0.0-engineering-validation",
-  "presentation": "1.0.0-six-line-preview",
+  "presentation": "1.1.0-readable-sample-preview",
   "cache": "1.2.0-typed-limitation-reason",
   "requestPlan": "1.1.0-typed-limitation-reason",
   "requestTelemetry": "1.0.0-current-invocation",

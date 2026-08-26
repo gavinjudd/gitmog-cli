@@ -2,6 +2,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { assertBrowserOpenSourcePolicy } from "./lib/browser-open-policy.mjs";
+
 const root = resolve(import.meta.dirname, "..");
 const readJson = (...segments) => JSON.parse(readFileSync(resolve(root, ...segments), "utf8"));
 
@@ -56,7 +58,6 @@ const runtimeDirectories = [
 for (const path of runtimeDirectories.flatMap(walk)) {
   const contents = readFileSync(path, "utf8");
   for (const [label, pattern] of [
-    ["child-process execution", /(?:node:)?child_process/u],
     ["VM execution", /(?:node:)?vm(?:["'])/u],
     ["direct eval", /\beval\s*\(/u],
     ["Function constructor", /\bnew\s+Function\s*\(/u],
@@ -65,6 +66,8 @@ for (const path of runtimeDirectories.flatMap(walk)) {
     if (pattern.test(contents)) failures.push(`${path}: ${label} is forbidden in runtime source`);
   }
 }
+
+assertBrowserOpenSourcePolicy(root);
 
 const distribution = readJson("packages", "distribution", "package.json");
 if (Object.keys(distribution.dependencies ?? {}).length !== 0) {

@@ -34,8 +34,11 @@ same identity as usernames; repository and unsafe URLs fail locally with no GitH
 
 Before a cold collection, Git Mog checks whether the cache-aware request plan fits the
 current GitHub allowance. If it does not, an interactive terminal may offer one-time
-device sign-in. That flow asks for no scope or client secret and keeps the token in memory
-for the current process only. JSON and noninteractive commands never prompt.
+device sign-in. After the user chooses it, Git Mog opens the exact GitHub page in the default
+browser. Enter opens it again while authorization is pending; a validated manual link remains the
+fallback. `--no-open` and `GITMOG_NO_BROWSER=1` keep the flow manual. The flow asks for no scope or
+client secret and keeps the token in memory for the current process only. JSON, CI, pipes, and
+noninteractive commands never prompt or launch a browser.
 
 Git Mog's platform-native cache is capped at 25 MiB. `--cache-info` reports its exact path
 and usage without contacting GitHub; `--clear-cache` removes only that validated Git Mog

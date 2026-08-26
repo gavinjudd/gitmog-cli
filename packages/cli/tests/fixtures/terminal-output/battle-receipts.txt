@@ -39,8 +39,10 @@ THE READ
 − 64% of sampled commit messages are one word or shorter.
 
 CODE QUALITY · PREVIEW
-Maintained codebase @strongmaintainer 81 (100%) · @sidequester 89 (100%)
-Attributed code @strongmaintainer 81 (67%) · @sidequester 89 (100%)
+Maintained codebase @strongmaintainer 81 (100% sample coverage) · @sidequester
+89 (100% sample coverage)
+Attributed code @strongmaintainer 81 (67% sample coverage) · @sidequester 89
+(100% sample coverage)
   Correctness discipline · @strongmaintainer 72 · @sidequester 72
   Test quality · @strongmaintainer unavailable · @sidequester unavailable
   Maintainability · @strongmaintainer 92 · @sidequester 92
@@ -50,7 +52,7 @@ Attributed code @strongmaintainer 81 (67%) · @sidequester 89 (100%)
   Duplication / dead patterns · @strongmaintainer 96 · @sidequester 96
 ! @strongmaintainer The attribution request cap left some files as
   maintained-codebase evidence only.
-Separate from the battle score.
+Not used in the battle score.
 
 SOURCE ANALYSIS · READY
   @strongmaintainer 3 files across 3 repositories · @sidequester 3 files across

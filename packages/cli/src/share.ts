@@ -106,7 +106,7 @@ const mixedContextDisclosure = (result: PrivateContextResult | undefined): reado
     : [
         `Mixed context: @${terminalSafe(result.subject)} included ${selectedPrivateRepositoryText(result)}.`,
         `${privateQualitySampleText(result)}.`,
-        "The winner uses public evidence only.",
+        "Private repos did not change the winner.",
       ];
 
 function renderPlain(

@@ -1,0 +1,13 @@
+PRIVATE REPOS
+
+Git Mog can read only the private repos you selected on GitHub.
+
+No write access.
+No GitHub Secrets access.
+No code execution.
+Access ends when this run ends.
+
+Browser opened.
+Enter this code: TEST-CODE
+
+[Enter] open again · [q] cancel

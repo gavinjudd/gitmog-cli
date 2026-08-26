@@ -9,7 +9,9 @@
 - Run parser-backed product analysis in a dedicated worker with hard per-file and profile timers,
   V8 heap/stack resource limits, cancellation, discarded stdout/stderr, and source-free errors.
 - Package runtime is pure Node plus reviewed embedded Wasm if needed: no native addon, install
-  script, runtime download, target runtime, model provider, or external prose generation.
+  script, runtime download, target runtime, model provider, or external prose generation. The sole
+  subprocess exception is the spawn-only, closed-destination browser opener documented in
+  [SECURITY.md](../SECURITY.md); no target-derived value can enter its command or arguments.
 - Workflows use SHA-pinned actions, read-only default permissions, no `pull_request_target`, no
   self-hosted runner, and no secret on untrusted pull requests.
 - Keep public-capacity OAuth and Private Context GitHub App tokens in distinct call graphs. The

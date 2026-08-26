@@ -25,6 +25,12 @@ interface ReleaseEvidenceContract {
   readonly quality: {
     readonly policy: { readonly state: string; readonly scoreInfluence: number };
   };
+  readonly interaction: {
+    readonly browserCapability: string;
+    readonly interaction: string;
+    readonly terminalPresentation: string;
+    readonly copyContract: string;
+  };
   readonly evidence: Readonly<Record<string, unknown>>;
 }
 
@@ -114,6 +120,12 @@ describe("public upstream contract", () => {
         reason: "Quality Judge is a separate product signal",
       },
       qualityVersions: null,
+      interactionVersions: {
+        browserCapability: "1.0.0-closed-github-destinations",
+        interaction: "2.0.0-frictionless-github-authorization",
+        terminalPresentation: "2.0.0-first-screen-editorial",
+        copyContract: "1.0.0-surface-aware-copy-gate",
+      },
       evidence: {
         "platform-acceptance.json": { bytes: 1, sha256: "d".repeat(64) },
       },
@@ -126,6 +138,12 @@ describe("public upstream contract", () => {
       state: "informational-only",
       scoreInfluence: 0,
       reason: "Quality Judge is a separate product signal",
+    });
+    expect(metadata.interaction).toEqual({
+      browserCapability: "1.0.0-closed-github-destinations",
+      interaction: "2.0.0-frictionless-github-authorization",
+      terminalPresentation: "2.0.0-first-screen-editorial",
+      copyContract: "1.0.0-surface-aware-copy-gate",
     });
     expect(metadata.evidence).toHaveProperty("platform-acceptance.json");
   });

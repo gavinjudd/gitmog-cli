@@ -33,6 +33,12 @@ refuses installations configured for all repositories; it never silently narrows
 organization installation may require an owner to approve it. Revoke or change the installation
 at any time through GitHub's Installed GitHub Apps settings.
 
+During an interactive run, Git Mog opens the reviewed installation or settings page only after
+the user chooses Private Context. Enter rechecks the installation in the same command, `p`
+continues public-only, and `q` cancels. The session-only token remains in memory during at most
+three rechecks and is discarded on every exit path. `--no-open` and
+`GITMOG_NO_BROWSER=1` keep the manual link path without launching a browser.
+
 The authenticated GitHub login must exactly match one requested participant. A match to neither
 participant, both participants, or an alternate supplied identity is refused before repository
 access. Private Context cannot be added for the opponent.
@@ -59,7 +65,7 @@ whose `P1`, `P2`, ... entries remain distinct from publicly checkable receipts. 
 owners, paths, URLs, IDs, source excerpts, commit IDs/messages, email, organization names, and
 installation IDs are prohibited.
 
-## Maintained versus attributed
+## Codebase eligibility and authorship
 
 A personal repository owned by the authenticated account, or an organization repository where
 GitHub reports maintain/admin permission, may contribute to **maintained codebase**. Read, pull, or
@@ -74,7 +80,8 @@ Private Context measures only the selected repositories and supported source tha
 these bounds. It does not measure all private work, does not produce a private winner, and is not
 independently checkable by viewers.
 
-Ordinary human surfaces show the bounded code-quality sample as repository count, parsed-file
-count, and supported coverage rather than a numeric private preview score. `--details` and
+Ordinary human surfaces describe whether the selected codebase was read and whether GitHub-linked
+authorship was matched. They show the bounded code sample as readable file counts rather than a
+percentage that could be mistaken for whole-repository coverage. `--details` and
 structured JSON retain that score and label it `selected-sample`, `informational`,
 `scoreInfluence: 0`, `publicWinnerInfluence: 0`, and `persisted: false`.

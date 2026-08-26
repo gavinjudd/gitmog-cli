@@ -1,6 +1,6 @@
 import type { QualityDimensions, QualityLanguage, QualityStatus } from "@gitmog/quality-judge";
 
-export const PRIVATE_CONTEXT_RESULT_VERSION = "1.1.0-selected-sample-presentation";
+export const PRIVATE_CONTEXT_RESULT_VERSION = "1.2.0-readable-sample-presentation";
 export const PRIVATE_CONTEXT_REQUEST_VERSION = "1.0.0-bounded-private-rest";
 export const PRIVATE_CONTEXT_MAX_REPOSITORIES = 5;
 export const PRIVATE_CONTEXT_MAX_REQUESTS = 64;
@@ -41,6 +41,8 @@ export interface PrivateQualityReading {
   readonly coverage: number;
   readonly dimensions: QualityDimensions;
   readonly repositories: number;
+  /** Processed source-file opportunities before parser failures. */
+  readonly sampledFiles: number;
   readonly files: number;
   readonly sourceBytes: number;
   readonly nonBlankLines: number;
@@ -136,6 +138,8 @@ export interface PrivateContextError {
   readonly message: string;
   readonly signedInAs?: string | undefined;
   readonly installationUrl?: string | undefined;
+  /** Process-only setup destination. Human and machine output must omit it. */
+  readonly settingsUrl?: string | undefined;
 }
 
 export type PrivateContextRunResult =

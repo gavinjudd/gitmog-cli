@@ -80,6 +80,10 @@ function readQualityVersions() {
   return existsSync(path) ? readJson(path) : null;
 }
 
+function readInteractionVersions() {
+  return readJson(resolve(root, "config/interaction-versions.json"));
+}
+
 function readPrivateContextContract() {
   const app = readJson(resolve(root, "config/private-context-app.json"));
   if (
@@ -94,7 +98,7 @@ function readPrivateContextContract() {
   }
   return {
     app,
-    resultVersion: "1.1.0-selected-sample-presentation",
+    resultVersion: "1.2.0-readable-sample-presentation",
     requestVersion: "1.0.0-bounded-private-rest",
     scoreInfluence: 0,
     publicWinnerInfluence: 0,
@@ -198,6 +202,7 @@ export function releaseMetadata(input) {
       policy: input.policy,
       versions: input.qualityVersions,
     },
+    interaction: input.interactionVersions,
     privateContext: input.privateContext,
     evidence: input.evidence,
   };
@@ -305,6 +310,7 @@ export async function buildReleaseArtifact(argv = process.argv.slice(2)) {
     const assets = parserAssets(artifact.files);
     const policy = readQualityPolicy();
     const qualityVersions = readQualityVersions();
+    const interactionVersions = readInteractionVersions();
     const privateContext = readPrivateContextContract();
     const licenseReview = readLicenseReview();
     const licenses = {
@@ -334,6 +340,7 @@ export async function buildReleaseArtifact(argv = process.argv.slice(2)) {
       developmentDependencies: licenseReview.dependencies,
       workspacePackages: RELEASE_WORKSPACE_PACKAGES,
       quality: { policy, versions: qualityVersions },
+      interaction: interactionVersions,
       privateContext,
     };
     const evidenceDocuments = {
@@ -362,6 +369,7 @@ export async function buildReleaseArtifact(argv = process.argv.slice(2)) {
       parserAssets: assets,
       policy,
       qualityVersions,
+      interactionVersions,
       privateContext,
       evidence,
       ...hashes,

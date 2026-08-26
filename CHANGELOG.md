@@ -4,6 +4,22 @@ All notable changes are documented here. Released artifacts remain tied to immut
 
 ## Unreleased
 
+## 0.5.0 - Frictionless sign-in and terminal interaction polish
+
+- Open the exact reviewed GitHub authorization page after an explicit sign-in choice, let Enter
+  open it again while polling continues, and retain manual, `--no-open`, and
+  `GITMOG_NO_BROWSER=1` paths.
+- Continue Private Context installation and selected-repository correction in the same command,
+  with explicit public-only and cancel paths and no installation identifier in output.
+- Replace the blanket subprocess prohibition with one spawn-only, closed-destination browser
+  capability and source/packed policy gates; no general process execution was added.
+- Simplify first-run help, authorization, rate-limit, Code Quality, and Private Context language;
+  refine result hierarchy, terminal widths, and semantic color without changing machine fields.
+- Add deterministic interaction, copy, skim, adversarial URL, cross-platform command, and
+  25-fixture meme editorial checks.
+- Keep the public score, winner, canonical battle, request planning, cache identity, Quality Judge
+  influence, and Private Context influence unchanged. Zero runtime dependencies remain.
+
 ## 0.4.1 - Private Context receipt closure and terminal polish
 
 - Make ordinary Private Context claims self-supporting and add a source-free, separately labeled

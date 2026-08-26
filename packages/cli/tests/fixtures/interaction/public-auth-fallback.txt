@@ -1,0 +1,12 @@
+GITHUB SIGN-IN
+
+GitHub is almost out of anonymous lookups for this hour.
+Sign in once so Git Mog can finish the full public read.
+
+Private repos are not included.
+
+The browser did not open.
+Open this link: https://github.com/login/device
+Enter this code: TEST-CODE
+
+[Enter] try again · [q] cancel

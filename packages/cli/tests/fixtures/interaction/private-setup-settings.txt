@@ -1,0 +1,10 @@
+PRIVATE REPOS SETUP
+
+Git Mog requires “Only select repositories.”
+
+Switch the installation from “All repositories” to the private repos you want
+included.
+
+Browser opened.
+
+[Enter] I’ve changed it · [p] continue public-only · [q] cancel
