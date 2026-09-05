@@ -13,6 +13,7 @@ describe("parser-backed quality lane", () => {
   it.each([
     ["typescript/healthy.ts", "typescript"],
     ["javascript/healthy.js", "javascript"],
+    ["javascript/optional-chaining.js", "javascript"],
   ] as const)("parses %s with the real TypeScript compiler AST", (path, language) => {
     const result = parseQualitySource(path, fixture(path));
     expect(result.ok).toBe(true);
@@ -22,6 +23,22 @@ describe("parser-backed quality lane", () => {
     expect(result.features.nodeCount).toBeGreaterThan(5);
     expect(result.features.functionCount).toBeGreaterThan(0);
   });
+  it("keeps optional chaining bounded and source-free in derived output", () => {
+  const source = fixture("javascript/optional-chaining.js");
+  const result = parseQualitySource("javascript/optional-chaining.js", source);
+
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+
+  expect(result.features.language).toBe("javascript");
+  expect(result.features.parserVersion).toContain("typescript-");
+  expect(result.features.functionCount).toBe(2);
+  expect(result.features.nodeCount).toBeGreaterThan(5);
+  expect(result.features.nodeCount).toBeLessThan(100);
+  expect(JSON.stringify(result)).not.toContain(source);
+  expect(JSON.stringify(result)).not.toContain("getOwnerName");
+  expect(JSON.stringify(result)).not.toContain("getFirstItem");
+});
 
   it("leaves Python and Go unsupported instead of applying lexical quality claims", () => {
     expect(parseQualitySource("main.py", "def main():\n    return 1")).toEqual({
